@@ -1,0 +1,10 @@
+with-expecter: true
+filename: "mock_{{.InterfaceNameSnake}}.go"
+dir: "{{.InterfaceDir}}"
+mockname: "Mock{{.InterfaceName}}"
+outpkg: "{{.PackageName}}"
+inpackage: true
+packages:
+  github.com/johnrutherford/di-gen/internal/testtypes: 
+    interfaces:
+      FooService:
