@@ -1,9 +1,47 @@
 package di
 
-import "context"
+import (
+	"context"
+)
 
+// Closer is used to close a resolved service. If a service implements Closer, the Close function
+// will be called when the container is closed.
+//
+// Any of these Close method signatures are also supported:
+//
+// - Close(context.Context) error
+//
+// - Close(context.Context)
+//
+// - Close() error
+//
+// - Close()
 type Closer interface {
 	Close(ctx context.Context) error
+}
+
+// CloseFunc is a function that implements the Closer interface.
+type CloseFunc func(context.Context) error
+
+// Close calls the function.
+func (f CloseFunc) Close(ctx context.Context) error {
+	return f(ctx)
+}
+
+func getCloser(val any) Closer {
+	switch c := val.(type) {
+	case Closer:
+		return c
+	case closerWithContextNoError:
+		return closerWithContextNoErrorWrapper{c}
+	case closerNoContextWithError:
+		return closerNoContextWithErrorWrapper{c}
+	case closerNoContextNoError:
+		return closerNoContextNoErrorWrapper{c}
+
+	default:
+		return nil
+	}
 }
 
 type closerWithContextNoError interface {
@@ -18,40 +56,11 @@ type closerNoContextNoError interface {
 	Close()
 }
 
-// getCloser returns a Closer if val implements one of the following Close method signatures:
-//
-// - Close(context.Context) error
-//
-// - Close(context.Context)
-//
-// - Close() error
-//
-// - Close()
-//
-// Otherwise, returns nil.
-func getCloser(val any) (Closer, bool) {
-	if val == nil {
-		return nil, false
-	}
-
-	if c, ok := val.(Closer); ok {
-		return c, true
-	} else if c, ok := val.(closerWithContextNoError); ok {
-		return closerWithContextNoErrorWrapper{c}, true
-	} else if c, ok := val.(closerNoContextWithError); ok {
-		return closerNoContextWithErrorWrapper{c}, true
-	} else if c, ok := val.(closerNoContextNoError); ok {
-		return closerNoContextNoErrorWrapper{c}, true
-	}
-
-	return nil, false
-}
-
 type closerNoContextNoErrorWrapper struct {
 	c closerNoContextNoError
 }
 
-func (w closerNoContextNoErrorWrapper) Close(_ context.Context) error {
+func (w closerNoContextNoErrorWrapper) Close(context.Context) error {
 	w.c.Close()
 	return nil
 }
@@ -69,6 +78,6 @@ type closerNoContextWithErrorWrapper struct {
 	c closerNoContextWithError
 }
 
-func (w closerNoContextWithErrorWrapper) Close(_ context.Context) error {
+func (w closerNoContextWithErrorWrapper) Close(context.Context) error {
 	return w.c.Close()
 }

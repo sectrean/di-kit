@@ -4,19 +4,16 @@ import (
 	"reflect"
 )
 
+// TypeOf returns the [reflect.Type] of T.
 func TypeOf[T any]() reflect.Type {
 	var t T
-	return reflect.TypeOf(t)
+	return reflect.TypeOf(&t).Elem()
 }
 
-func Map[T, U any](in []T, fn func(T) U) []U {
-	if in == nil {
-		return nil
+// Must panics if err is not nil.
+func Must[T any](val T, err error) T {
+	if err != nil {
+		panic(err)
 	}
-
-	out := make([]U, len(in))
-	for i, v := range in {
-		out[i] = fn(v)
-	}
-	return out
+	return val
 }

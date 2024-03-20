@@ -1,9 +1,12 @@
 package di
 
-import "context"
+import (
+	"context"
+)
 
+// Common types used in the package
 var (
-	tError     = TypeOf[error]()
-	tContext   = TypeOf[context.Context]()
-	tContainer = TypeOf[Container]()
+	typError   = TypeOf[error]()
+	typContext = TypeOf[context.Context]()
+	typScope   = TypeOf[Scope]()
 )

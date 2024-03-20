@@ -1,18 +1,20 @@
 package di
 
-import "context"
+import (
+	"context"
+)
 
-type contextKey struct{}
+type scopeContextKey struct{}
 
-var containerKey contextKey = contextKey{}
-
-// ContextWithContainer returns a new Context that carries the provided Container.
-func ContextWithContainer(ctx context.Context, c Container) context.Context {
-	return context.WithValue(ctx, containerKey, c)
+// ContextWithScope returns a new Context that carries the provided Scope.
+func ContextWithScope(ctx context.Context, s Scope) context.Context {
+	return context.WithValue(ctx, scopeContextKey{}, s)
 }
 
-// FromContext returns the Scope stored in ctx, if it exists.
-func FromContext(ctx context.Context) (Container, bool) {
-	s, ok := ctx.Value(containerKey).(Container)
-	return s, ok
+// ScopeFromContext returns the Scope stored on the Context, if it exists.
+func ScopeFromContext(ctx context.Context) Scope {
+	if s, ok := ctx.Value(scopeContextKey{}).(Scope); ok {
+		return s
+	}
+	return nil
 }

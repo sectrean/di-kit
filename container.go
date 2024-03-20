@@ -2,322 +2,305 @@ package di
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sync"
 	"sync/atomic"
-
-	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 )
 
-type Container interface {
-	NewChild() Container
-	Resolve(context.Context, reflect.Type) (any, error)
-	Invoke(context.Context, any) error
-	Close(context.Context) error
-}
-
-func Resolve[T any](ctx context.Context, c Container) (T, error) {
-	t := TypeOf[T]()
-	val, err := c.Resolve(ctx, t)
-	if err != nil {
-		// We can't convert a nil value to T
-		// so we return the zero value of T
-		var zeroVal T
-		return zeroVal, err
-	}
-
-	return val.(T), err
-}
-
-func MustResolve[T any](ctx context.Context, c Container) T {
-	val, err := Resolve[T](ctx, c)
-	if err != nil {
-		panic(fmt.Sprintf("%+v", err))
-	}
-	return val
-}
-
-type container struct {
-	root        *container
-	services    map[reflect.Type]Service
-	instances   map[reflect.Type]any
-	instancesMu *sync.Mutex
-	closed      *atomic.Bool
-	closers     []Closer
-	closersMu   *sync.Mutex
-}
-
-// NewContainer creates a new root container
-func NewContainer(opts ...ContainerOption) (Container, error) {
-	options := &ContainerOptions{}
-
-	var result error
+// NewContainer creates a new Container with the given options.
+func NewContainer(opts ...ContainerOption) (*Container, error) {
+	options := new(ContainerOptions)
+	var errs []error
 	for _, opt := range opts {
 		err := opt(options)
 		if err != nil {
-			result = multierror.Append(result, err)
+			errs = append(errs, err)
 		}
 	}
-	if result != nil {
-		return nil, errors.Wrap(result, "creating root container")
+
+	if err := errors.Join(errs...); err != nil {
+		return nil, err
 	}
 
 	// The last service registered for a type will win
-	// TODO: Register a special service that returns a slice of all services
+	// TODO: Register a special service that returns a slice of services
 	services := make(map[reflect.Type]Service)
-	for _, s := range options.Services {
+	for _, s := range options.services {
 		services[s.Type()] = s
 	}
 
-	// New root Container
-	root := newScope(nil, services)
-	return root, nil
-}
-
-func newScope(root *container, services map[reflect.Type]Service) *container {
-	return &container{
-		root:        root,
-		services:    services,
-		instances:   make(map[reflect.Type]any),
-		instancesMu: &sync.Mutex{},
-		closed:      &atomic.Bool{},
-		closers:     make([]Closer, 0),
-		closersMu:   &sync.Mutex{},
+	c := &Container{
+		parent:    options.parent,
+		services:  services,
+		resolved:  make(map[reflect.Type]resolvedService),
+		resolveMu: new(sync.Mutex),
+		closers:   make([]Closer, 0),
+		closed:    new(atomic.Bool),
 	}
+	return c, nil
 }
 
-// isRoot returns true if this is the root container
-// TODO: Should we make this function public?
-func (c *container) isRoot() bool {
-	return c.root == nil
+// Container allows you to resolve services and invoke functions with dependencies.
+type Container struct {
+	noCopy noCopy
+	parent *Container
+
+	services  map[reflect.Type]Service
+	resolved  map[reflect.Type]resolvedService
+	resolveMu *sync.Mutex
+
+	closers []Closer
+	closed  *atomic.Bool
 }
 
-func (c *container) getRoot() *container {
-	if c.root != nil {
-		return c.root
+type resolvedService struct {
+	val any
+	err error
+}
+
+// HasType returns true if the container has a service of the given type.
+func (c *Container) HasType(typ reflect.Type) bool {
+	_, exists := c.services[typ]
+
+	if !exists && c.parent != nil {
+		return c.parent.HasType(typ)
 	}
-	return c
+	return exists
 }
 
-// NewChild creates a new container with a child scope
-func (c *container) NewChild() Container {
-	child := newScope(c.getRoot(), c.services)
-	return child
+func wrapResolveError(typ reflect.Type, err error) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("resolving type %s: %w", typ, err)
 }
 
-func (c *container) Resolve(ctx context.Context, t reflect.Type) (any, error) {
-	const errMsgFormat = "cannot resolve type %v"
-
-	// Resolve should never be called after a container has been closed
+// Resolve returns a service of the given type.
+//
+// The type must be registered with the container.
+func (c *Container) Resolve(ctx context.Context, typ reflect.Type) (any, error) {
+	// Resolve cannot be called after a container has been closed
 	if c.closed.Load() {
-		// TODO: Should this be a panic?
-		return nil, errors.Wrapf(ErrContainerClosed, errMsgFormat, t)
+		panic("cannot resolve type after container has been closed")
 	}
 
-	if t == tContext {
-		return ctx, nil
-	}
-	if t == tContainer {
-		return c, nil
-	}
-
-	svc, ok := c.services[t]
-	if !ok {
-		return nil, errors.Wrapf(ErrTypeNotRegistered, errMsgFormat, t)
-	}
-
-	visitor := newResolveVisitor(c)
-
-	// Lock the root container
-	// This is the easiest way to make this concurrency safe,
-	// but performance may be a concern with many concurrent goroutines
-	// TODO: Benchmark this function and optimize locking for better performance
-	c.getRoot().instancesMu.Lock()
-	defer c.getRoot().instancesMu.Unlock()
-
-	val, err := resolveInstance(ctx, svc, visitor)
-
-	// Wrap error to include type information and stack trace
-	err = errors.Wrapf(err, errMsgFormat, t)
-
-	return val, err
-}
-
-// resolveInstance recursively resolves the dependencies for a service
-// and returns the value.
-func resolveInstance(ctx context.Context, svc Service, visitor *resolveVisitor) (any, error) {
-	// Check context for cancellation
+	// Check if the context has been closed
 	if ctx.Err() != nil {
-		return nil, ctx.Err()
+		return nil, wrapResolveError(typ, ctx.Err())
 	}
 
-	// Work with the root container if the service is singleton
-	var scope = visitor.Scope
-
-	if svc.Lifetime() == Singleton {
-		scope = visitor.Root
-	}
-
-	// Check if we've already resolved this service
-	if val, ok := scope.instances[svc.Type()]; ok {
+	// Check if the type is a special type
+	if val, ok := c.getSpecialType(ctx, typ); ok {
 		return val, nil
 	}
 
-	// Detect circular dependencies
-	// Throw an error if we've already visited this service
-	if visited := visitor.Enter(svc); visited {
-		// We add the dependency chain to the error message for debugging
-		trail := visitor.Trail(svc.Type())
-		return nil, errors.WithMessagef(ErrCircularDependency,
-			"circular dependency detected resolving type %v: %s", svc.Type(), trail)
+	// Check if we've already resolved this service
+	if rs, ok := c.resolved[typ]; ok {
+		return rs.val, wrapResolveError(typ, rs.err)
 	}
 
-	var deps []any
+	// TODO: Benchmark concurrent Resolve calls
+	// Then see if we can optimize it.
+	// Maybe we can use sync.Map and sync.OnceValue() to guarantee that each service is created
+	// only once.
+	// We need to think about a possible deadlock if a service injects a Scope and
+	// then calls Resolve() in the constructor function.
+	c.resolveMu.Lock()
+	defer c.resolveMu.Unlock()
+
+	// One last check now that we've acquired the mutex to see if the service has been resolved already
+	if rs, ok := c.resolved[typ]; ok {
+		return rs.val, wrapResolveError(typ, rs.err)
+	}
+
+	// Recursively resolve the type and its dependencies
+	visitor := newResolveVisitor()
+	val, err := c.resolve(ctx, typ, visitor)
+
+	return val, wrapResolveError(typ, err)
+}
+
+func (c *Container) getSpecialType(ctx context.Context, typ reflect.Type) (any, bool) {
+	switch typ {
+	case typContext:
+		return ctx, true
+	case typScope:
+		return c, true
+	}
+	return nil, false
+}
+
+func (c *Container) resolve(ctx context.Context, typ reflect.Type, visitor *resolveVisitor) (any, error) {
+	// Check if the type is a special type
+	if val, ok := c.getSpecialType(ctx, typ); ok {
+		return val, nil
+	}
+
+	// Check if we've already resolved this service
+	if rs, ok := c.resolved[typ]; ok {
+		return rs.val, rs.err
+	}
+
+	// Check if the type is registered
+	svc, ok := c.services[typ]
+	if !ok {
+		if c.parent != nil && c.parent.HasType(typ) {
+			return c.parent.Resolve(ctx, typ)
+		}
+		return nil, ErrTypeNotRegistered
+	}
+
+	// Throw an error if we've already visited this service
+	if visited := visitor.Enter(typ); visited {
+		return nil, ErrDependencyCycle
+	}
+	defer visitor.Leave(typ)
 
 	// Recursively resolve dependencies
-	for _, t := range svc.Dependencies() {
-		// If one of the dependencies is context.Context, use the context
-		if t == tContext {
-			deps = append(deps, ctx)
-			continue
+	// Stop at the first error
+	deps := make([]any, len(svc.Dependencies()))
+	for i, depTyp := range svc.Dependencies() {
+		depVal, depErr := c.resolve(ctx, depTyp, visitor)
+		if depErr != nil {
+			return depVal, fmt.Errorf("resolving dependency %s: %w", depTyp, depErr)
 		}
-		// TODO: Which scope should be used for dependencies?
-		if t == tContainer {
-			return scope, nil
-		}
-
-		dep, ok := scope.services[t]
-		if !ok {
-			return nil, errors.WithMessagef(ErrTypeNotRegistered, "type %v not registered", t)
-		}
-
-		val, err := resolveInstance(ctx, dep, visitor)
-		if err != nil {
-			return nil, err
-		}
-		deps = append(deps, val)
+		deps[i] = depVal
 	}
 
-	// Check context for cancellation
+	// Check context for errors before creating the service
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
 
-	// Create the instance
-	// Do we want to cache errors?
+	// Create the instance and cache the service and error as-is
 	val, err := svc.GetValue(deps)
-
-	if svc.Lifetime() != Transient {
-		scope.instances[svc.Type()] = val
-	}
-
-	// TODO: I don't think we want a closer if a value was registered
-	// The container should only be responsible for closing services that it created
-	if closer, ok := svc.GetCloser(val); ok {
-		scope.addCloser(closer)
-	}
-
-	visitor.Leave()
+	c.resolved[typ] = resolvedService{val, err}
 
 	return val, err
 }
 
-func (c *container) Invoke(ctx context.Context, fn any) error {
-	// Make sure fn is a function
+// Invoke calls the given function with dependencies resolved from the container.
+//
+// The function may take any number of arguments. These dependencies must be registered with the container.
+// The function may also accept a context.Context.
+// The function may return an error.
+func (c *Container) Invoke(ctx context.Context, fn any) error {
+	fnTyp := reflect.TypeOf(fn)
 	fnVal := reflect.ValueOf(fn)
-	if fnVal.Kind() != reflect.Func {
+
+	// Make sure fn is a function
+	if fnTyp.Kind() != reflect.Func {
 		panic("fn must be a function")
 	}
 
 	// Invoke should never be called after a container has been closed
-	if alreadyClosed := c.closed.Load(); alreadyClosed {
-		// TODO: Should this be a panic?
-		return errors.Wrap(ErrContainerClosed, "container closed already")
+	if c.closed.Load() {
+		panic("cannot invoke fn after container has been closed")
 	}
-
-	// Check context for cancellation
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-
-	var in []reflect.Value
-	var resolveErr error
 
 	// Resolve fn arguments from the container
-	for i := 0; i < fnVal.Type().NumIn(); i++ {
-		t := fnVal.Type().In(i)
-		val, err := c.Resolve(ctx, t)
-		if err != nil {
-			// If the context was cancelled, return the error as-is
-			if err == ctx.Err() {
-				return err
-			}
+	// Stop at the first error
+	numIn := fnTyp.NumIn()
+	in := make([]reflect.Value, numIn)
 
-			multierror.Append(resolveErr, err)
+	for i := 0; i < numIn; i++ {
+		argTyp := fnTyp.In(i)
+		argVal, argErr := c.Resolve(ctx, argTyp)
+		if argErr != nil {
+			return fmt.Errorf("resolving fn argument: %w", argErr)
 		}
-		in = append(in, reflect.ValueOf(val))
-	}
-	if resolveErr != nil {
-		return errors.Wrap(resolveErr, "resolving fn argument(s)")
+		in[i] = reflect.ValueOf(argVal)
 	}
 
-	// Check context for cancellation one last time
+	// Check for a context error before the function is invoked
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
 
 	// Invoke the function
-	var err error
 	out := fnVal.Call(in)
 
-	// Check if the function returns an error
-	// Ignore any other return values
-	// If for some reason multiple errors are returned, we only return the first one
-	for i := 0; i < fnVal.Type().NumOut(); i++ {
-		t := fnVal.Type().Out(i)
-		if t == tError {
+	// Check if the function returns an error; ignore any other return values
+	var err error
+	for i := 0; i < fnTyp.NumOut(); i++ {
+		if fnTyp.Out(i) == typError {
 			if !out[i].IsNil() {
-				// Don't wrap the error; return it as-is
 				err = out[i].Interface().(error)
 			}
 			break
 		}
 	}
 
+	// Don't wrap this error; return it as-is
 	return err
 }
 
-func (c *container) addCloser(closer Closer) {
-	c.closersMu.Lock()
-	c.closers = append(c.closers, closer)
-	c.closersMu.Unlock()
+// Closed returns true if the container has been closed.
+func (c *Container) Closed() bool {
+	return c.closed.Load()
 }
 
-func (c *container) Close(ctx context.Context) error {
-	// Close should only be called once
+// Close closes the container and all of its services.
+func (c *Container) Close(ctx context.Context) error {
+	// Close can only be called once
 	if c.closed.Swap(true) {
-		var panicMsg string
-		if c.isRoot() {
-			panicMsg = "Close was called more than once on the root Container"
-		} else {
-			panicMsg = "Close was called more than once on a child Container"
-		}
-		panic(panicMsg)
+		panic("container already closed")
 	}
+
+	// Take the resolve lock so no more services can be resolved
+	c.resolveMu.Lock()
+	defer c.resolveMu.Unlock()
 
 	// TODO: Should we track child scopes to make sure all child scopes have been closed?
 
-	// Call all Closers in the opposite order they were added
-	// Aggregate any returned errors
-	var result error
+	// Services are created in dependency order, so we need to close them in the reverse order
+	// Join all returned errors
+	var errs []error
 	for i := len(c.closers) - 1; i >= 0; i-- {
 		err := c.closers[i].Close(ctx)
 		if err != nil {
-			result = multierror.Append(result, err)
+			errs = append(errs, err)
 		}
 	}
+	err := errors.Join(errs...)
+	if err != nil {
+		return fmt.Errorf("closing container services: %w", err)
+	}
 
-	return errors.Wrap(result, "closing container")
+	return nil
 }
+
+var _ Scope = &Container{}
+var _ Closer = &Container{}
+
+type resolveVisitor struct {
+	// This could be a set
+	visited map[reflect.Type]bool
+}
+
+func newResolveVisitor() *resolveVisitor {
+	return &resolveVisitor{
+		visited: make(map[reflect.Type]bool),
+	}
+}
+
+// Enter returns true if the service has already been visited
+func (v *resolveVisitor) Enter(typ reflect.Type) bool {
+	if _, exists := v.visited[typ]; exists {
+		return true
+	}
+
+	v.visited[typ] = true
+	return false
+}
+
+func (v *resolveVisitor) Leave(typ reflect.Type) {
+	delete(v.visited, typ)
+}
+
+type noCopy struct{}
+
+func (*noCopy) Lock()   {}
+func (*noCopy) Unlock() {}

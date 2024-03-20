@@ -1,9 +1,12 @@
 package di
 
-import "errors"
+import (
+	"errors"
+)
 
 var (
-	ErrTypeNotRegistered  = errors.New("type not registered")
-	ErrContainerClosed    = errors.New("container closed")
-	ErrCircularDependency = errors.New("circular dependency")
+	// ErrTypeNotRegistered is returned when a type is not registered.
+	ErrTypeNotRegistered = errors.New("type not registered")
+	// ErrDependencyCycle is returned when a dependency cycle is detected.
+	ErrDependencyCycle = errors.New("dependency cycle detected")
 )

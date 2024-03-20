@@ -1,6 +1,6 @@
 package di
 
-type Lifetime uint
+type Lifetime uint8
 
 const (
 	Singleton Lifetime = iota
