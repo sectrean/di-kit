@@ -1,61 +1,92 @@
 package di
 
 import (
-	"fmt"
 	"reflect"
+
+	"github.com/johnrutherford/di-kit/internal/errors"
 )
 
 type funcService struct {
-	typ           reflect.Type
+	t             reflect.Type
+	aliases       []reflect.Type
 	fn            reflect.Value
-	deps          []reflect.Type
+	lifetime      Lifetime
+	tag           any
+	deps          []serviceKey
 	closerFactory func(any) Closer
-	ignoreCloser  bool
 }
 
-func newFuncService(fnVal reflect.Value, options *ServiceOptions) (*funcService, error) {
-	fnType := fnVal.Type()
+func newFuncService(fn any, opts ...RegisterFuncOption) (*funcService, error) {
+	fnType := reflect.TypeOf(fn)
+	fnVal := reflect.ValueOf(fn)
 
-	// TODO: Figure out how to handle variadic arguments
-	// Should we just ignore them or treat it as a slice of the type?
+	if fnType.Kind() != reflect.Func {
+		return nil, errors.Errorf("expected a function, got %v", fnType)
+	}
 
-	var typ reflect.Type
-	// func ([any,]) (T[, error])
-	if fnType.NumOut() == 1 || fnType.NumOut() == 2 {
-		typ = fnType.Out(0)
+	// TODO: Do we need to do anything special for variadic arguments?
+	// Or are they just treated as slices with reflection?
+	_ = fnType.IsVariadic()
 
-		if fnType.NumOut() == 2 {
-			if fnType.Out(1) != typError {
-				return nil, fmt.Errorf("fn %v return type %v is not error",
-					fnType, fnType.Out(1))
+	// Get the return type
+	var t reflect.Type
+	if fnType.NumOut() == 1 {
+		t = fnType.Out(0)
+	} else if fnType.NumOut() == 2 && fnType.Out(1) == errorType {
+		t = fnType.Out(0)
+	} else {
+		return nil, errors.Errorf("function %v must return T or (T, error)", fnType)
+	}
+
+	// Get the dependencies
+	var deps []serviceKey
+	if fnType.NumIn() > 0 {
+		deps = make([]serviceKey, fnType.NumIn())
+		for i := 0; i < fnType.NumIn(); i++ {
+			deps[i] = serviceKey{
+				Type: fnType.In(i),
 			}
 		}
-	} else {
-		return nil, fmt.Errorf("fn %v must return (T[, error])", fnType)
 	}
 
-	var deps []reflect.Type
-	if fnType.NumIn() > 0 {
-		deps = make([]reflect.Type, fnType.NumIn())
-		for i := 0; i < fnType.NumIn(); i++ {
-			deps[i] = fnType.In(i)
-		}
+	funcSvc := &funcService{
+		t:    t,
+		deps: deps,
+		fn:   fnVal,
 	}
 
-	return &funcService{
-		typ:           typ,
-		fn:            fnVal,
-		deps:          deps,
-		closerFactory: options.closerFactory,
-		ignoreCloser:  options.noCloser,
-	}, nil
+	// Apply options
+	var multiErr errors.MultiError
+	for _, opt := range opts {
+		err := opt.applyFuncService(funcSvc)
+		multiErr = multiErr.Append(err)
+	}
+
+	return funcSvc, multiErr.Join()
 }
 
 func (s *funcService) Type() reflect.Type {
-	return s.typ
+	return s.t
 }
 
-func (s *funcService) Dependencies() []reflect.Type {
+func (s *funcService) Aliases() []reflect.Type {
+	return s.aliases
+}
+
+func (s *funcService) AddAlias(alias reflect.Type) error {
+	if !s.t.AssignableTo(alias) {
+		return errors.Errorf("service type %s is not assignable to alias type %s", s.t, alias)
+	}
+
+	s.aliases = append(s.aliases, alias)
+	return nil
+}
+
+func (s *funcService) Tag() any {
+	return s.tag
+}
+
+func (s *funcService) Dependencies() []serviceKey {
 	return s.deps
 }
 
@@ -83,16 +114,15 @@ func (s *funcService) GetValue(deps []any) (any, error) {
 }
 
 func (s *funcService) GetCloser(val any) Closer {
-	if s.closerFactory != nil {
-		return s.closerFactory(val)
+	if val == nil {
+		return nil
 	}
 
-	// Ignore the Closer if the service is configured to not use it
-	if s.ignoreCloser {
-		return nil
+	if s.closerFactory != nil {
+		return s.closerFactory(val)
 	}
 
 	return getCloser(val)
 }
 
-var _ Service = &funcService{}
+var _ service = &funcService{}

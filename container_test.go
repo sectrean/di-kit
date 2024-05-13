@@ -3,242 +3,373 @@ package di
 import (
 	"context"
 	"reflect"
-	"sync"
-	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/johnrutherford/di-kit/internal/testtypes"
 )
 
-type InterfaceA interface {
-	A()
+var (
+	InterfaceAType = TypeOf[testtypes.InterfaceA]()
+	InterfaceBType = TypeOf[testtypes.InterfaceB]()
+
+	InterfaceAKey = serviceKey{Type: InterfaceAType}
+	InterfaceBKey = serviceKey{Type: InterfaceBType}
+)
+
+func CanceledContext() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	return ctx
 }
 
-type InterfaceB interface {
-	B()
+func DeadlineExceededContext() context.Context {
+	ctx, cancel := context.WithTimeout(context.Background(), -1)
+	cancel()
+
+	return ctx
 }
-
-type StructA struct{}
-
-func (StructA) A() {}
-
-type StructB struct{}
-
-func (StructB) B() {}
 
 type testContextKey struct{}
 
-var (
-	ctxCanceled         context.Context
-	ctxDeadlineExceeded context.Context
-	ctxWithValue        context.Context
-)
+var ctxWithValue = context.WithValue(context.Background(), testContextKey{}, "test")
 
-func init() {
-	var cancel context.CancelFunc
-	ctxCanceled, cancel = context.WithCancel(context.Background())
-	cancel()
-	ctxDeadlineExceeded, cancel = context.WithTimeout(context.Background(), -1)
-	cancel()
-	ctxWithValue = context.WithValue(context.Background(), testContextKey{}, "test")
+// TODO: Test constructor functions with errors
+// TODO: Test tags
+// TODO: Test aliases
+// TODO: Test lifetimes
+
+func Test_NewContainer(t *testing.T) {
+	parent, err := NewContainer(
+		RegisterValue(testtypes.NewStructAPtr()),
+	)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		opts    []ContainerOption
+		want    *Container
+		wantErr string
+	}{
+		{
+			name: "no options",
+			opts: nil,
+			want: &Container{
+				services: map[serviceKey]service{},
+				resolved: map[serviceKey]resolvedService{},
+			},
+		},
+		{
+			name: "with parent",
+			opts: []ContainerOption{
+				WithParent(parent),
+			},
+			want: &Container{
+				parent:   parent,
+				services: map[serviceKey]service{},
+				resolved: map[serviceKey]resolvedService{},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewContainer(tt.opts...)
+
+			assert.Equal(t, tt.want, got)
+
+			if tt.wantErr != "" {
+				assert.EqualError(t, err, tt.wantErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
-// func newAtomicBool(val bool) *atomic.Bool {
-// 	b := new(atomic.Bool)
-// 	b.Store(val)
-
-// 	return b
-// }
-
-func newA() InterfaceA {
-	return &StructA{}
+type testContainerConfig struct {
+	parent   *Container
+	services map[serviceKey]service
+	resolved map[serviceKey]resolvedService
+	closers  []Closer
+	closed   bool
 }
 
-func newB() InterfaceB {
-	return &StructB{}
+func newTestContainer(config testContainerConfig) *Container {
+	if config.services == nil {
+		config.services = map[serviceKey]service{}
+	}
+	if config.resolved == nil {
+		config.resolved = map[serviceKey]resolvedService{}
+	}
+
+	c := &Container{
+		parent:   config.parent,
+		services: config.services,
+		resolved: config.resolved,
+		closers:  config.closers,
+	}
+	c.closed.Store(config.closed)
+
+	return c
 }
 
-func newADependsOnB(_ InterfaceB) InterfaceA {
-	return &StructA{}
-}
+func Test_Container_Contains(t *testing.T) {
+	type args struct {
+		t    reflect.Type
+		opts []ContainsOption
+	}
 
-func newBDependsOnA(_ InterfaceA) InterfaceB {
-	return &StructB{}
-}
+	tests := []struct {
+		name   string
+		config testContainerConfig
+		args   args
+		want   bool
+	}{
+		{
+			name: "type registered",
+			config: testContainerConfig{
+				services: map[serviceKey]service{
+					InterfaceAKey: &funcService{},
+				},
+			},
+			args: args{
+				t: InterfaceAType,
+			},
+			want: true,
+		},
+		{
+			name: "type not registered",
+			config: testContainerConfig{
+				services: map[serviceKey]service{},
+			},
+			args: args{
+				t: InterfaceAType,
+			},
+			want: false,
+		},
+		{
+			name: "type registered with tag",
+			config: testContainerConfig{
+				services: map[serviceKey]service{
+					{Type: InterfaceAType, Tag: "tag"}: &funcService{},
+				},
+			},
+			args: args{
+				t: InterfaceAType,
+				opts: []ContainsOption{
+					WithTag("tag"),
+				},
+			},
+			want: true,
+		},
+		{
+			name: "type not registered with tag",
+			config: testContainerConfig{
+				services: map[serviceKey]service{
+					{Type: InterfaceAType, Tag: "tag"}: &funcService{},
+				},
+			},
+			args: args{
+				t: InterfaceAType,
+				opts: []ContainsOption{
+					WithTag("other"),
+				},
+			},
+			want: false,
+		},
+		{
+			name: "type registered in parent",
+			config: testContainerConfig{
+				parent: &Container{
+					services: map[serviceKey]service{
+						{Type: InterfaceAType}: &funcService{},
+					},
+				},
+			},
+			args: args{
+				t: InterfaceAType,
+			},
+			want: true,
+		},
+		{
+			name: "type not registered in parent",
+			config: testContainerConfig{
+				parent: &Container{
+					services: map[serviceKey]service{},
+				},
+			},
+			args: args{
+				t: InterfaceAType,
+			},
+			want: false,
+		},
+	}
 
-// TODO: Test constructors functions with errors
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := newTestContainer(tt.config)
+
+			got := c.Contains(tt.args.t, tt.args.opts...)
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
 
 func Test_Container_Resolve(t *testing.T) {
-	type fields struct {
-		parent    *Container
-		services  map[reflect.Type]Service
-		resolved  map[reflect.Type]resolvedService
-		resolveMu *sync.Mutex
-		closers   []Closer
-		closed    *atomic.Bool
-	}
 	type args struct {
 		ctx context.Context
-		typ reflect.Type
+		t   reflect.Type
 	}
 
 	tests := []struct {
 		name      string
-		fields    fields
+		config    testContainerConfig
 		args      args
 		want      any
 		wantSame  bool
 		wantErr   string
 		wantErrIs error
 	}{
-		// {
-		// 	name: "container closed",
-		// 	fields: fields{
-		// 		closed: newAtomicBool(true),
-		// 	},
-		// 	args: args{
-		// 		typ: TypeOf[InterfaceA](),
-		// 	},
-		// 	want:      nil,
-		// 	wantErr:   "resolving type di.InterfaceA: container closed",
-		// 	wantErrIs: ErrContainerClosed,
-		// },
+		{
+			name: "container closed",
+			config: testContainerConfig{
+				closed: true,
+			},
+			args: args{
+				t: TypeOf[testtypes.InterfaceA](),
+			},
+			want:      nil,
+			wantErr:   "resolve testtypes.InterfaceA: container closed",
+			wantErrIs: ErrContainerClosed,
+		},
 		{
 			name: "context canceled",
 			args: args{
-				ctx: ctxCanceled,
-				typ: TypeOf[InterfaceA](),
+				ctx: CanceledContext(),
+				t:   TypeOf[testtypes.InterfaceA](),
+			},
+			config: testContainerConfig{
+				services: map[serviceKey]service{
+					InterfaceAKey: Must(newFuncService(testtypes.NewInterfaceA)),
+				},
 			},
 			want:      nil,
-			wantErr:   "resolving type di.InterfaceA: context canceled",
+			wantErr:   "resolve testtypes.InterfaceA: context canceled",
 			wantErrIs: context.Canceled,
 		},
 		{
 			name: "context deadline exceeded",
 			args: args{
-				ctx: ctxDeadlineExceeded,
-				typ: TypeOf[InterfaceA](),
+				ctx: DeadlineExceededContext(),
+				t:   TypeOf[testtypes.InterfaceA](),
+			},
+			config: testContainerConfig{
+				services: map[serviceKey]service{
+					InterfaceAKey: Must(newFuncService(testtypes.NewInterfaceA)),
+				},
 			},
 			want:      nil,
-			wantErr:   "resolving type di.InterfaceA: context deadline exceeded",
+			wantErr:   "resolve testtypes.InterfaceA: context deadline exceeded",
 			wantErrIs: context.DeadlineExceeded,
 		},
 		{
 			name: "resolve context.Context",
 			args: args{
 				ctx: ctxWithValue,
-				typ: TypeOf[context.Context](),
+				t:   TypeOf[context.Context](),
 			},
 			want:     ctxWithValue,
 			wantSame: true,
 		},
 		{
 			name: "dependency cycle",
-			fields: fields{
-				services: map[reflect.Type]Service{
-					TypeOf[InterfaceA](): Must(NewService(newADependsOnB)),
-					TypeOf[InterfaceB](): Must(NewService(newBDependsOnA)),
+			config: testContainerConfig{
+				services: map[serviceKey]service{
+					InterfaceAKey: Must(newFuncService(testtypes.NewInterfaceADependsOnB)),
+					InterfaceBKey: Must(newFuncService(testtypes.NewInterfaceBDependsOnA)),
 				},
 			},
 			args: args{
-				typ: TypeOf[InterfaceA](),
+				t: TypeOf[testtypes.InterfaceA](),
 			},
-			wantErr: "resolving type di.InterfaceA: resolving dependency di.InterfaceB: " +
-				"resolving dependency di.InterfaceA: dependency cycle detected",
+			wantErr: "resolve testtypes.InterfaceA: resolve dependency testtypes.InterfaceB: " +
+				"resolve dependency testtypes.InterfaceA: dependency cycle detected",
 			wantErrIs: ErrDependencyCycle,
 		},
 		{
 			name: "type not registered",
 			args: args{
-				typ: TypeOf[InterfaceA](),
+				t: TypeOf[testtypes.InterfaceA](),
 			},
-			wantErr:   "resolving type di.InterfaceA: type not registered",
+			wantErr:   "resolve testtypes.InterfaceA: type not registered",
 			wantErrIs: ErrTypeNotRegistered,
 		},
 		{
 			name: "one service no dependencies",
-			fields: fields{
-				services: map[reflect.Type]Service{
-					TypeOf[InterfaceA](): Must(NewService(newA)),
+			config: testContainerConfig{
+				services: map[serviceKey]service{
+					InterfaceAKey: Must(newFuncService(testtypes.NewInterfaceA)),
 				},
 			},
 			args: args{
-				typ: TypeOf[InterfaceA](),
+				t: TypeOf[testtypes.InterfaceA](),
 			},
-			want: newA(),
+			want: testtypes.NewInterfaceA(),
 		},
 		{
 			name: "one interface value",
-			fields: fields{
-				services: map[reflect.Type]Service{
-					TypeOf[InterfaceA](): Must(NewService(newA())),
+			config: testContainerConfig{
+				services: map[serviceKey]service{
+					InterfaceAKey: Must(newValueService(testtypes.NewInterfaceA())),
 				},
 			},
 			args: args{
-				typ: TypeOf[InterfaceA](),
+				t: TypeOf[testtypes.InterfaceA](),
 			},
-			want: newA(),
+			want: testtypes.NewInterfaceA(),
 		},
 		{
 			name: "one dependency",
-			fields: fields{
-				services: map[reflect.Type]Service{
-					TypeOf[InterfaceA](): Must(NewService(newA)),
-					TypeOf[InterfaceB](): Must(NewService(newBDependsOnA)),
+			config: testContainerConfig{
+				services: map[serviceKey]service{
+					InterfaceAKey: Must(newFuncService(testtypes.NewInterfaceA)),
+					InterfaceBKey: Must(newFuncService(testtypes.NewInterfaceBDependsOnA)),
 				},
 			},
 			args: args{
-				typ: TypeOf[InterfaceB](),
+				t: TypeOf[testtypes.InterfaceB](),
 			},
-			want: newB(),
+			want: testtypes.NewInterfaceB(),
 		},
 		{
 			name: "one value dependency",
-			fields: fields{
-				services: map[reflect.Type]Service{
-					TypeOf[InterfaceA](): Must(NewService(newA())),
-					TypeOf[InterfaceB](): Must(NewService(newBDependsOnA)),
+			config: testContainerConfig{
+				services: map[serviceKey]service{
+					InterfaceAKey: Must(newValueService(testtypes.NewInterfaceA())),
+					InterfaceBKey: Must(newFuncService(testtypes.NewInterfaceBDependsOnA)),
 				},
 			},
 			args: args{
-				typ: TypeOf[InterfaceB](),
+				t: TypeOf[testtypes.InterfaceB](),
 			},
-			want: newB(),
+			want: testtypes.NewInterfaceB(),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Default field values
-			if tt.fields.services == nil {
-				tt.fields.services = make(map[reflect.Type]Service)
-			}
-			if tt.fields.resolved == nil {
-				tt.fields.resolved = make(map[reflect.Type]resolvedService)
-			}
-			if tt.fields.resolveMu == nil {
-				tt.fields.resolveMu = new(sync.Mutex)
-			}
-			if tt.fields.closed == nil {
-				tt.fields.closed = new(atomic.Bool)
-			}
+			c := newTestContainer(tt.config)
 
-			// Set up the container
-			c := &Container{
-				parent:    tt.fields.parent,
-				services:  tt.fields.services,
-				resolved:  tt.fields.resolved,
-				resolveMu: tt.fields.resolveMu,
-				closers:   tt.fields.closers,
-				closed:    tt.fields.closed,
-			}
-
-			// Default ctx argument
+			// Default ctx arg
 			if tt.args.ctx == nil {
 				tt.args.ctx = context.Background()
 			}
 
-			got, err := c.Resolve(tt.args.ctx, tt.args.typ)
+			got, err := c.Resolve(tt.args.ctx, tt.args.t)
 
 			if tt.wantSame {
 				assert.Same(t, tt.want, got)
@@ -262,3 +393,85 @@ func Test_Container_Resolve(t *testing.T) {
 		})
 	}
 }
+
+func Test_Container_Close(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  testContainerConfig
+		ctx     context.Context
+		wantErr string
+	}{
+		{
+			name: "already closed",
+			config: testContainerConfig{
+				closed: true,
+			},
+			ctx:     context.Background(),
+			wantErr: "already closed: container closed",
+		},
+		{
+			name: "no closers",
+			config: testContainerConfig{
+				closers: []Closer{},
+			},
+			ctx: context.Background(),
+		},
+		// {
+		// 	name: "one closer",
+		// 	config: testContainerConfig{
+		// 		closers: []Closer{
+		// 			&mockCloser{},
+		// 		},
+		// 	},
+		// 	ctx: context.Background(),
+		// },
+		// {
+		// 	name: "multiple closers",
+		// 	config: testContainerConfig{
+		// 		closers: []Closer{
+		// 			&mockCloser{},
+		// 			&mockCloser{},
+		// 			&mockCloser{},
+		// 		},
+		// 	},
+		// 	ctx: context.Background(),
+		// },
+		// {
+		// 	name: "error closing one closer",
+		// 	config: testContainerConfig{
+		// 		closers: []Closer{
+		// 			&mockCloser{},
+		// 			&mockCloser{err: errors.New("close error")},
+		// 			&mockCloser{},
+		// 		},
+		// 	},
+		// 	ctx:     context.Background(),
+		// 	wantErr: "close error",
+		// },
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Set up the container
+			c := newTestContainer(tt.config)
+
+			// Call the Close method
+			err := c.Close(tt.ctx)
+
+			// Check the error
+			if tt.wantErr != "" {
+				assert.EqualError(t, err, tt.wantErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+// type mockCloser struct {
+// 	err error
+// }
+
+// func (m *mockCloser) Close(ctx context.Context) error {
+// 	return m.err
+// }

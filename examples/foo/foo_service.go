@@ -2,26 +2,27 @@ package foo
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 )
 
-type FooService interface {
-	DoFoo()
-	Close(ctx context.Context) error
+func NewFooService(logger *slog.Logger) *FooService {
+	logger.Info("NewFooService called")
+
+	return &FooService{
+		logger: logger,
+	}
 }
 
-func NewFooService() FooService {
-	fmt.Println("creating FooServiceImpl")
-	return &FooServiceImpl{}
+type FooService struct {
+	logger *slog.Logger
 }
 
-type FooServiceImpl struct{}
-
-func (s *FooServiceImpl) DoFoo() {
-	fmt.Println("FooServiceImpl: doing foo")
+func (s *FooService) Run(ctx context.Context) error {
+	s.logger.InfoContext(ctx, "FooService.Run called")
+	return nil
 }
 
-func (s *FooServiceImpl) Close(ctx context.Context) error {
-	fmt.Println("FooServiceImpl: closing")
+func (s *FooService) Close(ctx context.Context) error {
+	s.logger.InfoContext(ctx, "FooService.Close called")
 	return nil
 }

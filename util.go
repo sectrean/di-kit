@@ -1,6 +1,7 @@
 package di
 
 import (
+	"context"
 	"reflect"
 )
 
@@ -10,10 +11,9 @@ func TypeOf[T any]() reflect.Type {
 	return reflect.TypeOf(&t).Elem()
 }
 
-// Must panics if err is not nil.
-func Must[T any](val T, err error) T {
-	if err != nil {
-		panic(err)
-	}
-	return val
-}
+// Common types used in the package
+var (
+	errorType   = TypeOf[error]()
+	contextType = TypeOf[context.Context]()
+	scopeType   = TypeOf[Scope]()
+)

@@ -1,0 +1,14 @@
+dir: internal/mocks
+outpkg: mocks
+filename: "{{.InterfaceName | snakecase}}_mock.go"
+mockname: "{{.InterfaceName}}Mock"
+with-expecter: true
+packages:
+  github.com/johnrutherford/di-kit:
+    interfaces:
+      Closer:
+      Scope:
+      service:
+        config:
+          dir: .
+          inpackage: true
