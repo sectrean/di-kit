@@ -17,19 +17,19 @@ type ContainsOption interface {
 	applyContainsConfig(*containsConfig)
 }
 
-func newContainsConfig(t reflect.Type, opts []ContainsOption) *containsConfig {
-	config := &containsConfig{
+func newContainsConfig(t reflect.Type, opts []ContainsOption) containsConfig {
+	config := containsConfig{
 		t: t,
 	}
 
 	for _, opt := range opts {
-		opt.applyContainsConfig(config)
+		opt.applyContainsConfig(&config)
 	}
 
 	return config
 }
 
-func (c *containsConfig) serviceKey() serviceKey {
+func (c containsConfig) serviceKey() serviceKey {
 	return serviceKey{
 		Type: c.t,
 		Tag:  c.tag,

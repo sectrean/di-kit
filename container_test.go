@@ -18,14 +18,14 @@ var (
 	InterfaceBKey = serviceKey{Type: InterfaceBType}
 )
 
-func CanceledContext() context.Context {
+func NewCanceledContext() context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
 	return ctx
 }
 
-func DeadlineExceededContext() context.Context {
+func NewDeadlineExceededContext() context.Context {
 	ctx, cancel := context.WithTimeout(context.Background(), -1)
 	cancel()
 
@@ -34,7 +34,9 @@ func DeadlineExceededContext() context.Context {
 
 type testContextKey struct{}
 
-var ctxWithValue = context.WithValue(context.Background(), testContextKey{}, "test")
+func NewContextWithValue(s string) context.Context {
+	return context.WithValue(context.Background(), testContextKey{}, s)
+}
 
 // TODO: Test constructor functions with errors
 // TODO: Test tags
@@ -56,29 +58,25 @@ func Test_NewContainer(t *testing.T) {
 		{
 			name: "no options",
 			opts: nil,
-			want: &Container{
-				services: map[serviceKey]service{},
-				resolved: map[serviceKey]resolvedService{},
-			},
+			want: newTestContainer(testContainerConfig{}),
 		},
 		{
 			name: "with parent",
 			opts: []ContainerOption{
 				WithParent(parent),
 			},
-			want: &Container{
-				parent:   parent,
-				services: map[serviceKey]service{},
-				resolved: map[serviceKey]resolvedService{},
-			},
+			want: newTestContainer(testContainerConfig{
+				parent: parent,
+			}),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NewContainer(tt.opts...)
-
 			assert.Equal(t, tt.want, got)
+
+			logError(t, err)
 
 			if tt.wantErr != "" {
 				assert.EqualError(t, err, tt.wantErr)
@@ -185,7 +183,7 @@ func Test_Container_Contains(t *testing.T) {
 			config: testContainerConfig{
 				parent: &Container{
 					services: map[serviceKey]service{
-						{Type: InterfaceAType}: &funcService{},
+						InterfaceAKey: &funcService{},
 					},
 				},
 			},
@@ -220,6 +218,8 @@ func Test_Container_Contains(t *testing.T) {
 }
 
 func Test_Container_Resolve(t *testing.T) {
+	ctxWithValue := NewContextWithValue("test")
+
 	type args struct {
 		ctx context.Context
 		t   reflect.Type
@@ -249,7 +249,7 @@ func Test_Container_Resolve(t *testing.T) {
 		{
 			name: "context canceled",
 			args: args{
-				ctx: CanceledContext(),
+				ctx: NewCanceledContext(),
 				t:   TypeOf[testtypes.InterfaceA](),
 			},
 			config: testContainerConfig{
@@ -264,7 +264,7 @@ func Test_Container_Resolve(t *testing.T) {
 		{
 			name: "context deadline exceeded",
 			args: args{
-				ctx: DeadlineExceededContext(),
+				ctx: NewDeadlineExceededContext(),
 				t:   TypeOf[testtypes.InterfaceA](),
 			},
 			config: testContainerConfig{
@@ -377,9 +377,7 @@ func Test_Container_Resolve(t *testing.T) {
 				assert.Equal(t, tt.want, got)
 			}
 
-			if err != nil {
-				t.Logf("error message:\n%v", err)
-			}
+			logError(t, err)
 
 			if tt.wantErr != "" {
 				assert.EqualError(t, err, tt.wantErr)
@@ -416,47 +414,20 @@ func Test_Container_Close(t *testing.T) {
 			},
 			ctx: context.Background(),
 		},
-		// {
-		// 	name: "one closer",
-		// 	config: testContainerConfig{
-		// 		closers: []Closer{
-		// 			&mockCloser{},
-		// 		},
-		// 	},
-		// 	ctx: context.Background(),
-		// },
-		// {
-		// 	name: "multiple closers",
-		// 	config: testContainerConfig{
-		// 		closers: []Closer{
-		// 			&mockCloser{},
-		// 			&mockCloser{},
-		// 			&mockCloser{},
-		// 		},
-		// 	},
-		// 	ctx: context.Background(),
-		// },
-		// {
-		// 	name: "error closing one closer",
-		// 	config: testContainerConfig{
-		// 		closers: []Closer{
-		// 			&mockCloser{},
-		// 			&mockCloser{err: errors.New("close error")},
-		// 			&mockCloser{},
-		// 		},
-		// 	},
-		// 	ctx:     context.Background(),
-		// 	wantErr: "close error",
-		// },
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set up the container
 			c := newTestContainer(tt.config)
+
+			// Default ctx arg
+			if tt.ctx == nil {
+				tt.ctx = context.Background()
+			}
 
 			// Call the Close method
 			err := c.Close(tt.ctx)
+			logError(t, err)
 
 			// Check the error
 			if tt.wantErr != "" {
@@ -468,10 +439,11 @@ func Test_Container_Close(t *testing.T) {
 	}
 }
 
-// type mockCloser struct {
-// 	err error
-// }
+func logError(t *testing.T, err error) {
+	if err == nil {
+		return
+	}
 
-// func (m *mockCloser) Close(ctx context.Context) error {
-// 	return m.err
-// }
+	t.Helper()
+	t.Logf("error message:\n%v", err)
+}

@@ -1,3 +1,7 @@
+// Package errors provides some error utilities and helpers.
+// We want to avoid dependencies on 3rd party packages for errors.
+//
+// This package does not add stack traces to errors.
 package errors
 
 import (

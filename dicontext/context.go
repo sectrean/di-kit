@@ -14,7 +14,7 @@ func WithScope(ctx context.Context, s di.Scope) context.Context {
 	return context.WithValue(ctx, scopeContextKey{}, s)
 }
 
-// Scope returns the [di.Scope] stored on the Context, if present.
+// Scope returns the [di.Scope] stored on the [context.Context], if present.
 func Scope(ctx context.Context) di.Scope {
 	if s, ok := ctx.Value(scopeContextKey{}).(di.Scope); ok {
 		return s
@@ -25,23 +25,25 @@ func Scope(ctx context.Context) di.Scope {
 // Resolve resolves a service of the given type from the [di.Scope] stored on the
 // [context.Context].
 func Resolve[T any](ctx context.Context, opts ...di.ResolveOption) (T, error) {
+	var val T
+
 	s := Scope(ctx)
 	if s == nil {
-		var val T
-		err := errors.Errorf("resolve %s from context: scope not found on context", di.TypeOf[T]())
-		return val, err
+		return val, errors.Errorf(
+			"resolve %s from context: scope not found on context", di.TypeOf[T](),
+		)
 	}
 
-	return di.Resolve[T](ctx, s, opts...)
+	val, err := di.Resolve[T](ctx, s, opts...)
+	return val, errors.Wrap(err, "resolve from context")
 }
 
 // MustResolve resolves a service of the given type from the [di.Scope] stored on the
 // [context.Context].
 func MustResolve[T any](ctx context.Context, opts ...di.ResolveOption) T {
-	s := Scope(ctx)
-	if s == nil {
-		panic("scope not found on context")
+	val, err := Resolve[T](ctx, opts...)
+	if err != nil {
+		panic(err)
 	}
-
-	return di.MustResolve[T](ctx, s, opts...)
+	return val
 }
