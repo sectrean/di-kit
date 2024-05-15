@@ -19,6 +19,10 @@ func (s *sliceService) Type() reflect.Type {
 	return s.t
 }
 
+func (s *sliceService) Lifetime() Lifetime {
+	panic("unimplemented")
+}
+
 func (s *sliceService) Aliases() []reflect.Type {
 	return nil
 }

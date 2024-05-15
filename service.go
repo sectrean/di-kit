@@ -9,6 +9,8 @@ import (
 type service interface {
 	// Type returns the type of the service.
 	Type() reflect.Type
+	// Lifetime returns the lifetime of the service.
+	Lifetime() Lifetime
 	// Aliases returns the types that this service can be resolved as.
 	Aliases() []reflect.Type
 	// AddAlias adds an alias for the service.

@@ -69,6 +69,10 @@ func (s *funcService) Type() reflect.Type {
 	return s.t
 }
 
+func (s *funcService) Lifetime() Lifetime {
+	return s.lifetime
+}
+
 func (s *funcService) Aliases() []reflect.Type {
 	return s.aliases
 }

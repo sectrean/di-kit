@@ -44,6 +44,8 @@ func NewContextWithValue(s string) context.Context {
 // TODO: Test lifetimes
 
 func Test_NewContainer(t *testing.T) {
+	t.Parallel()
+
 	parent, err := NewContainer(
 		RegisterValue(testtypes.NewStructAPtr()),
 	)
@@ -115,6 +117,8 @@ func newTestContainer(config testContainerConfig) *Container {
 }
 
 func Test_Container_Contains(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		t    reflect.Type
 		opts []ContainsOption
@@ -218,6 +222,8 @@ func Test_Container_Contains(t *testing.T) {
 }
 
 func Test_Container_Resolve(t *testing.T) {
+	t.Parallel()
+
 	ctxWithValue := NewContextWithValue("test")
 
 	type args struct {
@@ -393,6 +399,8 @@ func Test_Container_Resolve(t *testing.T) {
 }
 
 func Test_Container_Close(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		config  testContainerConfig

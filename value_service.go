@@ -59,6 +59,10 @@ func (s *valueService) Type() reflect.Type {
 	return s.t
 }
 
+func (s *valueService) Lifetime() Lifetime {
+	return Singleton
+}
+
 func (s *valueService) Tag() any {
 	return s.tag
 }

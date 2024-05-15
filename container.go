@@ -112,12 +112,12 @@ func (c *Container) contains(key serviceKey) bool {
 	return found
 }
 
-//func (c *Container) root() *Container {
-//	if c.parent == nil {
-//		return c
-//	}
-//	return c.parent.root()
-//}
+func (c *Container) root() *Container {
+	if c.parent == nil {
+		return c
+	}
+	return c.parent.root()
+}
 
 // Resolve returns a service for the given [reflect.Type].
 //
@@ -127,10 +127,6 @@ func (c *Container) contains(key serviceKey) bool {
 // Available options:
 //   - [WithTag] specifies a tag associated with the service.
 func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...ResolveOption) (any, error) {
-	if c.closed.Load() {
-		return nil, errors.Wrapf(ErrContainerClosed, "resolve %s", t)
-	}
-
 	config, err := newResolveConfig(t, opts)
 	if err != nil {
 		return nil, errors.Wrapf(err, "resolve %s", t)
@@ -138,13 +134,16 @@ func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...Resolve
 
 	key := config.serviceKey()
 
-	// TODO: Implement service lifetimes
-
 	// TODO: Benchmark concurrent Resolve calls and then see if we can optimize it.
 	// We also need to think about a possible deadlocks like if a service injects a Scope and
 	// then calls Resolve() in the constructor function.
-	c.resolveMu.Lock()
-	defer c.resolveMu.Unlock()
+	root := c.root()
+	root.resolveMu.Lock()
+	defer root.resolveMu.Unlock()
+
+	if c.closed.Load() {
+		return nil, errors.Wrapf(ErrContainerClosed, "resolve %s", t)
+	}
 
 	// Recursively resolve the type and its dependencies
 	val, err := c.resolve(ctx, key, resolveVisitor{})
@@ -164,18 +163,33 @@ func (c *Container) resolve(
 		return c, nil
 	}
 
-	// Check if we've already resolved this service
-	if rs, ok := c.resolved[key]; ok {
-		return rs.Val, rs.Err
+	// Look up the service
+	// Look in ancestors if the service is not found
+	var scope = c
+	svc, ok := scope.services[key]
+	if !ok {
+		for scope.parent != nil {
+			scope = scope.parent
+			svc, ok = scope.services[key]
+			if ok {
+				break
+			}
+		}
 	}
 
-	// Check if the type is registered
-	svc, ok := c.services[key]
-	if !ok {
-		if c.parent != nil && c.parent.contains(key) {
-			return c.resolveFromParent(ctx, key, visitor)
-		}
+	if svc == nil {
 		return nil, ErrTypeNotRegistered
+	}
+
+	// For scoped services, use the current container,
+	// not the parent container that has the service
+	if svc.Lifetime() == Scoped {
+		scope = c
+	}
+
+	// Check if we've already resolved this service
+	if rs, ok := scope.resolved[key]; ok {
+		return rs.Val, rs.Err
 	}
 
 	// Throw an error if we've already visited this service
@@ -189,7 +203,7 @@ func (c *Container) resolve(
 	if len(svc.Dependencies()) > 0 {
 		deps = make([]any, len(svc.Dependencies()))
 		for i, depKey := range svc.Dependencies() {
-			depVal, depErr := c.resolve(ctx, depKey, visitor)
+			depVal, depErr := scope.resolve(ctx, depKey, visitor)
 			if depErr != nil {
 				// Stop at the first error
 				return depVal, errors.Wrapf(depErr, "resolve dependency %s", depKey)
@@ -205,26 +219,17 @@ func (c *Container) resolve(
 
 	// Create the instance and store the value and error
 	val, err := svc.GetValue(deps)
-	c.resolved[key] = resolvedService{val, err}
+
+	if svc.Lifetime() != Transient {
+		scope.resolved[key] = resolvedService{val, err}
+	}
 
 	// Add Closer for the service
 	if closer := svc.GetCloser(val); closer != nil {
-		c.closers = append(c.closers, closer)
+		scope.closers = append(c.closers, closer)
 	}
 
 	return val, err
-}
-
-func (c *Container) resolveFromParent(
-	ctx context.Context,
-	key serviceKey,
-	visitor resolveVisitor,
-) (any, error) {
-	c.parent.resolveMu.Lock()
-	defer c.parent.resolveMu.Unlock()
-
-	val, err := c.parent.resolve(ctx, key, visitor)
-	return val, errors.Wrap(err, "from parent")
 }
 
 // Close closes the Container and all of its services.
@@ -234,13 +239,13 @@ func (c *Container) resolveFromParent(
 //
 // Close will return an error if called more than once.
 func (c *Container) Close(ctx context.Context) error {
+	// Take resolve lock so no more services can be resolved
+	c.resolveMu.Lock()
+	defer c.resolveMu.Unlock()
+
 	if c.closed.Swap(true) {
 		return errors.Wrap(ErrContainerClosed, "already closed")
 	}
-
-	// Take the resolve lock so no more services can be resolved
-	c.resolveMu.Lock()
-	defer c.resolveMu.Unlock()
 
 	// TODO: Track child scopes to make sure all child scopes have been closed.
 
