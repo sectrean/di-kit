@@ -12,3 +12,7 @@ packages:
         config:
           dir: .
           inpackage: true
+  github.com/johnrutherford/di-kit/internal/testtypes:
+    interfaces:
+      InterfaceA:
+      InterfaceB:

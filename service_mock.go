@@ -267,6 +267,51 @@ func (_c *serviceMock_GetValue_Call) RunAndReturn(run func([]interface{}) (inter
 	return _c
 }
 
+// Lifetime provides a mock function with given fields:
+func (_m *serviceMock) Lifetime() Lifetime {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Lifetime")
+	}
+
+	var r0 Lifetime
+	if rf, ok := ret.Get(0).(func() Lifetime); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(Lifetime)
+	}
+
+	return r0
+}
+
+// serviceMock_Lifetime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Lifetime'
+type serviceMock_Lifetime_Call struct {
+	*mock.Call
+}
+
+// Lifetime is a helper method to define mock.On call
+func (_e *serviceMock_Expecter) Lifetime() *serviceMock_Lifetime_Call {
+	return &serviceMock_Lifetime_Call{Call: _e.mock.On("Lifetime")}
+}
+
+func (_c *serviceMock_Lifetime_Call) Run(run func()) *serviceMock_Lifetime_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *serviceMock_Lifetime_Call) Return(_a0 Lifetime) *serviceMock_Lifetime_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *serviceMock_Lifetime_Call) RunAndReturn(run func() Lifetime) *serviceMock_Lifetime_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Tag provides a mock function with given fields:
 func (_m *serviceMock) Tag() interface{} {
 	ret := _m.Called()

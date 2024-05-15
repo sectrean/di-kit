@@ -38,11 +38,6 @@ func NewContextWithValue(s string) context.Context {
 	return context.WithValue(context.Background(), testContextKey{}, s)
 }
 
-// TODO: Test constructor functions with errors
-// TODO: Test tags
-// TODO: Test aliases
-// TODO: Test lifetimes
-
 func Test_NewContainer(t *testing.T) {
 	t.Parallel()
 
