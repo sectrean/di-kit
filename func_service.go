@@ -56,13 +56,13 @@ func newFuncService(fn any, opts ...RegisterFuncOption) (*funcService, error) {
 	}
 
 	// Apply options
-	var multiErr errors.MultiError
+	var errs errors.MultiError
 	for _, opt := range opts {
 		err := opt.applyFuncService(funcSvc)
-		multiErr = multiErr.Append(err)
+		errs = errs.Append(err)
 	}
 
-	return funcSvc, multiErr.Join()
+	return funcSvc, errs.Join()
 }
 
 func (s *funcService) Type() reflect.Type {

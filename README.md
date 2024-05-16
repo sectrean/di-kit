@@ -118,7 +118,7 @@ func RequestScopeMiddleware(parent *di.Container) func(http.Handler) http.Handle
 }
 ```
 
-Then the `di.Scope` can be retrieved from the context. 
+Then the `di.Scope` can be retrieved from the context and used as a [service locator](https://en.wikipedia.org/wiki/Service_locator_pattern).
 
 ```go
 // Resolve from the `Scope` on the context.

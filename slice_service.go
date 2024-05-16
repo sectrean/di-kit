@@ -20,7 +20,7 @@ func (s *sliceService) Type() reflect.Type {
 }
 
 func (s *sliceService) Lifetime() Lifetime {
-	panic("unimplemented")
+	return Transient
 }
 
 func (s *sliceService) Aliases() []reflect.Type {
@@ -28,7 +28,7 @@ func (s *sliceService) Aliases() []reflect.Type {
 }
 
 func (s *sliceService) AddAlias(alias reflect.Type) error {
-	panic("unimplemented")
+	panic("not supported")
 }
 
 func (s *sliceService) Tag() any {
@@ -36,14 +36,17 @@ func (s *sliceService) Tag() any {
 }
 
 func (s *sliceService) Dependencies() []serviceKey {
-	panic("unimplemented")
+	return nil
 }
 
 func (s *sliceService) GetCloser(val any) Closer {
-	panic("unimplemented")
+	// Closers for the individual services will be added to the container
+	// as they are resolved.
+	return nil
 }
 
 func (s *sliceService) GetValue(deps []any) (any, error) {
+	// TODO: Implement this
 	panic("unimplemented")
 }
 

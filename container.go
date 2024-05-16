@@ -22,13 +22,13 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 	}
 
 	// Apply options
-	var multiErr errors.MultiError
+	var errs errors.MultiError
 	for _, opt := range opts {
 		err := opt.applyContainer(c)
-		multiErr = multiErr.Append(err)
+		errs = errs.Append(err)
 	}
 
-	if err := multiErr.Join(); err != nil {
+	if err := errs.Join(); err != nil {
 		return nil, errors.Wrap(err, "new container")
 	}
 
@@ -250,13 +250,13 @@ func (c *Container) Close(ctx context.Context) error {
 	// TODO: Track child scopes to make sure all child scopes have been closed.
 
 	// Close services in reverse order
-	var multiErr errors.MultiError
+	var errs errors.MultiError
 	for i := len(c.closers) - 1; i >= 0; i-- {
 		err := c.closers[i].Close(ctx)
-		multiErr = multiErr.Append(err)
+		errs = errs.Append(err)
 	}
 
-	return multiErr.Wrap("close container")
+	return errs.Wrap("close container")
 }
 
 type resolvedService struct {

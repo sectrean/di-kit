@@ -22,7 +22,7 @@ func newValueService(val any, opts ...RegisterValueOption) (*valueService, error
 	case reflect.Interface,
 		reflect.Pointer,
 		reflect.Struct:
-	// These are the supported kinds.
+		// These are the supported kinds.
 
 	default:
 		return nil, errors.Errorf("unsupported kind %s", t.Kind())
@@ -33,13 +33,13 @@ func newValueService(val any, opts ...RegisterValueOption) (*valueService, error
 		val: v.Interface(),
 	}
 
-	var multiErr errors.MultiError
+	var errs errors.MultiError
 	for _, opt := range opts {
 		err := opt.applyValueService(svc)
-		multiErr = multiErr.Append(err)
+		errs = errs.Append(err)
 	}
 
-	return svc, multiErr.Join()
+	return svc, errs.Join()
 }
 
 func (s *valueService) Aliases() []reflect.Type {

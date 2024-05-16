@@ -21,13 +21,13 @@ func newResolveConfig(t reflect.Type, opts []ResolveOption) (resolveConfig, erro
 		t: t,
 	}
 
-	var multiErr errors.MultiError
+	var errs errors.MultiError
 	for _, opt := range opts {
 		err := opt.applyResolveConfig(&config)
-		multiErr = multiErr.Append(err)
+		errs = errs.Append(err)
 	}
 
-	return config, multiErr.Wrap("resolve options")
+	return config, errs.Join()
 }
 
 func (c resolveConfig) serviceKey() serviceKey {
