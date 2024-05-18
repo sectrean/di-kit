@@ -5,14 +5,12 @@ import (
 	"testing"
 
 	"github.com/johnrutherford/di-kit"
+	"github.com/johnrutherford/di-kit/internal/errors"
 	"github.com/johnrutherford/di-kit/internal/testtypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: Test constructor functions with errors
-// TODO: Test tags
-// TODO: Test aliases
 // TODO: Test closers
 
 func TestSingleton(t *testing.T) {
@@ -112,4 +110,79 @@ func TestScoped(t *testing.T) {
 
 	assert.Equal(t, 1, aCalls)
 	assert.Equal(t, 3, bCalls)
+}
+
+func TestSliceService(t *testing.T) {
+	c, err := di.NewContainer(
+		di.RegisterFunc(testtypes.NewInterfaceA),
+		di.RegisterFunc(testtypes.NewInterfaceA),
+	)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	got, err := di.Resolve[[]testtypes.InterfaceA](ctx, c)
+
+	want := []testtypes.InterfaceA{
+		&testtypes.StructA{},
+		&testtypes.StructA{},
+	}
+	assert.Equal(t, want, got)
+	assert.NoError(t, err)
+}
+
+func TestAliases(t *testing.T) {
+	c, err := di.NewContainer(
+		di.RegisterFunc(testtypes.NewInterfaceA,
+			di.As[testtypes.InterfaceA](),
+		),
+	)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+	assert.Equal(t, &testtypes.StructA{}, got)
+	assert.NoError(t, err)
+
+	_, err = di.Resolve[*testtypes.StructA](ctx, c)
+	assert.ErrorIs(t, err, di.ErrTypeNotRegistered)
+}
+
+func TestFuncServiceError(t *testing.T) {
+	c, err := di.NewContainer(
+		di.RegisterFunc(func() (testtypes.InterfaceA, error) {
+			return &testtypes.StructA{}, errors.New("constructor error")
+		}),
+	)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+	assert.Equal(t, &testtypes.StructA{}, got)
+	assert.EqualError(t, err, "resolve testtypes.InterfaceA: constructor error")
+}
+
+func TestServicesWithTags(t *testing.T) {
+	a1 := &testtypes.StructA{}
+	a2 := &testtypes.StructA{}
+
+	c, err := di.NewContainer(
+		di.RegisterFunc(func() testtypes.InterfaceA { return a1 }, di.WithTag("1")),
+		di.RegisterFunc(func() testtypes.InterfaceA { return a2 }, di.WithTag("2")),
+	)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	got1, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag("1"))
+	assert.Exactly(t, a1, got1)
+	assert.NoError(t, err)
+
+	got2, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag("2"))
+	assert.Exactly(t, a2, got2)
+	assert.NoError(t, err)
+
+	slice, err := di.Resolve[[]testtypes.InterfaceA](ctx, c)
+
+	want := []testtypes.InterfaceA{a1, a2}
+	assert.Equal(t, want, slice)
+	assert.NoError(t, err)
 }

@@ -48,7 +48,8 @@ func (s *sliceService) GetCloser(val any) Closer {
 }
 
 func (s *sliceService) GetValue(deps []any) (any, error) {
-	slice := reflect.MakeSlice(s.t, 0, len(deps))
+	sliceType := reflect.SliceOf(s.t)
+	slice := reflect.MakeSlice(sliceType, 0, len(deps))
 	for _, dep := range deps {
 		slice = reflect.Append(slice, reflect.ValueOf(dep))
 	}
