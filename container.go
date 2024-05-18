@@ -13,8 +13,7 @@ import (
 //
 // Available options:
 //   - [WithParent] specifies a parent Container.
-//   - [RegisterFunc] registers a service with a constructor function.
-//   - [RegisterValue] registers a service with a value.
+//   - [WithService] registers a service with a value or a function.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		services: make(map[serviceKey]service),

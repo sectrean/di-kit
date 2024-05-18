@@ -16,8 +16,8 @@ func run() (exitCode int) {
 	// Create the container
 	c, err := di.NewContainer(
 		// Register services with values and functions
-		di.RegisterValue(logger),
-		di.RegisterFunc(foo.NewFooService),
+		di.WithService(logger),
+		di.WithService(foo.NewFooService),
 	)
 	if err != nil {
 		logger.Error("Create Container", "error", err)

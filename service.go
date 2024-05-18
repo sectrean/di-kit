@@ -24,6 +24,10 @@ type service interface {
 	GetValue(deps []any) (any, error)
 	// GetCloser returns a Closer that will close the service.
 	GetCloser(val any) Closer
+
+	setLifetime(Lifetime)
+	setTag(any)
+	setCloserFactory(closerFactory)
 }
 
 type serviceKey struct {

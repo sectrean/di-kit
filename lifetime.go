@@ -4,10 +4,18 @@ import "fmt"
 
 // Lifetime specifies how services are created when resolved.
 //
+// Use when registering a service with [WithService].
+//
 // Available lifetimes:
 //   - [Singleton] specifies that a service is created once and subsequent requests return the same instance.
 //   - [Transient] specifies that a service is created for each request.
 //   - [Scoped] specifies that a service is created once per scope.
+//
+// Example:
+//
+//	c, err := di.NewContainer(
+//		di.WithService(NewService, di.Transient),
+//	)
 type Lifetime uint8
 
 const (
@@ -23,30 +31,12 @@ const (
 	Scoped Lifetime = iota
 )
 
-// WithLifetime is used to configure the lifetime of a service when calling [RegisterFunc].
-//
-// Example:
-//
-//	c, err := di.NewContainer(
-//		di.RegisterFunc(NewService, di.WithLifetime(di.Transient)),
-//		// Lifetime can also be used directly as an option
-//		di.RegisterFunc(NewService, di.Transient),
-//	)
-func WithLifetime(lifetime Lifetime) LifetimeOption {
-	return lifetime
-}
-
-// LifetimeOption is used to configure the lifetime of a service when calling [RegisterFunc].
-type LifetimeOption interface {
-	RegisterFuncOption
-}
-
-func (l Lifetime) applyFuncService(s *funcService) error {
-	s.lifetime = l
+func (l Lifetime) applyService(s service) error {
+	s.setLifetime(l)
 	return nil
 }
 
-var _ LifetimeOption = Singleton
+var _ ServiceOption = Singleton
 
 func (l Lifetime) String() string {
 	switch l {

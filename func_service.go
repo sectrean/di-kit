@@ -16,7 +16,7 @@ type funcService struct {
 	closerFactory func(any) Closer
 }
 
-func newFuncService(fn any, opts ...RegisterFuncOption) (*funcService, error) {
+func newFuncService(fn any, opts ...ServiceOption) (*funcService, error) {
 	fnType := reflect.TypeOf(fn)
 	fnVal := reflect.ValueOf(fn)
 
@@ -50,15 +50,16 @@ func newFuncService(fn any, opts ...RegisterFuncOption) (*funcService, error) {
 	}
 
 	funcSvc := &funcService{
-		t:    t,
-		deps: deps,
-		fn:   fnVal,
+		t:             t,
+		deps:          deps,
+		fn:            fnVal,
+		closerFactory: getCloser,
 	}
 
 	// Apply options
 	var errs errors.MultiError
 	for _, opt := range opts {
-		err := opt.applyFuncService(funcSvc)
+		err := opt.applyService(funcSvc)
 		errs = errs.Append(err)
 	}
 
@@ -71,6 +72,10 @@ func (s *funcService) Type() reflect.Type {
 
 func (s *funcService) Lifetime() Lifetime {
 	return s.lifetime
+}
+
+func (s *funcService) setLifetime(l Lifetime) {
+	s.lifetime = l
 }
 
 func (s *funcService) Aliases() []reflect.Type {
@@ -88,6 +93,10 @@ func (s *funcService) AddAlias(alias reflect.Type) error {
 
 func (s *funcService) Tag() any {
 	return s.tag
+}
+
+func (s *funcService) setTag(tag any) {
+	s.tag = tag
 }
 
 func (s *funcService) Dependencies() []serviceKey {
@@ -126,7 +135,11 @@ func (s *funcService) GetCloser(val any) Closer {
 		return s.closerFactory(val)
 	}
 
-	return getCloser(val)
+	return nil
+}
+
+func (s *funcService) setCloserFactory(cf closerFactory) {
+	s.closerFactory = cf
 }
 
 var _ service = &funcService{}

@@ -11,14 +11,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: Test closers
-
 func TestSingleton(t *testing.T) {
 	calls := 0
 	a := &testtypes.StructA{}
 
 	c, err := di.NewContainer(
-		di.RegisterFunc(
+		di.WithService(
 			func() testtypes.InterfaceA {
 				calls++
 				return a
@@ -45,7 +43,7 @@ func TestTransient(t *testing.T) {
 	b := &testtypes.StructB{}
 
 	c, err := di.NewContainer(
-		di.RegisterFunc(
+		di.WithService(
 			func() testtypes.InterfaceB {
 				calls++
 				return b
@@ -73,14 +71,14 @@ func TestScoped(t *testing.T) {
 	a := &testtypes.StructA{}
 
 	root, err := di.NewContainer(
-		di.RegisterFunc(
+		di.WithService(
 			func() testtypes.InterfaceA {
 				aCalls++
 				return a
 			},
 			di.Singleton,
 		),
-		di.RegisterFunc(
+		di.WithService(
 			func(depA testtypes.InterfaceA) testtypes.InterfaceB {
 				assert.Equal(t, a, depA)
 				bCalls++
@@ -114,8 +112,8 @@ func TestScoped(t *testing.T) {
 
 func TestSliceService(t *testing.T) {
 	c, err := di.NewContainer(
-		di.RegisterFunc(testtypes.NewInterfaceA),
-		di.RegisterFunc(testtypes.NewInterfaceA),
+		di.WithService(testtypes.NewInterfaceA),
+		di.WithService(testtypes.NewInterfaceA),
 	)
 	require.NoError(t, err)
 
@@ -132,7 +130,7 @@ func TestSliceService(t *testing.T) {
 
 func TestAliases(t *testing.T) {
 	c, err := di.NewContainer(
-		di.RegisterFunc(testtypes.NewInterfaceA,
+		di.WithService(testtypes.NewInterfaceA,
 			di.As[testtypes.InterfaceA](),
 		),
 	)
@@ -149,7 +147,7 @@ func TestAliases(t *testing.T) {
 
 func TestFuncServiceError(t *testing.T) {
 	c, err := di.NewContainer(
-		di.RegisterFunc(func() (testtypes.InterfaceA, error) {
+		di.WithService(func() (testtypes.InterfaceA, error) {
 			return &testtypes.StructA{}, errors.New("constructor error")
 		}),
 	)
@@ -166,8 +164,8 @@ func TestServicesWithTags(t *testing.T) {
 	a2 := &testtypes.StructA{}
 
 	c, err := di.NewContainer(
-		di.RegisterFunc(func() testtypes.InterfaceA { return a1 }, di.WithTag("1")),
-		di.RegisterFunc(func() testtypes.InterfaceA { return a2 }, di.WithTag("2")),
+		di.WithService(func() testtypes.InterfaceA { return a1 }, di.WithTag("1")),
+		di.WithService(func() testtypes.InterfaceA { return a2 }, di.WithTag("2")),
 	)
 	require.NoError(t, err)
 

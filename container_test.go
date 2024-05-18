@@ -2,11 +2,14 @@ package di
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
+	"github.com/johnrutherford/di-kit/internal/mocks"
 	"github.com/johnrutherford/di-kit/internal/testtypes"
 )
 
@@ -49,8 +52,16 @@ func Test_NewContainer(t *testing.T) {
 	t.Parallel()
 
 	parent, err := NewContainer(
-		RegisterValue(testtypes.NewStructAPtr()),
+		WithService(testtypes.NewStructAPtr()),
 	)
+	assert.NoError(t, err)
+
+	closedParent, err := NewContainer(
+		WithService(testtypes.NewStructAPtr()),
+	)
+	assert.NoError(t, err)
+
+	err = closedParent.Close(context.Background())
 	assert.NoError(t, err)
 
 	tests := []struct {
@@ -72,6 +83,20 @@ func Test_NewContainer(t *testing.T) {
 			want: newTestContainer(testContainerConfig{
 				parent: parent,
 			}),
+		},
+		{
+			name: "with closed parent",
+			opts: []ContainerOption{
+				WithParent(closedParent),
+			},
+			wantErr: "new container: with parent: container closed",
+		},
+		{
+			name: "with unsupported service kind",
+			opts: []ContainerOption{
+				WithService(1234),
+			},
+			wantErr: "new container: with service int: unsupported kind int",
 		},
 	}
 
@@ -429,6 +454,71 @@ func Test_Container_Close(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := newTestContainer(tt.config)
+
+			// Default ctx arg
+			if tt.ctx == nil {
+				tt.ctx = context.Background()
+			}
+
+			// Call the Close method
+			err := c.Close(tt.ctx)
+			logError(t, err)
+
+			// Check the error
+			if tt.wantErr != "" {
+				assert.EqualError(t, err, tt.wantErr)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_Container_CloseWithClosers(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		configFunc func(t *testing.T) testContainerConfig
+		ctx        context.Context
+		wantErr    string
+	}{
+		{
+			name: "single closer",
+			configFunc: func(t *testing.T) testContainerConfig {
+				aMock := mocks.NewInterfaceAMock(t)
+				aMock.EXPECT().
+					Close(mock.Anything).
+					Return(nil).
+					Once()
+
+				return testContainerConfig{
+					closers: []Closer{aMock},
+				}
+			},
+			ctx: context.Background(),
+		},
+		{
+			name: "single close error",
+			configFunc: func(t *testing.T) testContainerConfig {
+				aMock := mocks.NewInterfaceAMock(t)
+				aMock.EXPECT().
+					Close(mock.Anything).
+					Return(errors.New("mocked error")).
+					Once()
+
+				return testContainerConfig{
+					closers: []Closer{aMock},
+				}
+			},
+			ctx:     context.Background(),
+			wantErr: "close container: mocked error",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := tt.configFunc(t)
+			c := newTestContainer(config)
 
 			// Default ctx arg
 			if tt.ctx == nil {

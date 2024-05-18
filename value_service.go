@@ -14,7 +14,7 @@ type valueService struct {
 	closerFactory func(any) Closer
 }
 
-func newValueService(val any, opts ...RegisterValueOption) (*valueService, error) {
+func newValueService(val any, opts ...ServiceOption) (*valueService, error) {
 	t := reflect.TypeOf(val)
 	v := reflect.ValueOf(val)
 
@@ -35,7 +35,7 @@ func newValueService(val any, opts ...RegisterValueOption) (*valueService, error
 
 	var errs errors.MultiError
 	for _, opt := range opts {
-		err := opt.applyValueService(svc)
+		err := opt.applyService(svc)
 		errs = errs.Append(err)
 	}
 
@@ -63,8 +63,16 @@ func (s *valueService) Lifetime() Lifetime {
 	return Singleton
 }
 
+func (s *valueService) setLifetime(Lifetime) {
+	// Values are always singletons.
+}
+
 func (s *valueService) Tag() any {
 	return s.tag
+}
+
+func (s *valueService) setTag(tag any) {
+	s.tag = tag
 }
 
 func (*valueService) Dependencies() []serviceKey {
@@ -83,6 +91,10 @@ func (s *valueService) GetCloser(val any) Closer {
 	}
 
 	return nil
+}
+
+func (s *valueService) setCloserFactory(cf closerFactory) {
+	s.closerFactory = cf
 }
 
 func (s *valueService) GetValue(deps []any) (any, error) {

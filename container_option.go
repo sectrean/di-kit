@@ -1,6 +1,8 @@
 package di
 
 import (
+	"reflect"
+
 	"github.com/johnrutherford/di-kit/internal/errors"
 )
 
@@ -18,82 +20,40 @@ func (f containerOptionFunc) applyContainer(c *Container) error {
 	return f(c)
 }
 
-// RegisterFunc registers the given function with a new Container.
+// WithService registers the given function or value with the container.
 //
-// The function must return a service, and optionally an error.
-// The function may take any number of arguments. These dependencies must also be registered with the container.
+// The fnOrValue argument must be a function or a value.
+// The function may take any number of arguments. These dependencies must be registered with the container.
 // The function may also accept a [context.Context].
-func RegisterFunc(fn any, opts ...RegisterFuncOption) ContainerOption {
+// The function must return a service and optionally an error.
+func WithService(fnOrValue any, opts ...ServiceOption) ContainerOption {
 	return containerOptionFunc(func(c *Container) error {
-		if _, ok := fn.(RegisterFuncOption); ok {
-			return errors.New("register func: unexpected RegisterFuncOption for first arg")
+		if _, ok := fnOrValue.(ServiceOption); ok {
+			return errors.New("with service: unexpected ServiceOption for first arg")
 		}
 
-		fnSvc, err := newFuncService(fn, opts...)
+		t := reflect.TypeOf(fnOrValue)
+
+		var svc service
+		var err error
+
+		switch t.Kind() {
+		case reflect.Func:
+			svc, err = newFuncService(fnOrValue, opts...)
+		case reflect.Interface, reflect.Ptr, reflect.Struct:
+			svc, err = newValueService(fnOrValue, opts...)
+		default:
+			err = errors.Errorf("unsupported kind %v", t.Kind())
+		}
+
 		if err != nil {
-			return errors.Wrapf(err, "register func %T", fn)
+			return errors.Wrapf(err, "with service %T", fnOrValue)
 		}
 
-		c.register(fnSvc)
+		c.register(svc)
 		return nil
 	})
 }
-
-// RegisterFuncOption is an option to use when calling [RegisterFunc].
-type RegisterFuncOption interface {
-	applyFuncService(*funcService) error
-}
-
-type registerFuncOptionFunc func(*funcService) error
-
-func (f registerFuncOptionFunc) applyFuncService(s *funcService) error {
-	return f(s)
-}
-
-// RegisterValue registers the given value with a new Container.
-//
-// The value must be a supported kind: interface, pointer, or struct.
-// The value will be registered as a singleton.
-// The value will not be closed by the container.
-func RegisterValue(val any, opts ...RegisterValueOption) ContainerOption {
-	return containerOptionFunc(func(c *Container) error {
-		if _, ok := val.(RegisterValueOption); ok {
-			return errors.New("register value: unexpected RegisterValueOption for first arg")
-		}
-
-		valSvc, err := newValueService(val, opts...)
-		if err != nil {
-			return errors.Wrapf(err, "register value %T", val)
-		}
-
-		c.register(valSvc)
-		return nil
-	})
-}
-
-// RegisterValueOption is a functional option for configuring a value service.
-type RegisterValueOption interface {
-	applyValueService(*valueService) error
-}
-
-// RegisterOption is used to configure a service.
-// This can be used with [RegisterFunc] and [RegisterValue].
-type RegisterOption interface {
-	RegisterFuncOption
-	RegisterValueOption
-}
-
-type serviceOption func(service) error
-
-func (o serviceOption) applyFuncService(s *funcService) error {
-	return o(s)
-}
-
-func (o serviceOption) applyValueService(s *valueService) error {
-	return o(s)
-}
-
-var _ RegisterOption = serviceOption(nil)
 
 // WithParent can be used to create a new Container with a child scope.
 //
@@ -109,7 +69,7 @@ var _ RegisterOption = serviceOption(nil)
 func WithParent(parent *Container) ContainerOption {
 	return containerOptionFunc(func(c *Container) error {
 		if parent.closed.Load() {
-			return errors.Wrap(ErrContainerClosed, "parent closed")
+			return errors.Wrap(ErrContainerClosed, "with parent")
 		}
 
 		c.parent = parent

@@ -10,8 +10,7 @@ import (
 //
 // See implementation [WithTag].
 type TagOption interface {
-	RegisterFuncOption
-	RegisterValueOption
+	ServiceOption
 	ResolveOption
 	ContainsOption
 }
@@ -19,43 +18,48 @@ type TagOption interface {
 // WithTag is used to specify the tag associated with a service.
 //
 // WithTag can be used with:
-//   - [RegisterFunc]
-//   - [RegisterValue]
-//   - [Container.Resolve]
-//   - [Container.Contains]
+//   - [WithService]
 //   - [Resolve]
 //   - [MustResolve]
+//   - [Container.Resolve]
+//   - [Container.Contains]
 func WithTag(tag any) TagOption {
 	return tagOption{tag}
 }
 
 // TODO: Use dependency tag with Invoke
 
-// WithDependencyTag is used to specify a tag for a dependency when calling [RegisterFunc].
+// WithDependencyTag is used to specify a tag for a dependency when calling [WithService].
 //
 // Example:
 //
 //	c, err := di.NewContainer(
-//		di.RegisterFunc(NewUsersDB, di.WithTag("users")),
-//		di.RegisterFunc(NewOrdersDB, di.WithTag("orders")),
-//		di.RegisterFunc(NewUsersStore,
+//		di.WithService(NewUsersDB, di.WithTag("users")),
+//		di.WithService(NewOrdersDB, di.WithTag("orders")),
+//		di.WithService(NewUsersStore,
 //			di.WithDependencyTag[*sql.DB]("users")
 //		),
-//		di.RegisterFunc(NewOrdersStore,
+//		di.WithService(NewOrdersStore,
 //			di.WithDependencyTag[*sql.DB]("orders")
 //		),
 //	)
-func WithDependencyTag[T any](tag any) RegisterFuncOption {
-	t := reflect.TypeFor[T]()
+func WithDependencyTag[T any](tag any) ServiceOption {
+	depType := reflect.TypeFor[T]()
 
-	return registerFuncOptionFunc(func(c *funcService) error {
-		for _, dep := range c.deps {
-			if dep.Type == t {
+	return serviceOption(func(s service) error {
+		funcSvc, ok := s.(*funcService)
+		if !ok {
+			// Option will be ignored
+			return nil
+		}
+
+		for _, dep := range funcSvc.deps {
+			if dep.Type == depType {
 				dep.Tag = tag
 				return nil
 			}
 		}
-		return errors.Errorf("dependency %s not found", t)
+		return errors.Errorf("dependency %s not found", depType)
 	})
 }
 
@@ -63,13 +67,8 @@ type tagOption struct {
 	tag any
 }
 
-func (o tagOption) applyFuncService(s *funcService) error {
-	s.tag = o.tag
-	return nil
-}
-
-func (o tagOption) applyValueService(s *valueService) error {
-	s.tag = o.tag
+func (o tagOption) applyService(s service) error {
+	s.setTag(o.tag)
 	return nil
 }
 

@@ -12,8 +12,8 @@ DI-Kit
 ```go
 // Create the Container and register services using values and functions
 c, err := di.NewContainer(
-    di.RegisterValue(logger),
-    di.RegisterFunc(foo.NewFooService),
+    di.WithService(logger),
+    di.WithService(foo.NewFooService),
 )
 // ...handle error...
 
@@ -29,13 +29,15 @@ err = c.Close(ctx)
 
 ## Register Services
 
-Use `RegisterFunc` to register a constructor function for a service. The function may accept any number and type of arguments which must also be registered with the `Container`. The service will be registered with the function return type, and may also return an `error`.
+Use `WithService` to register a service with either a value or a constructor function.
 
-Use `RegisterValue` to register a value with the container.
+The function may accept any number and type of arguments which must also be registered with the `Container`. The service will be registered as the function return type, and may also return an `error`.
+
+Use `WithService` to register a value with the container.
 
 ## Close Services
 
-Services registered with `RegisterFunc` will automatically be closed if the resolved value implements any the following `Close` method signatures:
+The Container is responsible for closing services that it creates using value functions. Services will automatically be closed if the resolved value implements any the following `Close` method signatures:
 
 - `Close(context.Context) error`
 - `Close(context.Context)`
@@ -46,8 +48,8 @@ This behavior can be disabled using the `IgnoreCloser` option:
 
 ```go
 c, err := di.NewContainer(
-    di.RegisterValue(logger),
-    di.RegisterFunc(foo.NewFooService, di.IgnoreCloser()),
+    di.WithService(logger),
+    di.WithService(foo.NewFooService, di.IgnoreCloser()),
 )
 ```
 
@@ -55,8 +57,8 @@ If a service uses another method to clean up, a custom close function can be con
 
 ``` go
 c, err := di.NewContainer(
-    di.RegisterValue(logger),
-    di.RegisterFunc(foo.NewFooService,
+    di.WithService(logger),
+    di.WithService(foo.NewFooService,
         di.WithCloseFunc(func (ctx context.Context, fooSvc *foo.FooService) error {
             return fooSvc.Shutdown(ctx)
         }),
@@ -64,7 +66,7 @@ c, err := di.NewContainer(
 )
 ```
 
-Services registered with `RegisterValue` will not be closed by default. Use the `WithCloser` option to call a supported `Close` method. Use the `WithCloseFunc` option to specify a custom close function. 
+Value services are not closed by default since they are not created by the Container. Use the `WithCloser` option to call a supported `Close` method. Use the `WithCloseFunc` option to specify a custom close function. 
 
 ## Lifetimes
 
@@ -78,8 +80,8 @@ Specify a lifetime when registering a function for a service:
 
 ```go
 c, err := di.NewContainer(
-	di.RegisterFunc(NewRequestService, di.Scoped)
-    di.RegisterFunc(NewUserStore, di.WithLifetime(di.Transient))
+	di.WithService(NewRequestService, di.Scoped)
+    di.WithService(NewUserStore, di.WithLifetime(di.Transient))
 )
 ```
 
@@ -96,7 +98,7 @@ var scopeVal ScopeValue
 
 scope, err := di.NewContainer(
     di.WithParent(c),
-    di.RegisterValue(scopeVal)
+    di.WithService(scopeVal)
 )
 // Close the scope when you're done
 ```

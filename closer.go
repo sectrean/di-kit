@@ -33,9 +33,10 @@ type Closer interface {
 // function will be called when the Container is closed.
 //
 // Value services are not closed by default. To close a value service, use this option.
-func WithCloser() RegisterValueOption {
-	return closerOption(func(reflect.Type) (closerFactory, error) {
-		return getCloser, nil
+func WithCloser() ServiceOption {
+	return serviceOption(func(s service) error {
+		s.setCloserFactory(getCloser)
+		return nil
 	})
 }
 
@@ -45,52 +46,14 @@ func WithCloser() RegisterValueOption {
 // supported Close function signature, to be closed when the Container is closed.
 //
 // This is useful when you want to manage the lifecycle of a service outside of the Container.
-func IgnoreCloser() RegisterFuncOption {
-	return closerOption(func(reflect.Type) (closerFactory, error) {
-		return nil, nil
+func IgnoreCloser() ServiceOption {
+	return serviceOption(func(s service) error {
+		s.setCloserFactory(nil)
+		return nil
 	})
 }
 
-// CloserOption is used to configure the behavior for closing a resolved service.
-// This can be used with [RegisterFunc] and [RegisterValue].
-//
-// Available options:
-//   - [WithCloseFunc]
-//
-// See also:
-//   - [Closer]
-//   - [WithCloser]
-//   - [IgnoreCloser]
-type CloserOption interface {
-	RegisterFuncOption
-	RegisterValueOption
-}
-
 type closerFactory func(val any) Closer
-
-type closerOption func(t reflect.Type) (closerFactory, error)
-
-func (o closerOption) applyFuncService(s *funcService) error {
-	closerFactory, err := o(s.t)
-	if err != nil {
-		return err
-	}
-	s.closerFactory = closerFactory
-
-	return nil
-}
-
-func (o closerOption) applyValueService(s *valueService) error {
-	closerFactory, err := o(s.t)
-	if err != nil {
-		return err
-	}
-	s.closerFactory = closerFactory
-
-	return nil
-}
-
-var _ CloserOption = (closerOption)(nil)
 
 // WithCloseFunc can be used to set a custom function to call for a Service when the Container is closed.
 //
@@ -107,7 +70,7 @@ var _ CloserOption = (closerOption)(nil)
 // Services registered with a value will not be closed by default.
 //
 // This option will return an error if the service type is not assignable to T.
-func WithCloseFunc[T any](f func(context.Context, T) error) CloserOption {
+func WithCloseFunc[T any](f func(context.Context, T) error) ServiceOption {
 	return closeFuncOption[T]{f}
 }
 
@@ -115,33 +78,20 @@ type closeFuncOption[T any] struct {
 	f func(context.Context, T) error
 }
 
-func (o closeFuncOption[T]) applyFuncService(s *funcService) error {
-	if !s.t.AssignableTo(reflect.TypeFor[T]()) {
+func (o closeFuncOption[T]) applyService(s service) error {
+	svcType := s.Type()
+	closerType := reflect.TypeFor[T]()
+
+	if !svcType.AssignableTo(closerType) {
 		return errors.Errorf("service type %s is not assignable to close func type %s",
-			s.t, reflect.TypeFor[T]())
+			svcType, closerType)
 	}
 
-	s.closerFactory = func(val any) Closer {
+	s.setCloserFactory(func(val any) Closer {
 		return closeFunc(func(ctx context.Context) error {
 			return o.f(ctx, val.(T))
 		})
-	}
-	return nil
-}
-
-func (o closeFuncOption[T]) applyValueService(s *valueService) error {
-	t := reflect.TypeFor[T]()
-
-	if !s.t.AssignableTo(t) {
-		return errors.Errorf("service type %s is not assignable to close func type %s",
-			s.t, t)
-	}
-
-	s.closerFactory = func(val any) Closer {
-		return closeFunc(func(ctx context.Context) error {
-			return o.f(ctx, val.(T))
-		})
-	}
+	})
 	return nil
 }
 

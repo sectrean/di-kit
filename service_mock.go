@@ -406,6 +406,105 @@ func (_c *serviceMock_Type_Call) RunAndReturn(run func() reflect.Type) *serviceM
 	return _c
 }
 
+// setCloserFactory provides a mock function with given fields: _a0
+func (_m *serviceMock) setCloserFactory(_a0 closerFactory) {
+	_m.Called(_a0)
+}
+
+// serviceMock_setCloserFactory_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'setCloserFactory'
+type serviceMock_setCloserFactory_Call struct {
+	*mock.Call
+}
+
+// setCloserFactory is a helper method to define mock.On call
+//   - _a0 closerFactory
+func (_e *serviceMock_Expecter) setCloserFactory(_a0 interface{}) *serviceMock_setCloserFactory_Call {
+	return &serviceMock_setCloserFactory_Call{Call: _e.mock.On("setCloserFactory", _a0)}
+}
+
+func (_c *serviceMock_setCloserFactory_Call) Run(run func(_a0 closerFactory)) *serviceMock_setCloserFactory_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(closerFactory))
+	})
+	return _c
+}
+
+func (_c *serviceMock_setCloserFactory_Call) Return() *serviceMock_setCloserFactory_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *serviceMock_setCloserFactory_Call) RunAndReturn(run func(closerFactory)) *serviceMock_setCloserFactory_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// setLifetime provides a mock function with given fields: _a0
+func (_m *serviceMock) setLifetime(_a0 Lifetime) {
+	_m.Called(_a0)
+}
+
+// serviceMock_setLifetime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'setLifetime'
+type serviceMock_setLifetime_Call struct {
+	*mock.Call
+}
+
+// setLifetime is a helper method to define mock.On call
+//   - _a0 Lifetime
+func (_e *serviceMock_Expecter) setLifetime(_a0 interface{}) *serviceMock_setLifetime_Call {
+	return &serviceMock_setLifetime_Call{Call: _e.mock.On("setLifetime", _a0)}
+}
+
+func (_c *serviceMock_setLifetime_Call) Run(run func(_a0 Lifetime)) *serviceMock_setLifetime_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(Lifetime))
+	})
+	return _c
+}
+
+func (_c *serviceMock_setLifetime_Call) Return() *serviceMock_setLifetime_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *serviceMock_setLifetime_Call) RunAndReturn(run func(Lifetime)) *serviceMock_setLifetime_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// setTag provides a mock function with given fields: _a0
+func (_m *serviceMock) setTag(_a0 interface{}) {
+	_m.Called(_a0)
+}
+
+// serviceMock_setTag_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'setTag'
+type serviceMock_setTag_Call struct {
+	*mock.Call
+}
+
+// setTag is a helper method to define mock.On call
+//   - _a0 interface{}
+func (_e *serviceMock_Expecter) setTag(_a0 interface{}) *serviceMock_setTag_Call {
+	return &serviceMock_setTag_Call{Call: _e.mock.On("setTag", _a0)}
+}
+
+func (_c *serviceMock_setTag_Call) Run(run func(_a0 interface{})) *serviceMock_setTag_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(interface{}))
+	})
+	return _c
+}
+
+func (_c *serviceMock_setTag_Call) Return() *serviceMock_setTag_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *serviceMock_setTag_Call) RunAndReturn(run func(interface{})) *serviceMock_setTag_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // newServiceMock creates a new instance of serviceMock. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func newServiceMock(t interface {
