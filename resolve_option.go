@@ -6,7 +6,10 @@ import (
 	"github.com/johnrutherford/di-kit/internal/errors"
 )
 
-// ResolveOption is a functional option for resolving services.
+// ResolveOption can be used when calling [Container.Resolve] and [Resolve].
+//
+// Available options:
+//   - [WithTag]
 type ResolveOption interface {
 	applyResolveConfig(*resolveConfig) error
 }

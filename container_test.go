@@ -11,12 +11,19 @@ import (
 )
 
 var (
-	InterfaceAType = TypeOf[testtypes.InterfaceA]()
-	InterfaceBType = TypeOf[testtypes.InterfaceB]()
+	InterfaceAType = reflect.TypeFor[testtypes.InterfaceA]()
+	InterfaceBType = reflect.TypeFor[testtypes.InterfaceB]()
 
 	InterfaceAKey = serviceKey{Type: InterfaceAType}
 	InterfaceBKey = serviceKey{Type: InterfaceBType}
 )
+
+func Must[T any](val T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return val
+}
 
 func NewCanceledContext() context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -241,7 +248,7 @@ func Test_Container_Resolve(t *testing.T) {
 				closed: true,
 			},
 			args: args{
-				t: TypeOf[testtypes.InterfaceA](),
+				t: reflect.TypeFor[testtypes.InterfaceA](),
 			},
 			want:      nil,
 			wantErr:   "resolve testtypes.InterfaceA: container closed",
@@ -251,7 +258,7 @@ func Test_Container_Resolve(t *testing.T) {
 			name: "context canceled",
 			args: args{
 				ctx: NewCanceledContext(),
-				t:   TypeOf[testtypes.InterfaceA](),
+				t:   reflect.TypeFor[testtypes.InterfaceA](),
 			},
 			config: testContainerConfig{
 				services: map[serviceKey]service{
@@ -266,7 +273,7 @@ func Test_Container_Resolve(t *testing.T) {
 			name: "context deadline exceeded",
 			args: args{
 				ctx: NewDeadlineExceededContext(),
-				t:   TypeOf[testtypes.InterfaceA](),
+				t:   reflect.TypeFor[testtypes.InterfaceA](),
 			},
 			config: testContainerConfig{
 				services: map[serviceKey]service{
@@ -281,7 +288,7 @@ func Test_Container_Resolve(t *testing.T) {
 			name: "resolve context.Context",
 			args: args{
 				ctx: ctxWithValue,
-				t:   TypeOf[context.Context](),
+				t:   reflect.TypeFor[context.Context](),
 			},
 			want:     ctxWithValue,
 			wantSame: true,
@@ -295,7 +302,7 @@ func Test_Container_Resolve(t *testing.T) {
 				},
 			},
 			args: args{
-				t: TypeOf[testtypes.InterfaceA](),
+				t: reflect.TypeFor[testtypes.InterfaceA](),
 			},
 			wantErr: "resolve testtypes.InterfaceA: resolve dependency testtypes.InterfaceB: " +
 				"resolve dependency testtypes.InterfaceA: dependency cycle detected",
@@ -304,7 +311,7 @@ func Test_Container_Resolve(t *testing.T) {
 		{
 			name: "type not registered",
 			args: args{
-				t: TypeOf[testtypes.InterfaceA](),
+				t: reflect.TypeFor[testtypes.InterfaceA](),
 			},
 			wantErr:   "resolve testtypes.InterfaceA: type not registered",
 			wantErrIs: ErrTypeNotRegistered,
@@ -317,7 +324,7 @@ func Test_Container_Resolve(t *testing.T) {
 				},
 			},
 			args: args{
-				t: TypeOf[testtypes.InterfaceA](),
+				t: reflect.TypeFor[testtypes.InterfaceA](),
 			},
 			want: testtypes.NewInterfaceA(),
 		},
@@ -329,7 +336,7 @@ func Test_Container_Resolve(t *testing.T) {
 				},
 			},
 			args: args{
-				t: TypeOf[testtypes.InterfaceA](),
+				t: reflect.TypeFor[testtypes.InterfaceA](),
 			},
 			want: testtypes.NewInterfaceA(),
 		},
@@ -342,7 +349,7 @@ func Test_Container_Resolve(t *testing.T) {
 				},
 			},
 			args: args{
-				t: TypeOf[testtypes.InterfaceB](),
+				t: reflect.TypeFor[testtypes.InterfaceB](),
 			},
 			want: testtypes.NewInterfaceB(),
 		},
@@ -355,7 +362,7 @@ func Test_Container_Resolve(t *testing.T) {
 				},
 			},
 			args: args{
-				t: TypeOf[testtypes.InterfaceB](),
+				t: reflect.TypeFor[testtypes.InterfaceB](),
 			},
 			want: testtypes.NewInterfaceB(),
 		},

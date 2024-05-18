@@ -9,7 +9,7 @@ import (
 
 // Closer is used to close a service when closing the Container.
 //
-// If a resolved service implements Closer, or one of the other supported Close function signatures,
+// If a resolved service implements Closer, or one of the other compatible function signatures,
 // the Close function will be called when the Container is closed.
 //
 // Any of these Close method signatures are supported:
@@ -29,7 +29,7 @@ type Closer interface {
 
 // WithCloser is used to close a service when the Container is closed.
 //
-// If a service implements Closer, or one of the other supported Close function signatures, the Close
+// If a service implements Closer, or one of the other compatible Close function signatures, the Close
 // function will be called when the Container is closed.
 //
 // Value services are not closed by default. To close a value service, use this option.
@@ -38,6 +38,8 @@ func WithCloser() RegisterValueOption {
 		return getCloser, nil
 	})
 }
+
+// TODO: Should we implement support for Shutdown(context.Context) error?
 
 // IgnoreCloser is used when you do not want a service that implements Closer, or another
 // supported Close function signature, to be closed when the Container is closed.
@@ -50,6 +52,15 @@ func IgnoreCloser() RegisterFuncOption {
 }
 
 // CloserOption is used to configure the behavior for closing a resolved service.
+// This can be used with [RegisterFunc] and [RegisterValue].
+//
+// Available options:
+//   - [WithCloseFunc]
+//
+// See also:
+//   - [Closer]
+//   - [WithCloser]
+//   - [IgnoreCloser]
 type CloserOption interface {
 	RegisterFuncOption
 	RegisterValueOption
@@ -105,9 +116,9 @@ type closeFuncOption[T any] struct {
 }
 
 func (o closeFuncOption[T]) applyFuncService(s *funcService) error {
-	if !s.t.AssignableTo(TypeOf[T]()) {
+	if !s.t.AssignableTo(reflect.TypeFor[T]()) {
 		return errors.Errorf("service type %s is not assignable to close func type %s",
-			s.t, TypeOf[T]())
+			s.t, reflect.TypeFor[T]())
 	}
 
 	s.closerFactory = func(val any) Closer {
@@ -119,9 +130,11 @@ func (o closeFuncOption[T]) applyFuncService(s *funcService) error {
 }
 
 func (o closeFuncOption[T]) applyValueService(s *valueService) error {
-	if !s.t.AssignableTo(TypeOf[T]()) {
+	t := reflect.TypeFor[T]()
+
+	if !s.t.AssignableTo(t) {
 		return errors.Errorf("service type %s is not assignable to close func type %s",
-			s.t, TypeOf[T]())
+			s.t, t)
 	}
 
 	s.closerFactory = func(val any) Closer {
@@ -132,8 +145,8 @@ func (o closeFuncOption[T]) applyValueService(s *valueService) error {
 	return nil
 }
 
-// getCloser returns the Closer interface if the given value implements it, or any other supported
-// Close method signature.
+// getCloser returns the Closer interface if the given value implements it,
+// or any of the compatible Close function signatures.
 func getCloser(val any) Closer {
 	switch c := val.(type) {
 	case Closer:

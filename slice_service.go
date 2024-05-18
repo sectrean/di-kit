@@ -4,16 +4,18 @@ import (
 	"reflect"
 )
 
-type sliceService struct {
-	t        reflect.Type
-	services []service
-}
-
 func newSliceService(t reflect.Type) *sliceService {
 	return &sliceService{
 		t: t,
 	}
 }
+
+type sliceService struct {
+	t    reflect.Type
+	deps []serviceKey
+}
+
+var _ service = &sliceService{}
 
 func (s *sliceService) Type() reflect.Type {
 	return s.t
@@ -36,7 +38,7 @@ func (s *sliceService) Tag() any {
 }
 
 func (s *sliceService) Dependencies() []serviceKey {
-	return nil
+	return s.deps
 }
 
 func (s *sliceService) GetCloser(val any) Closer {
@@ -46,12 +48,23 @@ func (s *sliceService) GetCloser(val any) Closer {
 }
 
 func (s *sliceService) GetValue(deps []any) (any, error) {
-	// TODO: Implement this
-	panic("unimplemented")
+	slice := reflect.MakeSlice(s.t, 0, len(deps))
+	for _, dep := range deps {
+		slice = reflect.Append(slice, reflect.ValueOf(dep))
+	}
+	return slice.Interface(), nil
 }
 
-func (s *sliceService) Add(service service) {
-	s.services = append(s.services, service)
+func (s *sliceService) AddNewItem() serviceKey {
+	index := len(s.deps)
+	key := serviceKey{
+		Type: s.t,
+		Tag:  sliceItemTag(index),
+	}
+
+	s.deps = append(s.deps, key)
+
+	return key
 }
 
-var _ service = &sliceService{}
+type sliceItemTag int

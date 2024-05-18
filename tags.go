@@ -1,10 +1,14 @@
 package di
 
 import (
+	"reflect"
+
 	"github.com/johnrutherford/di-kit/internal/errors"
 )
 
 // TagOption is used to specify the tag associated with a service.
+//
+// See implementation [WithTag].
 type TagOption interface {
 	RegisterFuncOption
 	RegisterValueOption
@@ -14,15 +18,35 @@ type TagOption interface {
 
 // WithTag is used to specify the tag associated with a service.
 //
-// WithTag can be used when registering a service, resolving a service,
-// or checking if a service is contained within a Scope.
+// WithTag can be used with:
+//   - [RegisterFunc]
+//   - [RegisterValue]
+//   - [Container.Resolve]
+//   - [Container.Contains]
+//   - [Resolve]
+//   - [MustResolve]
 func WithTag(tag any) TagOption {
 	return tagOption{tag}
 }
 
-// WithDependencyTag is used to specify a tag for a dependency.
+// TODO: Use dependency tag with Invoke
+
+// WithDependencyTag is used to specify a tag for a dependency when calling [RegisterFunc].
+//
+// Example:
+//
+//	c, err := di.NewContainer(
+//		di.RegisterFunc(NewUsersDB, di.WithTag("users")),
+//		di.RegisterFunc(NewOrdersDB, di.WithTag("orders")),
+//		di.RegisterFunc(NewUsersStore,
+//			di.WithDependencyTag[*sql.DB]("users")
+//		),
+//		di.RegisterFunc(NewOrdersStore,
+//			di.WithDependencyTag[*sql.DB]("orders")
+//		),
+//	)
 func WithDependencyTag[T any](tag any) RegisterFuncOption {
-	t := TypeOf[T]()
+	t := reflect.TypeFor[T]()
 
 	return registerFuncOptionFunc(func(c *funcService) error {
 		for _, dep := range c.deps {

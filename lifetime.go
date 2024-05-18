@@ -1,5 +1,7 @@
 package di
 
+import "fmt"
+
 // Lifetime specifies how services are created when resolved.
 //
 // Available lifetimes:
@@ -21,12 +23,20 @@ const (
 	Scoped Lifetime = iota
 )
 
-// WithLifetime is used to configure the lifetime of a func service.
+// WithLifetime is used to configure the lifetime of a service when calling [RegisterFunc].
+//
+// Example:
+//
+//	c, err := di.NewContainer(
+//		di.RegisterFunc(NewService, di.WithLifetime(di.Transient)),
+//		// Lifetime can also be used directly as an option
+//		di.RegisterFunc(NewService, di.Transient),
+//	)
 func WithLifetime(lifetime Lifetime) LifetimeOption {
 	return lifetime
 }
 
-// LifetimeOption is used to configure the lifetime of a service.
+// LifetimeOption is used to configure the lifetime of a service when calling [RegisterFunc].
 type LifetimeOption interface {
 	RegisterFuncOption
 }
@@ -47,6 +57,6 @@ func (l Lifetime) String() string {
 	case Scoped:
 		return "Scoped"
 	default:
-		return "Unknown Lifetime"
+		return fmt.Sprintf("Unknown Lifetime %d", l)
 	}
 }

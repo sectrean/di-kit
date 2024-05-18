@@ -2,6 +2,7 @@ package dicontext
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/johnrutherford/di-kit"
 	"github.com/johnrutherford/di-kit/internal/errors"
@@ -25,16 +26,19 @@ func Scope(ctx context.Context) di.Scope {
 // Resolve resolves a service of the given type from the [di.Scope] stored on the
 // [context.Context].
 func Resolve[T any](ctx context.Context, opts ...di.ResolveOption) (T, error) {
+	var t = reflect.TypeFor[T]()
 	var val T
 
 	s := Scope(ctx)
 	if s == nil {
-		return val, errors.Errorf(
-			"resolve %s from context: scope not found on context", di.TypeOf[T](),
-		)
+		return val, errors.Errorf("resolve %s from context: scope not found on context", t)
 	}
 
-	val, err := di.Resolve[T](ctx, s, opts...)
+	anyVal, err := s.Resolve(ctx, t, opts...)
+	if anyVal != nil {
+		val = anyVal.(T)
+	}
+
 	return val, errors.Wrap(err, "resolve from context")
 }
 

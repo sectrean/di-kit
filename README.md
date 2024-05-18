@@ -68,19 +68,37 @@ Services registered with `RegisterValue` will not be closed by default. Use the 
 
 ## Lifetimes
 
+DI-Kit supports three different lifetimes for registered services:
+
+- **Singleton**: Only one instance of the service is created and reused every time it is resolved from the container. This is the default lifetime.
+- **Scoped**: A new instance of the service is created for each child scope of the container.
+- **Transient**: A new instance of the service is created every time it is resolved from the container.
+
+Specify a lifetime when registering a function for a service:
+
+```go
+c, err := di.NewContainer(
+	di.RegisterFunc(NewRequestService, di.Scoped)
+    di.RegisterFunc(NewUserStore, di.WithLifetime(di.Transient))
+)
+```
+
+## Aliases
+
 
 
 ## Scopes
 
-Create child scopes by creating a new `Container` and providing the parent `Container`.
+Create child scopes by creating a new `Container` and providing the parent `Container`. Services can also be registered with the new scope.
 
 ```go
-var requestVal MyRequestValue
+var scopeVal ScopeValue
 
-childScope, err := di.NewContainer(
+scope, err := di.NewContainer(
     di.WithParent(c),
-    di.RegisterValue(requestVal)
+    di.RegisterValue(scopeVal)
 )
+// Close the scope when you're done
 ```
 
 ## Context

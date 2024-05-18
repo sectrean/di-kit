@@ -25,6 +25,10 @@ func (f containerOptionFunc) applyContainer(c *Container) error {
 // The function may also accept a [context.Context].
 func RegisterFunc(fn any, opts ...RegisterFuncOption) ContainerOption {
 	return containerOptionFunc(func(c *Container) error {
+		if _, ok := fn.(RegisterFuncOption); ok {
+			return errors.New("register func: unexpected RegisterFuncOption for first arg")
+		}
+
 		fnSvc, err := newFuncService(fn, opts...)
 		if err != nil {
 			return errors.Wrapf(err, "register func %T", fn)
@@ -35,7 +39,7 @@ func RegisterFunc(fn any, opts ...RegisterFuncOption) ContainerOption {
 	})
 }
 
-// RegisterFuncOption is a functional option for registering a function.
+// RegisterFuncOption is an option to use when calling [RegisterFunc].
 type RegisterFuncOption interface {
 	applyFuncService(*funcService) error
 }
@@ -53,6 +57,10 @@ func (f registerFuncOptionFunc) applyFuncService(s *funcService) error {
 // The value will not be closed by the container.
 func RegisterValue(val any, opts ...RegisterValueOption) ContainerOption {
 	return containerOptionFunc(func(c *Container) error {
+		if _, ok := val.(RegisterValueOption); ok {
+			return errors.New("register value: unexpected RegisterValueOption for first arg")
+		}
+
 		valSvc, err := newValueService(val, opts...)
 		if err != nil {
 			return errors.Wrapf(err, "register value %T", val)

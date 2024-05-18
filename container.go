@@ -45,6 +45,17 @@ type Container struct {
 	closers   []Closer
 }
 
+var (
+	// ErrTypeNotRegistered is returned when a type is not registered.
+	ErrTypeNotRegistered = errors.New("type not registered")
+
+	// ErrDependencyCycle is returned when a dependency cycle is detected.
+	ErrDependencyCycle = errors.New("dependency cycle detected")
+
+	// ErrContainerClosed is returned when the container is closed.
+	ErrContainerClosed = errors.New("container closed")
+)
+
 var _ Scope = (*Container)(nil)
 
 // Register registers the provided service.
@@ -61,7 +72,7 @@ func (c *Container) register(s service) {
 func (c *Container) registerType(t reflect.Type, s service) {
 	key := serviceKey{Type: t}
 
-	// Register a slice service if the type is already registered
+	// Use a slice service if the type is already registered
 	if existing, ok := c.services[key]; ok {
 		sliceKey := serviceKey{
 			Type: reflect.SliceOf(t),
@@ -69,15 +80,17 @@ func (c *Container) registerType(t reflect.Type, s service) {
 
 		var sliceSvc *sliceService
 		if sliceSvc, ok = c.services[sliceKey].(*sliceService); !ok {
-			// Create a new slice service with the existing service
+			// Create a new slice service and register it
 			sliceSvc = newSliceService(t)
-			sliceSvc.Add(existing)
-
 			c.services[sliceKey] = sliceSvc
+
+			// Add the existing service to the slice service
+			// and register a key with a unique tag
+			c.services[sliceSvc.AddNewItem()] = existing
 		}
 
-		// Add the new service to the slice service
-		sliceSvc.Add(s)
+		// Add the new item to slice service and register it
+		c.services[sliceSvc.AddNewItem()] = s
 	}
 
 	// Register the service with a tag
@@ -258,6 +271,13 @@ func (c *Container) Close(ctx context.Context) error {
 
 	return errs.Wrap("close container")
 }
+
+// Common types
+var (
+	errorType   = reflect.TypeFor[error]()
+	contextType = reflect.TypeFor[context.Context]()
+	scopeType   = reflect.TypeFor[Scope]()
+)
 
 type resolvedService struct {
 	Val any
