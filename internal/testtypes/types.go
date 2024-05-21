@@ -34,6 +34,16 @@ type StructB struct{}
 func (*StructB) B()                    {}
 func (*StructB) Close(context.Context) {}
 
+type StructC struct{}
+
+func (*StructC) C()           {}
+func (*StructC) Close() error { return nil }
+
+type StructD struct{}
+
+func (*StructD) D()     {}
+func (*StructD) Close() {}
+
 func NewInterfaceA() InterfaceA {
 	return &StructA{}
 }
@@ -42,18 +52,26 @@ func NewStructAPtr() *StructA {
 	return &StructA{}
 }
 
-func NewInterfaceB() InterfaceB {
+func NewInterfaceB(InterfaceA) InterfaceB {
 	return &StructB{}
 }
 
-func NewStructBPtr() *StructB {
+func NewStructBPtr(*StructA) *StructB {
 	return &StructB{}
 }
 
-func NewInterfaceADependsOnB(_ InterfaceB) InterfaceA {
-	return &StructA{}
+func NewInterfaceC(InterfaceA, InterfaceB) InterfaceC {
+	return &StructC{}
 }
 
-func NewInterfaceBDependsOnA(_ InterfaceA) InterfaceB {
-	return &StructB{}
+func NewStructCPtr(*StructA, *StructB) *StructC {
+	return &StructC{}
+}
+
+func NewInterfaceD(InterfaceA, InterfaceB, InterfaceC) InterfaceD {
+	return &StructD{}
+}
+
+func NewStructDPtr(*StructA, *StructB, *StructC) *StructD {
+	return &StructD{}
 }

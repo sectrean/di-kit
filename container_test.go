@@ -28,14 +28,14 @@ func Must[T any](val T, err error) T {
 	return val
 }
 
-func NewCanceledContext() context.Context {
+func ContextCanceled() context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
 	return ctx
 }
 
-func NewDeadlineExceededContext() context.Context {
+func ContextDeadlineExceeded() context.Context {
 	ctx, cancel := context.WithTimeout(context.Background(), -1)
 	cancel()
 
@@ -44,7 +44,7 @@ func NewDeadlineExceededContext() context.Context {
 
 type testContextKey struct{}
 
-func NewContextWithValue(s string) context.Context {
+func ContextWithValue(s string) context.Context {
 	return context.WithValue(context.Background(), testContextKey{}, s)
 }
 
@@ -56,38 +56,38 @@ func Test_NewContainer(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	closedParent, err := NewContainer(
-		WithService(testtypes.NewStructAPtr()),
-	)
-	assert.NoError(t, err)
-
-	err = closedParent.Close(context.Background())
-	assert.NoError(t, err)
-
 	tests := []struct {
 		name    string
 		opts    []ContainerOption
-		want    *Container
+		want    func(t *testing.T) *Container
 		wantErr string
 	}{
 		{
 			name: "no options",
 			opts: nil,
-			want: newTestContainer(testContainerConfig{}),
+			want: func(t *testing.T) *Container {
+				return newTestContainer(t, testContainerConfig{})
+			},
 		},
 		{
 			name: "with parent",
 			opts: []ContainerOption{
 				WithParent(parent),
 			},
-			want: newTestContainer(testContainerConfig{
-				parent: parent,
-			}),
+			want: func(t *testing.T) *Container {
+				return newTestContainer(t, testContainerConfig{
+					parent: parent,
+				})
+			},
 		},
 		{
 			name: "with closed parent",
 			opts: []ContainerOption{
-				WithParent(closedParent),
+				WithParent(newTestContainer(t,
+					testContainerConfig{
+						closed: true,
+					},
+				)),
 			},
 			wantErr: "new container: with parent: container closed",
 		},
@@ -102,10 +102,15 @@ func Test_NewContainer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewContainer(tt.opts...)
-			assert.Equal(t, tt.want, got)
+			var want *Container
+			if tt.want != nil {
+				want = tt.want(t)
+			}
 
-			logError(t, err)
+			got, err := NewContainer(tt.opts...)
+			assert.Equal(t, want, got)
+
+			logErrorMessage(t, err)
 
 			if tt.wantErr != "" {
 				assert.EqualError(t, err, tt.wantErr)
@@ -122,14 +127,19 @@ type testContainerConfig struct {
 	resolved map[serviceKey]resolvedService
 	closers  []Closer
 	closed   bool
+	setup    func(t *testing.T, c *testContainerConfig)
 }
 
-func newTestContainer(config testContainerConfig) *Container {
+func newTestContainer(t *testing.T, config testContainerConfig) *Container {
 	if config.services == nil {
 		config.services = map[serviceKey]service{}
 	}
 	if config.resolved == nil {
 		config.resolved = map[serviceKey]resolvedService{}
+	}
+
+	if config.setup != nil {
+		config.setup(t, &config)
 	}
 
 	c := &Container{
@@ -239,7 +249,7 @@ func Test_Container_Contains(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := newTestContainer(tt.config)
+			c := newTestContainer(t, tt.config)
 
 			got := c.Contains(tt.args.t, tt.args.opts...)
 
@@ -251,7 +261,7 @@ func Test_Container_Contains(t *testing.T) {
 func Test_Container_Resolve(t *testing.T) {
 	t.Parallel()
 
-	ctxWithValue := NewContextWithValue("test")
+	ctxWithValue := ContextWithValue("test")
 
 	type args struct {
 		ctx context.Context
@@ -282,7 +292,7 @@ func Test_Container_Resolve(t *testing.T) {
 		{
 			name: "context canceled",
 			args: args{
-				ctx: NewCanceledContext(),
+				ctx: ContextCanceled(),
 				t:   reflect.TypeFor[testtypes.InterfaceA](),
 			},
 			config: testContainerConfig{
@@ -297,7 +307,7 @@ func Test_Container_Resolve(t *testing.T) {
 		{
 			name: "context deadline exceeded",
 			args: args{
-				ctx: NewDeadlineExceededContext(),
+				ctx: ContextDeadlineExceeded(),
 				t:   reflect.TypeFor[testtypes.InterfaceA](),
 			},
 			config: testContainerConfig{
@@ -322,8 +332,8 @@ func Test_Container_Resolve(t *testing.T) {
 			name: "dependency cycle",
 			config: testContainerConfig{
 				services: map[serviceKey]service{
-					InterfaceAKey: Must(newFuncService(testtypes.NewInterfaceADependsOnB)),
-					InterfaceBKey: Must(newFuncService(testtypes.NewInterfaceBDependsOnA)),
+					InterfaceAKey: Must(newFuncService(func(testtypes.InterfaceB) testtypes.InterfaceA { return nil })),
+					InterfaceBKey: Must(newFuncService(testtypes.NewInterfaceB)),
 				},
 			},
 			args: args{
@@ -370,32 +380,32 @@ func Test_Container_Resolve(t *testing.T) {
 			config: testContainerConfig{
 				services: map[serviceKey]service{
 					InterfaceAKey: Must(newFuncService(testtypes.NewInterfaceA)),
-					InterfaceBKey: Must(newFuncService(testtypes.NewInterfaceBDependsOnA)),
+					InterfaceBKey: Must(newFuncService(testtypes.NewInterfaceB)),
 				},
 			},
 			args: args{
 				t: reflect.TypeFor[testtypes.InterfaceB](),
 			},
-			want: testtypes.NewInterfaceB(),
+			want: &testtypes.StructB{},
 		},
 		{
 			name: "one value dependency",
 			config: testContainerConfig{
 				services: map[serviceKey]service{
 					InterfaceAKey: Must(newValueService(testtypes.NewInterfaceA())),
-					InterfaceBKey: Must(newFuncService(testtypes.NewInterfaceBDependsOnA)),
+					InterfaceBKey: Must(newFuncService(testtypes.NewInterfaceB)),
 				},
 			},
 			args: args{
 				t: reflect.TypeFor[testtypes.InterfaceB](),
 			},
-			want: testtypes.NewInterfaceB(),
+			want: &testtypes.StructB{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := newTestContainer(tt.config)
+			c := newTestContainer(t, tt.config)
 
 			// Default ctx arg
 			if tt.args.ctx == nil {
@@ -410,7 +420,7 @@ func Test_Container_Resolve(t *testing.T) {
 				assert.Equal(t, tt.want, got)
 			}
 
-			logError(t, err)
+			logErrorMessage(t, err)
 
 			if tt.wantErr != "" {
 				assert.EqualError(t, err, tt.wantErr)
@@ -443,91 +453,50 @@ func Test_Container_Close(t *testing.T) {
 			wantErr: "already closed: container closed",
 		},
 		{
-			name: "no closers",
-			config: testContainerConfig{
-				closers: []Closer{},
-			},
-			ctx: context.Background(),
+			name:   "no closers",
+			config: testContainerConfig{},
+			ctx:    context.Background(),
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := newTestContainer(tt.config)
-
-			// Default ctx arg
-			if tt.ctx == nil {
-				tt.ctx = context.Background()
-			}
-
-			// Call the Close method
-			err := c.Close(tt.ctx)
-			logError(t, err)
-
-			// Check the error
-			if tt.wantErr != "" {
-				assert.EqualError(t, err, tt.wantErr)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
-}
-
-func Test_Container_CloseWithClosers(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name       string
-		configFunc func(t *testing.T) testContainerConfig
-		ctx        context.Context
-		wantErr    string
-	}{
 		{
 			name: "single closer",
-			configFunc: func(t *testing.T) testContainerConfig {
-				aMock := mocks.NewInterfaceAMock(t)
-				aMock.EXPECT().
-					Close(mock.Anything).
-					Return(nil).
-					Once()
+			config: testContainerConfig{
+				setup: func(t *testing.T, c *testContainerConfig) {
+					aMock := mocks.NewInterfaceAMock(t)
+					aMock.EXPECT().
+						Close(mock.Anything).
+						Return(nil).
+						Once()
 
-				return testContainerConfig{
-					closers: []Closer{aMock},
-				}
+					c.closers = []Closer{aMock}
+				},
 			},
 			ctx: context.Background(),
 		},
 		{
 			name: "single close error",
-			configFunc: func(t *testing.T) testContainerConfig {
-				aMock := mocks.NewInterfaceAMock(t)
-				aMock.EXPECT().
-					Close(mock.Anything).
-					Return(errors.New("mocked error")).
-					Once()
+			config: testContainerConfig{
+				setup: func(t *testing.T, c *testContainerConfig) {
+					aMock := mocks.NewInterfaceAMock(t)
+					aMock.EXPECT().
+						Close(mock.Anything).
+						Return(errors.New("mocked error")).
+						Once()
 
-				return testContainerConfig{
-					closers: []Closer{aMock},
-				}
+					c.closers = []Closer{aMock}
+				},
 			},
 			ctx:     context.Background(),
 			wantErr: "close container: mocked error",
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := tt.configFunc(t)
-			c := newTestContainer(config)
-
-			// Default ctx arg
-			if tt.ctx == nil {
-				tt.ctx = context.Background()
-			}
+			c := newTestContainer(t, tt.config)
 
 			// Call the Close method
 			err := c.Close(tt.ctx)
-			logError(t, err)
+			logErrorMessage(t, err)
 
 			// Check the error
 			if tt.wantErr != "" {
@@ -539,7 +508,7 @@ func Test_Container_CloseWithClosers(t *testing.T) {
 	}
 }
 
-func logError(t *testing.T, err error) {
+func logErrorMessage(t *testing.T, err error) {
 	if err == nil {
 		return
 	}

@@ -6,8 +6,10 @@ import (
 
 	"github.com/johnrutherford/di-kit"
 	"github.com/johnrutherford/di-kit/internal/errors"
+	"github.com/johnrutherford/di-kit/internal/mocks"
 	"github.com/johnrutherford/di-kit/internal/testtypes"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -183,4 +185,42 @@ func TestServicesWithTags(t *testing.T) {
 	want := []testtypes.InterfaceA{a1, a2}
 	assert.Equal(t, want, slice)
 	assert.NoError(t, err)
+}
+
+func TestClosers(t *testing.T) {
+	a := mocks.NewInterfaceAMock(t)
+	a.EXPECT().
+		Close(mock.Anything).
+		Return(errors.New("err a")).
+		Once()
+	b := mocks.NewInterfaceBMock(t)
+	b.EXPECT().
+		Close(mock.Anything).
+		Once()
+	c := mocks.NewInterfaceCMock(t)
+	c.EXPECT().
+		Close().
+		Return(errors.New("err c")).
+		Once()
+	d := mocks.NewInterfaceDMock(t)
+	d.EXPECT().
+		Close().
+		Once()
+
+	scope, err := di.NewContainer(
+		di.WithService(func() testtypes.InterfaceA { return a }),
+		di.WithService(func(testtypes.InterfaceA) testtypes.InterfaceB { return b }),
+		di.WithService(func(testtypes.InterfaceB) testtypes.InterfaceC { return c }),
+		di.WithService(func(testtypes.InterfaceC) testtypes.InterfaceD { return d }),
+	)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	_ = di.MustResolve[testtypes.InterfaceD](ctx, scope)
+	_ = di.MustResolve[testtypes.InterfaceC](ctx, scope)
+	_ = di.MustResolve[testtypes.InterfaceB](ctx, scope)
+	_ = di.MustResolve[testtypes.InterfaceA](ctx, scope)
+
+	err = scope.Close(ctx)
+	assert.EqualError(t, err, "close container: err c\nerr a")
 }

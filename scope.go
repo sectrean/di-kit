@@ -61,7 +61,7 @@ func Invoke(ctx context.Context, s Scope, fn any) error {
 
 	// Make sure fn is a function
 	if fnType.Kind() != reflect.Func {
-		return errors.Errorf("invoke fn %T: fn must be a function", fn)
+		return errors.Errorf("invoke %T: fn must be a function", fn)
 	}
 
 	// Resolve fn arguments from the Scope
@@ -71,14 +71,14 @@ func Invoke(ctx context.Context, s Scope, fn any) error {
 		argType := fnType.In(i)
 		argVal, argErr := s.Resolve(ctx, argType)
 		if argErr != nil {
-			return errors.Wrapf(argErr, "invoke fn %T", fn)
+			return errors.Wrapf(argErr, "invoke %T", fn)
 		}
 		in[i] = reflect.ValueOf(argVal)
 	}
 
 	// Check for a context error before invoking the function
 	if ctx.Err() != nil {
-		return ctx.Err()
+		return errors.Wrapf(ctx.Err(), "invoke %T", fn)
 	}
 
 	// Invoke the function
