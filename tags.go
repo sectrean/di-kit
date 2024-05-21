@@ -6,15 +6,6 @@ import (
 	"github.com/johnrutherford/di-kit/internal/errors"
 )
 
-// TagOption is used to specify the tag associated with a service.
-//
-// See implementation [WithTag].
-type TagOption interface {
-	ServiceOption
-	ResolveOption
-	ContainsOption
-}
-
 // WithTag is used to specify the tag associated with a service.
 //
 // WithTag can be used with:
@@ -27,9 +18,17 @@ func WithTag(tag any) TagOption {
 	return tagOption{tag}
 }
 
-// TODO: Use dependency tag with Invoke
+// TagOption is used to specify the tag associated with a service.
+//
+// See implementation [WithTag].
+type TagOption interface {
+	ServiceOption
+	ResolveOption
+	ContainsOption
+}
 
-// WithDependencyTag is used to specify a tag for a dependency when calling [WithService].
+// WithDependencyTag is used to specify a tag for a dependency when calling
+// [WithService] or [Invoke].
 //
 // Example:
 //
@@ -43,24 +42,17 @@ func WithTag(tag any) TagOption {
 //			di.WithDependencyTag[*sql.DB]("orders")
 //		),
 //	)
-func WithDependencyTag[T any](tag any) ServiceOption {
-	depType := reflect.TypeFor[T]()
+func WithDependencyTag[T any](tag any) DependencyTagOption {
+	return depTagOption{
+		t:   reflect.TypeFor[T](),
+		tag: tag,
+	}
+}
 
-	return serviceOption(func(s service) error {
-		funcSvc, ok := s.(*funcService)
-		if !ok {
-			// Option will be ignored
-			return nil
-		}
-
-		for _, dep := range funcSvc.deps {
-			if dep.Type == depType {
-				dep.Tag = tag
-				return nil
-			}
-		}
-		return errors.Errorf("dependency %s not found", depType)
-	})
+// DependencyTagOption is used to specify a tag for a dependency when calling [WithService] or [Invoke].
+type DependencyTagOption interface {
+	ServiceOption
+	InvokeOption
 }
 
 type tagOption struct {
@@ -82,3 +74,35 @@ func (o tagOption) applyContainsConfig(c *containsConfig) {
 }
 
 var _ TagOption = tagOption{}
+
+type depTagOption struct {
+	t   reflect.Type
+	tag any
+}
+
+func (o depTagOption) applyDeps(deps []serviceKey) error {
+	// TODO: What if the dependency is used more than once?
+	for i := 0; i < len(deps); i++ {
+		if deps[i].Type == o.t {
+			deps[i].Tag = o.tag
+			return nil
+		}
+	}
+	return errors.Errorf("dependency %s not found", o.t)
+}
+
+func (o depTagOption) applyInvokeConfig(c *invokeConfig) error {
+	return o.applyDeps(c.deps)
+}
+
+func (o depTagOption) applyService(s service) error {
+	fs, ok := s.(*funcService)
+	if !ok {
+		// Option will be ignored
+		return nil
+	}
+
+	return o.applyDeps(fs.deps)
+}
+
+var _ DependencyTagOption = depTagOption{}

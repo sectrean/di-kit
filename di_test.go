@@ -187,6 +187,28 @@ func TestServicesWithTags(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestServiceWithDependencyTags(t *testing.T) {
+	a1 := &testtypes.StructA{}
+
+	c, err := di.NewContainer(
+		di.WithService(func() testtypes.InterfaceA { return a1 }, di.WithTag("B")),
+		di.WithService(func() testtypes.InterfaceA { panic("shouldn't get called") }),
+		di.WithService(
+			func(a testtypes.InterfaceA) testtypes.InterfaceB {
+				assert.Same(t, a1, a)
+				return &testtypes.StructB{}
+			},
+			di.WithDependencyTag[testtypes.InterfaceA]("B"),
+		),
+	)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	got, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+	assert.NotNil(t, got)
+	assert.NoError(t, err)
+}
+
 func TestClosers(t *testing.T) {
 	a := mocks.NewInterfaceAMock(t)
 	a.EXPECT().

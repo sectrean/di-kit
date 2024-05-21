@@ -3,8 +3,6 @@ package di
 import (
 	"context"
 	"reflect"
-
-	"github.com/johnrutherford/di-kit/internal/errors"
 )
 
 // Scope allows you to resolve services.
@@ -48,49 +46,4 @@ func MustResolve[T any](ctx context.Context, s Scope, opts ...ResolveOption) T {
 		panic(err)
 	}
 	return val
-}
-
-// Invoke calls the given function with dependencies resolved from the provided Scope.
-//
-// The function may take any number of arguments. These dependencies must be registered with the Scope.
-// The function may also accept a context.Context.
-// The function may return an error. Any other return values are ignored.
-func Invoke(ctx context.Context, s Scope, fn any) error {
-	fnType := reflect.TypeOf(fn)
-	fnVal := reflect.ValueOf(fn)
-
-	// Make sure fn is a function
-	if fnType.Kind() != reflect.Func {
-		return errors.Errorf("invoke %T: fn must be a function", fn)
-	}
-
-	// Resolve fn arguments from the Scope
-	// Stop at the first error
-	in := make([]reflect.Value, fnType.NumIn())
-	for i := 0; i < fnType.NumIn(); i++ {
-		argType := fnType.In(i)
-		argVal, argErr := s.Resolve(ctx, argType)
-		if argErr != nil {
-			return errors.Wrapf(argErr, "invoke %T", fn)
-		}
-		in[i] = reflect.ValueOf(argVal)
-	}
-
-	// Check for a context error before invoking the function
-	if ctx.Err() != nil {
-		return errors.Wrapf(ctx.Err(), "invoke %T", fn)
-	}
-
-	// Invoke the function
-	out := fnVal.Call(in)
-
-	// See if the function returns an error
-	for i := 0; i < fnType.NumOut(); i++ {
-		if fnType.Out(i) == errorType {
-			err, _ := out[i].Interface().(error)
-			return err
-		}
-	}
-
-	return nil
 }
