@@ -9,7 +9,7 @@ import (
 // WithTag is used to specify the tag associated with a service.
 //
 // WithTag can be used with:
-//   - [WithService]
+//   - [Register]
 //   - [Resolve]
 //   - [MustResolve]
 //   - [Container.Resolve]
@@ -19,17 +19,17 @@ func WithTag(tag any) TagOption {
 }
 
 // WithDependencyTag is used to specify a tag for a dependency when calling
-// [WithService] or [Invoke].
+// [Register] or [Invoke].
 //
 // Example:
 //
 //	c, err := di.NewContainer(
-//		di.WithService(NewUsersDB, di.WithTag("users")),
-//		di.WithService(NewOrdersDB, di.WithTag("orders")),
-//		di.WithService(NewUsersStore,
+//		di.Register(NewUsersDB, di.WithTag("users")),
+//		di.Register(NewOrdersDB, di.WithTag("orders")),
+//		di.Register(NewUsersStore,
 //			di.WithDependencyTag[*sql.DB]("users")
 //		),
-//		di.WithService(NewOrdersStore,
+//		di.Register(NewOrdersStore,
 //			di.WithDependencyTag[*sql.DB]("orders")
 //		),
 //	)
@@ -40,18 +40,16 @@ func WithDependencyTag[T any](tag any) DependencyTagOption {
 	}
 }
 
-// TagOption is used to specify the tag associated with a service.
-//
-// See implementation [WithTag].
+// TagOption is used to specify the tag associated with a service when calling [Register],
+// [Resolve], [Container.Resolve], or [Container.Contains].
 type TagOption interface {
+	RegisterOption
 	ServiceOption
-	ResolveOption
-	ContainsOption
 }
 
-// DependencyTagOption is used to specify a tag for a dependency when calling [WithService] or [Invoke].
+// DependencyTagOption is used to specify a tag for a dependency when calling [Register] or [Invoke].
 type DependencyTagOption interface {
-	ServiceOption
+	RegisterOption
 	InvokeOption
 }
 
@@ -64,14 +62,7 @@ func (o tagOption) applyService(s service) error {
 	return nil
 }
 
-func (o tagOption) applyResolveKey(key serviceKey) serviceKey {
-	return serviceKey{
-		Type: key.Type,
-		Tag:  o.tag,
-	}
-}
-
-func (o tagOption) applyContainsKey(key serviceKey) serviceKey {
+func (o tagOption) applyServiceKey(key serviceKey) serviceKey {
 	return serviceKey{
 		Type: key.Type,
 		Tag:  o.tag,
@@ -86,7 +77,7 @@ type depTagOption struct {
 }
 
 func (o depTagOption) applyDeps(deps []serviceKey) error {
-	// TODO: What if the dependency is used more than once?
+	// TODO: Should we somehow support multiple deps with the same type and different tags?
 	for i := 0; i < len(deps); i++ {
 		if deps[i].Type == o.t {
 			deps[i].Tag = o.tag

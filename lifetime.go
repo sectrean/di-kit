@@ -4,7 +4,7 @@ import "fmt"
 
 // Lifetime specifies how services are created when resolved.
 //
-// Use when registering a service with [WithService].
+// Use when registering a service with [Register].
 //
 // Available lifetimes:
 //   - [Singleton] specifies that a service is created once and subsequent requests return the same instance.
@@ -14,7 +14,8 @@ import "fmt"
 // Example:
 //
 //	c, err := di.NewContainer(
-//		di.WithService(NewService, di.Transient),
+//		di.Register(NewService, di.Transient),
+//		di.Register(NewRequestService, di.Scoped),
 //	)
 type Lifetime uint8
 
@@ -36,7 +37,7 @@ func (l Lifetime) applyService(s service) error {
 	return nil
 }
 
-var _ ServiceOption = Singleton
+var _ RegisterOption = Singleton
 
 func (l Lifetime) String() string {
 	switch l {

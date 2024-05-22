@@ -33,8 +33,8 @@ type Closer interface {
 // function will be called when the Container is closed.
 //
 // Value services are not closed by default. To close a value service, use this option.
-func WithCloser() ServiceOption {
-	return serviceOption(func(s service) error {
+func WithCloser() RegisterOption {
+	return registerOption(func(s service) error {
 		s.setCloserFactory(getCloser)
 		return nil
 	})
@@ -46,8 +46,8 @@ func WithCloser() ServiceOption {
 // supported Close function signature, to be closed when the Container is closed.
 //
 // This is useful when you want to manage the lifecycle of a service outside of the Container.
-func IgnoreCloser() ServiceOption {
-	return serviceOption(func(s service) error {
+func IgnoreCloser() RegisterOption {
+	return registerOption(func(s service) error {
 		s.setCloserFactory(nil)
 		return nil
 	})
@@ -70,7 +70,7 @@ type closerFactory func(val any) Closer
 // Services registered with a value will not be closed by default.
 //
 // This option will return an error if the service type is not assignable to T.
-func WithCloseFunc[T any](f func(context.Context, T) error) ServiceOption {
+func WithCloseFunc[T any](f func(context.Context, T) error) RegisterOption {
 	return closeFuncOption[T]{f}
 }
 

@@ -23,7 +23,7 @@ func (_m *scopeMock) EXPECT() *scopeMock_Expecter {
 }
 
 // Contains provides a mock function with given fields: t, opts
-func (_m *scopeMock) Contains(t reflect.Type, opts ...ContainsOption) bool {
+func (_m *scopeMock) Contains(t reflect.Type, opts ...ServiceOption) bool {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -38,7 +38,7 @@ func (_m *scopeMock) Contains(t reflect.Type, opts ...ContainsOption) bool {
 	}
 
 	var r0 bool
-	if rf, ok := ret.Get(0).(func(reflect.Type, ...ContainsOption) bool); ok {
+	if rf, ok := ret.Get(0).(func(reflect.Type, ...ServiceOption) bool); ok {
 		r0 = rf(t, opts...)
 	} else {
 		r0 = ret.Get(0).(bool)
@@ -54,18 +54,18 @@ type scopeMock_Contains_Call struct {
 
 // Contains is a helper method to define mock.On call
 //   - t reflect.Type
-//   - opts ...ContainsOption
+//   - opts ...ServiceOption
 func (_e *scopeMock_Expecter) Contains(t interface{}, opts ...interface{}) *scopeMock_Contains_Call {
 	return &scopeMock_Contains_Call{Call: _e.mock.On("Contains",
 		append([]interface{}{t}, opts...)...)}
 }
 
-func (_c *scopeMock_Contains_Call) Run(run func(t reflect.Type, opts ...ContainsOption)) *scopeMock_Contains_Call {
+func (_c *scopeMock_Contains_Call) Run(run func(t reflect.Type, opts ...ServiceOption)) *scopeMock_Contains_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]ContainsOption, len(args)-1)
+		variadicArgs := make([]ServiceOption, len(args)-1)
 		for i, a := range args[1:] {
 			if a != nil {
-				variadicArgs[i] = a.(ContainsOption)
+				variadicArgs[i] = a.(ServiceOption)
 			}
 		}
 		run(args[0].(reflect.Type), variadicArgs...)
@@ -78,13 +78,13 @@ func (_c *scopeMock_Contains_Call) Return(_a0 bool) *scopeMock_Contains_Call {
 	return _c
 }
 
-func (_c *scopeMock_Contains_Call) RunAndReturn(run func(reflect.Type, ...ContainsOption) bool) *scopeMock_Contains_Call {
+func (_c *scopeMock_Contains_Call) RunAndReturn(run func(reflect.Type, ...ServiceOption) bool) *scopeMock_Contains_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Resolve provides a mock function with given fields: ctx, t, opts
-func (_m *scopeMock) Resolve(ctx context.Context, t reflect.Type, opts ...ResolveOption) (interface{}, error) {
+func (_m *scopeMock) Resolve(ctx context.Context, t reflect.Type, opts ...ServiceOption) (interface{}, error) {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -100,10 +100,10 @@ func (_m *scopeMock) Resolve(ctx context.Context, t reflect.Type, opts ...Resolv
 
 	var r0 interface{}
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, reflect.Type, ...ResolveOption) (interface{}, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, reflect.Type, ...ServiceOption) (interface{}, error)); ok {
 		return rf(ctx, t, opts...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, reflect.Type, ...ResolveOption) interface{}); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, reflect.Type, ...ServiceOption) interface{}); ok {
 		r0 = rf(ctx, t, opts...)
 	} else {
 		if ret.Get(0) != nil {
@@ -111,7 +111,7 @@ func (_m *scopeMock) Resolve(ctx context.Context, t reflect.Type, opts ...Resolv
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, reflect.Type, ...ResolveOption) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, reflect.Type, ...ServiceOption) error); ok {
 		r1 = rf(ctx, t, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -128,18 +128,18 @@ type scopeMock_Resolve_Call struct {
 // Resolve is a helper method to define mock.On call
 //   - ctx context.Context
 //   - t reflect.Type
-//   - opts ...ResolveOption
+//   - opts ...ServiceOption
 func (_e *scopeMock_Expecter) Resolve(ctx interface{}, t interface{}, opts ...interface{}) *scopeMock_Resolve_Call {
 	return &scopeMock_Resolve_Call{Call: _e.mock.On("Resolve",
 		append([]interface{}{ctx, t}, opts...)...)}
 }
 
-func (_c *scopeMock_Resolve_Call) Run(run func(ctx context.Context, t reflect.Type, opts ...ResolveOption)) *scopeMock_Resolve_Call {
+func (_c *scopeMock_Resolve_Call) Run(run func(ctx context.Context, t reflect.Type, opts ...ServiceOption)) *scopeMock_Resolve_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]ResolveOption, len(args)-2)
+		variadicArgs := make([]ServiceOption, len(args)-2)
 		for i, a := range args[2:] {
 			if a != nil {
-				variadicArgs[i] = a.(ResolveOption)
+				variadicArgs[i] = a.(ServiceOption)
 			}
 		}
 		run(args[0].(context.Context), args[1].(reflect.Type), variadicArgs...)
@@ -152,7 +152,7 @@ func (_c *scopeMock_Resolve_Call) Return(_a0 interface{}, _a1 error) *scopeMock_
 	return _c
 }
 
-func (_c *scopeMock_Resolve_Call) RunAndReturn(run func(context.Context, reflect.Type, ...ResolveOption) (interface{}, error)) *scopeMock_Resolve_Call {
+func (_c *scopeMock_Resolve_Call) RunAndReturn(run func(context.Context, reflect.Type, ...ServiceOption) (interface{}, error)) *scopeMock_Resolve_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -15,7 +15,7 @@ func TestInvoke(t *testing.T) {
 	scope := newScopeMock(t)
 	scope.EXPECT().
 		Resolve(mock.Anything, reflect.TypeFor[context.Context]()).
-		RunAndReturn(func(ctx context.Context, _ reflect.Type, _ ...ResolveOption) (any, error) {
+		RunAndReturn(func(ctx context.Context, _ reflect.Type, _ ...ServiceOption) (any, error) {
 			return ctx, nil
 		})
 	scope.EXPECT().
@@ -71,7 +71,7 @@ func TestInvoke_ContextError(t *testing.T) {
 	scope := newScopeMock(t)
 	scope.EXPECT().
 		Resolve(mock.Anything, reflect.TypeFor[context.Context]()).
-		RunAndReturn(func(ctx context.Context, _ reflect.Type, _ ...ResolveOption) (any, error) {
+		RunAndReturn(func(ctx context.Context, _ reflect.Type, _ ...ServiceOption) (any, error) {
 			return ctx, nil
 		})
 

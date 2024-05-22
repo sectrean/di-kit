@@ -52,7 +52,7 @@ func Test_NewContainer(t *testing.T) {
 	t.Parallel()
 
 	parent, err := NewContainer(
-		WithService(testtypes.NewStructAPtr()),
+		Register(testtypes.NewStructAPtr()),
 	)
 	assert.NoError(t, err)
 
@@ -94,7 +94,7 @@ func Test_NewContainer(t *testing.T) {
 		{
 			name: "with unsupported service kind",
 			opts: []ContainerOption{
-				WithService(1234),
+				Register(1234),
 			},
 			wantErr: "new container: with service int: unsupported kind int",
 		},
@@ -158,7 +158,7 @@ func Test_Container_Contains(t *testing.T) {
 
 	type args struct {
 		t    reflect.Type
-		opts []ContainsOption
+		opts []ServiceOption
 	}
 
 	tests := []struct {
@@ -198,7 +198,7 @@ func Test_Container_Contains(t *testing.T) {
 			},
 			args: args{
 				t: InterfaceAType,
-				opts: []ContainsOption{
+				opts: []ServiceOption{
 					WithTag("tag"),
 				},
 			},
@@ -213,7 +213,7 @@ func Test_Container_Contains(t *testing.T) {
 			},
 			args: args{
 				t: InterfaceAType,
-				opts: []ContainsOption{
+				opts: []ServiceOption{
 					WithTag("other"),
 				},
 			},

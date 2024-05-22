@@ -11,7 +11,7 @@ import (
 
 func BenchmarkContainer_Contains(b *testing.B) {
 	c, err := di.NewContainer(
-		di.WithService(&testtypes.StructA{}),
+		di.Register(&testtypes.StructA{}),
 	)
 	require.NoError(b, err)
 
@@ -22,8 +22,8 @@ func BenchmarkContainer_Contains(b *testing.B) {
 
 func BenchmarkContainer_Contains_WithTag(b *testing.B) {
 	c, err := di.NewContainer(
-		di.WithService(&testtypes.StructA{}),
-		di.WithService(&testtypes.StructA{}, di.WithTag("b")),
+		di.Register(&testtypes.StructA{}),
+		di.Register(&testtypes.StructA{}, di.WithTag("b")),
 	)
 	require.NoError(b, err)
 
@@ -34,7 +34,7 @@ func BenchmarkContainer_Contains_WithTag(b *testing.B) {
 
 func BenchmarkContainer_Resolve_OneValueService(b *testing.B) {
 	c, err := di.NewContainer(
-		di.WithService(&testtypes.StructA{}),
+		di.Register(&testtypes.StructA{}),
 	)
 	require.NoError(b, err)
 
@@ -47,7 +47,7 @@ func BenchmarkContainer_Resolve_OneValueService(b *testing.B) {
 
 func BenchmarkContainer_Resolve_OneFunc_Singleton(b *testing.B) {
 	c, err := di.NewContainer(
-		di.WithService(testtypes.NewInterfaceA, di.Singleton),
+		di.Register(testtypes.NewInterfaceA, di.Singleton),
 	)
 	require.NoError(b, err)
 
@@ -60,7 +60,7 @@ func BenchmarkContainer_Resolve_OneFunc_Singleton(b *testing.B) {
 
 func BenchmarkContainer_Resolve_OneFunc_Transient(b *testing.B) {
 	c, err := di.NewContainer(
-		di.WithService(testtypes.NewInterfaceA, di.Transient),
+		di.Register(testtypes.NewInterfaceA, di.Transient),
 	)
 	require.NoError(b, err)
 
@@ -73,8 +73,8 @@ func BenchmarkContainer_Resolve_OneFunc_Transient(b *testing.B) {
 
 func BenchmarkContainer_Resolve_TwoFunc_Transient(b *testing.B) {
 	c, err := di.NewContainer(
-		di.WithService(testtypes.NewInterfaceA, di.Transient),
-		di.WithService(testtypes.NewInterfaceB, di.Transient),
+		di.Register(testtypes.NewInterfaceA, di.Transient),
+		di.Register(testtypes.NewInterfaceB, di.Transient),
 	)
 	require.NoError(b, err)
 
@@ -87,9 +87,9 @@ func BenchmarkContainer_Resolve_TwoFunc_Transient(b *testing.B) {
 
 func BenchmarkContainer_Resolve_Concurrent(b *testing.B) {
 	c, err := di.NewContainer(
-		di.WithService(testtypes.NewInterfaceA, di.Transient),
-		di.WithService(testtypes.NewInterfaceB, di.Transient),
-		di.WithService(testtypes.NewInterfaceC, di.Transient),
+		di.Register(testtypes.NewInterfaceA, di.Transient),
+		di.Register(testtypes.NewInterfaceB, di.Transient),
+		di.Register(testtypes.NewInterfaceC, di.Transient),
 	)
 	require.NoError(b, err)
 

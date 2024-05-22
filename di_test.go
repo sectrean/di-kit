@@ -18,7 +18,7 @@ func TestSingleton(t *testing.T) {
 	a := &testtypes.StructA{}
 
 	c, err := di.NewContainer(
-		di.WithService(
+		di.Register(
 			func() testtypes.InterfaceA {
 				calls++
 				return a
@@ -45,7 +45,7 @@ func TestTransient(t *testing.T) {
 	b := &testtypes.StructB{}
 
 	c, err := di.NewContainer(
-		di.WithService(
+		di.Register(
 			func() testtypes.InterfaceB {
 				calls++
 				return b
@@ -73,14 +73,14 @@ func TestScoped(t *testing.T) {
 	a := &testtypes.StructA{}
 
 	root, err := di.NewContainer(
-		di.WithService(
+		di.Register(
 			func() testtypes.InterfaceA {
 				aCalls++
 				return a
 			},
 			di.Singleton,
 		),
-		di.WithService(
+		di.Register(
 			func(depA testtypes.InterfaceA) testtypes.InterfaceB {
 				assert.Equal(t, a, depA)
 				bCalls++
@@ -114,8 +114,8 @@ func TestScoped(t *testing.T) {
 
 func TestSliceService(t *testing.T) {
 	c, err := di.NewContainer(
-		di.WithService(testtypes.NewInterfaceA),
-		di.WithService(testtypes.NewInterfaceA),
+		di.Register(testtypes.NewInterfaceA),
+		di.Register(testtypes.NewInterfaceA),
 	)
 	require.NoError(t, err)
 
@@ -132,7 +132,7 @@ func TestSliceService(t *testing.T) {
 
 func TestAliases(t *testing.T) {
 	c, err := di.NewContainer(
-		di.WithService(testtypes.NewInterfaceA,
+		di.Register(testtypes.NewInterfaceA,
 			di.As[testtypes.InterfaceA](),
 		),
 	)
@@ -149,7 +149,7 @@ func TestAliases(t *testing.T) {
 
 func TestFuncServiceError(t *testing.T) {
 	c, err := di.NewContainer(
-		di.WithService(func() (testtypes.InterfaceA, error) {
+		di.Register(func() (testtypes.InterfaceA, error) {
 			return &testtypes.StructA{}, errors.New("constructor error")
 		}),
 	)
@@ -166,8 +166,8 @@ func TestServicesWithTags(t *testing.T) {
 	a2 := &testtypes.StructA{}
 
 	c, err := di.NewContainer(
-		di.WithService(func() testtypes.InterfaceA { return a1 }, di.WithTag("1")),
-		di.WithService(func() testtypes.InterfaceA { return a2 }, di.WithTag("2")),
+		di.Register(func() testtypes.InterfaceA { return a1 }, di.WithTag("1")),
+		di.Register(func() testtypes.InterfaceA { return a2 }, di.WithTag("2")),
 	)
 	require.NoError(t, err)
 
@@ -191,9 +191,9 @@ func TestServiceWithDependencyTags(t *testing.T) {
 	a1 := &testtypes.StructA{}
 
 	c, err := di.NewContainer(
-		di.WithService(func() testtypes.InterfaceA { return a1 }, di.WithTag("B")),
-		di.WithService(func() testtypes.InterfaceA { panic("shouldn't get called") }),
-		di.WithService(
+		di.Register(func() testtypes.InterfaceA { return a1 }, di.WithTag("B")),
+		di.Register(func() testtypes.InterfaceA { panic("shouldn't get called") }),
+		di.Register(
 			func(a testtypes.InterfaceA) testtypes.InterfaceB {
 				assert.Same(t, a1, a)
 				return &testtypes.StructB{}
@@ -230,10 +230,10 @@ func TestClosers(t *testing.T) {
 		Once()
 
 	scope, err := di.NewContainer(
-		di.WithService(func() testtypes.InterfaceA { return a }),
-		di.WithService(func(testtypes.InterfaceA) testtypes.InterfaceB { return b }),
-		di.WithService(func(testtypes.InterfaceB) testtypes.InterfaceC { return c }),
-		di.WithService(func(testtypes.InterfaceC) testtypes.InterfaceD { return d }),
+		di.Register(func() testtypes.InterfaceA { return a }),
+		di.Register(func(testtypes.InterfaceA) testtypes.InterfaceB { return b }),
+		di.Register(func(testtypes.InterfaceB) testtypes.InterfaceC { return c }),
+		di.Register(func(testtypes.InterfaceC) testtypes.InterfaceD { return d }),
 	)
 	require.NoError(t, err)
 

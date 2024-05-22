@@ -29,7 +29,7 @@ func TestScope_NoScope(t *testing.T) {
 
 func TestResolve(t *testing.T) {
 	c, err := di.NewContainer(
-		di.WithService(testtypes.NewInterfaceA),
+		di.Register(testtypes.NewInterfaceA),
 	)
 	require.NoError(t, err)
 
@@ -51,7 +51,7 @@ func TestResolve_NoScope(t *testing.T) {
 
 func TestMustResolve(t *testing.T) {
 	c, err := di.NewContainer(
-		di.WithService(testtypes.NewInterfaceA),
+		di.Register(testtypes.NewInterfaceA),
 	)
 	require.NoError(t, err)
 
@@ -64,7 +64,7 @@ func TestMustResolve(t *testing.T) {
 func TestMustResolve_NoScope(t *testing.T) {
 	ctx := context.Background()
 
-	assert.PanicsWithError(t, "resolve %s from context: scope not found on context", func() {
+	assert.PanicsWithError(t, "resolve testtypes.InterfaceA from context: scope not found on context", func() {
 		_ = dicontext.MustResolve[testtypes.InterfaceA](ctx)
 	})
 }

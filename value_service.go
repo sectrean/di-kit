@@ -14,7 +14,7 @@ type valueService struct {
 	closerFactory func(any) Closer
 }
 
-func newValueService(val any, opts ...ServiceOption) (*valueService, error) {
+func newValueService(val any, opts ...RegisterOption) (*valueService, error) {
 	t := reflect.TypeOf(val)
 	v := reflect.ValueOf(val)
 

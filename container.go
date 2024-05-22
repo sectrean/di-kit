@@ -13,7 +13,7 @@ import (
 //
 // Available options:
 //   - [WithParent] specifies a parent Container.
-//   - [WithService] registers a service with a value or a function.
+//   - [Register] registers a service with a value or a function.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		services: make(map[serviceKey]service),
@@ -109,10 +109,10 @@ func (c *Container) registerType(t reflect.Type, s service) {
 //
 // Available options:
 //   - [WithTag] specifies a tag associated with the service.
-func (c *Container) Contains(t reflect.Type, opts ...ContainsOption) bool {
+func (c *Container) Contains(t reflect.Type, opts ...ServiceOption) bool {
 	key := serviceKey{Type: t}
 	for _, opt := range opts {
-		key = opt.applyContainsKey(key)
+		key = opt.applyServiceKey(key)
 	}
 
 	return c.contains(key)
@@ -140,10 +140,10 @@ func (c *Container) root() *Container {
 //
 // Available options:
 //   - [WithTag] specifies a tag associated with the service.
-func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...ResolveOption) (any, error) {
+func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...ServiceOption) (any, error) {
 	key := serviceKey{Type: t}
 	for _, opt := range opts {
-		key = opt.applyResolveKey(key)
+		key = opt.applyServiceKey(key)
 	}
 
 	// TODO: Benchmark concurrent Resolve calls and then see if we can optimize it.

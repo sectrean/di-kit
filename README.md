@@ -5,15 +5,15 @@ DI-Kit
 
 ## Usage
 
-1. Create a new `Container` and register services.
+1. Create a new `Container` and `Register` services.
 2. `Resolve` services from the `Container`.
 3. `Close` the `Container` when you're done.
 
 ```go
 // Create the Container and register services using values and functions
 c, err := di.NewContainer(
-    di.WithService(logger),
-    di.WithService(foo.NewFooService),
+    di.Register(logger),
+    di.Register(foo.NewFooService),
 )
 // ...handle error...
 
@@ -27,13 +27,11 @@ err = c.Close(ctx)
 // ...handle error...
 ```
 
-## Register Services
+## Registering Services
 
-Use `WithService` to register a service with either a value or a constructor function.
+Use `Register` to register a service with either a value or a constructor function.
 
 The function may accept any number and type of arguments which must also be registered with the `Container`. The service will be registered as the function return type, and may also return an `error`.
-
-Use `WithService` to register a value with the container.
 
 ## Close Services
 
@@ -48,8 +46,8 @@ This behavior can be disabled using the `IgnoreCloser` option:
 
 ```go
 c, err := di.NewContainer(
-    di.WithService(logger),
-    di.WithService(foo.NewFooService, di.IgnoreCloser()),
+    di.Register(logger),
+    di.Register(foo.NewFooService, di.IgnoreCloser()),
 )
 ```
 
@@ -57,8 +55,8 @@ If a service uses another method to clean up, a custom close function can be con
 
 ``` go
 c, err := di.NewContainer(
-    di.WithService(logger),
-    di.WithService(foo.NewFooService,
+    di.Register(logger),
+    di.Register(foo.NewFooService,
         di.WithCloseFunc(func (ctx context.Context, fooSvc *foo.FooService) error {
             return fooSvc.Shutdown(ctx)
         }),
@@ -80,8 +78,8 @@ Specify a lifetime when registering a function for a service:
 
 ```go
 c, err := di.NewContainer(
-	di.WithService(NewRequestService, di.Scoped)
-    di.WithService(NewUserStore, di.WithLifetime(di.Transient))
+	di.Register(NewRequestService, di.Scoped)
+    di.Register(NewUserStore, di.Transient)
 )
 ```
 
@@ -98,7 +96,7 @@ var scopeVal ScopeValue
 
 scope, err := di.NewContainer(
     di.WithParent(c),
-    di.WithService(scopeVal)
+    di.Register(scopeVal)
 )
 // Close the scope when you're done
 ```

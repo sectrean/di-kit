@@ -30,6 +30,14 @@ type service interface {
 	setCloserFactory(closerFactory)
 }
 
+// ServiceOption can be used when calling [Container.Contains], [Container.Resolve], and [Resolve].
+//
+// Available options:
+//   - [WithTag]
+type ServiceOption interface {
+	applyServiceKey(serviceKey) serviceKey
+}
+
 type serviceKey struct {
 	Type reflect.Type
 	Tag  any
