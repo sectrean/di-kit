@@ -18,15 +18,6 @@ func WithTag(tag any) TagOption {
 	return tagOption{tag}
 }
 
-// TagOption is used to specify the tag associated with a service.
-//
-// See implementation [WithTag].
-type TagOption interface {
-	ServiceOption
-	ResolveOption
-	ContainsOption
-}
-
 // WithDependencyTag is used to specify a tag for a dependency when calling
 // [WithService] or [Invoke].
 //
@@ -49,6 +40,15 @@ func WithDependencyTag[T any](tag any) DependencyTagOption {
 	}
 }
 
+// TagOption is used to specify the tag associated with a service.
+//
+// See implementation [WithTag].
+type TagOption interface {
+	ServiceOption
+	ResolveOption
+	ContainsOption
+}
+
 // DependencyTagOption is used to specify a tag for a dependency when calling [WithService] or [Invoke].
 type DependencyTagOption interface {
 	ServiceOption
@@ -64,13 +64,18 @@ func (o tagOption) applyService(s service) error {
 	return nil
 }
 
-func (o tagOption) applyResolveConfig(c *resolveConfig) error {
-	c.tag = o.tag
-	return nil
+func (o tagOption) applyResolveKey(key serviceKey) serviceKey {
+	return serviceKey{
+		Type: key.Type,
+		Tag:  o.tag,
+	}
 }
 
-func (o tagOption) applyContainsConfig(c *containsConfig) {
-	c.tag = o.tag
+func (o tagOption) applyContainsKey(key serviceKey) serviceKey {
+	return serviceKey{
+		Type: key.Type,
+		Tag:  o.tag,
+	}
 }
 
 var _ TagOption = tagOption{}

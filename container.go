@@ -110,8 +110,10 @@ func (c *Container) registerType(t reflect.Type, s service) {
 // Available options:
 //   - [WithTag] specifies a tag associated with the service.
 func (c *Container) Contains(t reflect.Type, opts ...ContainsOption) bool {
-	config := newContainsConfig(t, opts)
-	key := config.serviceKey()
+	key := serviceKey{Type: t}
+	for _, opt := range opts {
+		key = opt.applyContainsKey(key)
+	}
 
 	return c.contains(key)
 }
@@ -139,12 +141,10 @@ func (c *Container) root() *Container {
 // Available options:
 //   - [WithTag] specifies a tag associated with the service.
 func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...ResolveOption) (any, error) {
-	config, err := newResolveConfig(t, opts)
-	if err != nil {
-		return nil, errors.Wrapf(err, "resolve %s", t)
+	key := serviceKey{Type: t}
+	for _, opt := range opts {
+		key = opt.applyResolveKey(key)
 	}
-
-	key := config.serviceKey()
 
 	// TODO: Benchmark concurrent Resolve calls and then see if we can optimize it.
 	// We also need to think about a possible deadlocks like if a service injects a Scope and
@@ -157,8 +157,18 @@ func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...Resolve
 		return nil, errors.Wrapf(ErrContainerClosed, "resolve %s", t)
 	}
 
-	// Recursively resolve the type and its dependencies
-	val, err := c.resolve(ctx, key, resolveVisitor{})
+	var val any
+	var err error
+
+	// Check if we've already resolved this service
+	if rs, ok := c.resolved[key]; ok {
+		val = rs.Val
+		err = rs.Err
+	} else {
+		// Recursively resolve the type and its dependencies
+		val, err = c.resolve(ctx, key, resolveVisitor{})
+	}
+
 	return val, errors.Wrapf(err, "resolve %s", key)
 }
 
