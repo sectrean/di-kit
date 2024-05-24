@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/puzpuzpuz/xsync/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -59,14 +60,15 @@ func Test_NewContainer(t *testing.T) {
 	tests := []struct {
 		name    string
 		opts    []ContainerOption
-		want    func(t *testing.T) *Container
+		want    func(*testing.T, *Container)
 		wantErr string
 	}{
 		{
 			name: "no options",
 			opts: nil,
-			want: func(t *testing.T) *Container {
-				return newTestContainer(t, testContainerConfig{})
+			want: func(t *testing.T, c *Container) {
+				assert.NotNil(t, c)
+				assert.Len(t, c.services, 0)
 			},
 		},
 		{
@@ -74,10 +76,9 @@ func Test_NewContainer(t *testing.T) {
 			opts: []ContainerOption{
 				WithParent(parent),
 			},
-			want: func(t *testing.T) *Container {
-				return newTestContainer(t, testContainerConfig{
-					parent: parent,
-				})
+			want: func(t *testing.T, c *Container) {
+				assert.NotNil(t, c)
+				assert.Same(t, parent, c.parent)
 			},
 		},
 		{
@@ -102,13 +103,10 @@ func Test_NewContainer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var want *Container
-			if tt.want != nil {
-				want = tt.want(t)
-			}
-
 			got, err := NewContainer(tt.opts...)
-			assert.Equal(t, want, got)
+			if tt.want != nil {
+				tt.want(t, got)
+			}
 
 			logErrorMessage(t, err)
 
@@ -124,7 +122,7 @@ func Test_NewContainer(t *testing.T) {
 type testContainerConfig struct {
 	parent   *Container
 	services map[serviceKey]service
-	resolved map[serviceKey]resolvedService
+	resolved map[serviceKey]*resolvedService
 	closers  []Closer
 	closed   bool
 	setup    func(t *testing.T, c *testContainerConfig)
@@ -135,20 +133,26 @@ func newTestContainer(t *testing.T, config testContainerConfig) *Container {
 		config.services = map[serviceKey]service{}
 	}
 	if config.resolved == nil {
-		config.resolved = map[serviceKey]resolvedService{}
+		config.resolved = map[serviceKey]*resolvedService{}
 	}
 
 	if config.setup != nil {
 		config.setup(t, &config)
 	}
 
+	resolved := xsync.NewMapOfPresized[serviceKey, *resolvedService](len(config.resolved))
+	for k, v := range config.resolved {
+		resolved.Store(k, v)
+	}
+
 	c := &Container{
 		parent:   config.parent,
 		services: config.services,
-		resolved: config.resolved,
+		resolved: resolved,
 		closers:  config.closers,
+		closeMu:  xsync.NewRBMutex(),
+		closed:   config.closed,
 	}
-	c.closed.Store(config.closed)
 
 	return c
 }

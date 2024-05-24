@@ -103,17 +103,9 @@ func (s *funcService) Dependencies() []serviceKey {
 	return s.deps
 }
 
-func (s *funcService) GetValue(deps []any) (any, error) {
-	var in []reflect.Value
-	if len(deps) > 0 {
-		in = make([]reflect.Value, len(deps))
-		for i := 0; i < len(deps); i++ {
-			in[i] = reflect.ValueOf(deps[i])
-		}
-	}
-
+func (s *funcService) GetValue(deps []reflect.Value) (any, error) {
 	// Call the function
-	out := s.fn.Call(in)
+	out := s.fn.Call(deps)
 
 	// Extract the return value and error, if any
 	val := out[0].Interface()

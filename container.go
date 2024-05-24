@@ -4,9 +4,9 @@ import (
 	"context"
 	"reflect"
 	"sync"
-	"sync/atomic"
 
 	"github.com/johnrutherford/di-kit/internal/errors"
+	"github.com/puzpuzpuz/xsync/v3"
 )
 
 // NewContainer creates a new Container with the provided options.
@@ -16,8 +16,9 @@ import (
 //   - [Register] registers a service with a value or a function.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
-		services: make(map[serviceKey]service),
-		resolved: make(map[serviceKey]resolvedService),
+		services: nil,
+		resolved: xsync.NewMapOf[serviceKey, *resolvedService](),
+		closeMu:  xsync.NewRBMutex(),
 	}
 
 	// Apply options
@@ -27,8 +28,8 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 		errs = errs.Append(err)
 	}
 
-	if err := errs.Join(); err != nil {
-		return nil, errors.Wrap(err, "new container")
+	if len(errs) > 0 {
+		return nil, errs.Wrap("new container")
 	}
 
 	return c, nil
@@ -36,12 +37,16 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 
 // Container allows you to resolve registered services.
 type Container struct {
-	parent    *Container
-	services  map[serviceKey]service
-	resolveMu sync.Mutex
-	resolved  map[serviceKey]resolvedService
-	closed    atomic.Bool
+	parent   *Container
+	services map[serviceKey]service
+
+	resolved *xsync.MapOf[serviceKey, *resolvedService]
+
+	closersMu sync.Mutex
 	closers   []Closer
+
+	closeMu *xsync.RBMutex
+	closed  bool
 }
 
 var (
@@ -59,11 +64,25 @@ var _ Scope = (*Container)(nil)
 
 // Register registers the provided service.
 func (c *Container) register(s service) {
+	c.initServices()
+
 	if len(s.Aliases()) == 0 {
 		c.registerType(s.Type(), s)
 	} else {
 		for _, alias := range s.Aliases() {
 			c.registerType(alias, s)
+		}
+	}
+}
+
+func (c *Container) initServices() {
+	if c.services == nil {
+		c.services = make(map[serviceKey]service)
+	} else if c.parent != nil && len(c.parent.services) == len(c.services) {
+		// Copy the parent's services to avoid modifying it
+		c.services = make(map[serviceKey]service, len(c.parent.services))
+		for k, v := range c.parent.services {
+			c.services[k] = v
 		}
 	}
 }
@@ -141,34 +160,19 @@ func (c *Container) root() *Container {
 // Available options:
 //   - [WithTag] specifies a tag associated with the service.
 func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...ServiceOption) (any, error) {
+	lock := c.closeMu.RLock()
+	defer c.closeMu.RUnlock(lock)
+
+	if c.closed {
+		return nil, errors.Wrapf(ErrContainerClosed, "resolve %s", t)
+	}
+
 	key := serviceKey{Type: t}
 	for _, opt := range opts {
 		key = opt.applyServiceKey(key)
 	}
 
-	// TODO: Benchmark concurrent Resolve calls and then see if we can optimize it.
-	// We also need to think about a possible deadlocks like if a service injects a Scope and
-	// then calls Resolve() in the constructor function.
-	root := c.root()
-	root.resolveMu.Lock()
-	defer root.resolveMu.Unlock()
-
-	if c.closed.Load() {
-		return nil, errors.Wrapf(ErrContainerClosed, "resolve %s", t)
-	}
-
-	var val any
-	var err error
-
-	// Check if we've already resolved this service
-	if rs, ok := c.resolved[key]; ok {
-		val = rs.Val
-		err = rs.Err
-	} else {
-		// Recursively resolve the type and its dependencies
-		val, err = c.resolve(ctx, key, resolveVisitor{})
-	}
-
+	val, err := c.resolve(ctx, key, make(resolveVisitor))
 	return val, errors.Wrapf(err, "resolve %s", key)
 }
 
@@ -176,7 +180,7 @@ func (c *Container) resolve(
 	ctx context.Context,
 	key serviceKey,
 	visitor resolveVisitor,
-) (any, error) {
+) (val any, err error) {
 	// Check if the type is a special type
 	switch key.Type {
 	case contextType:
@@ -186,32 +190,9 @@ func (c *Container) resolve(
 	}
 
 	// Look up the service
-	// Look in ancestors if the service is not found
-	var scope = c
-	svc, ok := scope.services[key]
+	svc, ok := c.services[key]
 	if !ok {
-		for scope.parent != nil {
-			scope = scope.parent
-			svc, ok = scope.services[key]
-			if ok {
-				break
-			}
-		}
-	}
-
-	if svc == nil {
 		return nil, ErrTypeNotRegistered
-	}
-
-	// For scoped services, use the current container,
-	// not the parent container that has the service
-	if svc.Lifetime() == Scoped {
-		scope = c
-	}
-
-	// Check if we've already resolved this service
-	if rs, ok := scope.resolved[key]; ok {
-		return rs.Val, rs.Err
 	}
 
 	// Throw an error if we've already visited this service
@@ -220,17 +201,40 @@ func (c *Container) resolve(
 	}
 	defer visitor.Leave(key)
 
+	// For scoped services, use the current container.
+	// For singleton services, use the root container.
+	scope := c
+	if svc.Lifetime() == Singleton {
+		scope = c.root()
+	}
+
+	// For Singleton or Scoped services, we store the result
+	if svc.Lifetime() != Transient {
+		rs, loaded := scope.resolved.LoadOrCompute(key, newResolvedService)
+		if loaded {
+			// This will block until the value and error are set
+			return rs.Result()
+		}
+
+		// This will set the result once this function returns
+		defer func() {
+			rs.SetResult(val, err)
+		}()
+	}
+
 	// Recursively resolve dependencies
-	var deps []any
-	if len(svc.Dependencies()) > 0 {
-		deps = make([]any, len(svc.Dependencies()))
-		for i, depKey := range svc.Dependencies() {
+	var deps = svc.Dependencies()
+	var depValues []reflect.Value
+
+	if len(deps) > 0 {
+		depValues = make([]reflect.Value, len(deps))
+		for i, depKey := range deps {
 			depVal, depErr := scope.resolve(ctx, depKey, visitor)
 			if depErr != nil {
 				// Stop at the first error
 				return depVal, errors.Wrapf(depErr, "resolve dependency %s", depKey)
 			}
-			deps[i] = depVal
+			depValues[i] = reflect.ValueOf(depVal)
 		}
 	}
 
@@ -239,19 +243,21 @@ func (c *Container) resolve(
 		return nil, ctx.Err()
 	}
 
-	// Create the instance and store the value and error
-	val, err := svc.GetValue(deps)
-
-	if svc.Lifetime() != Transient {
-		scope.resolved[key] = resolvedService{val, err}
-	}
+	// Create the instance
+	val, err = svc.GetValue(depValues)
 
 	// Add Closer for the service
 	if closer := svc.GetCloser(val); closer != nil {
-		scope.closers = append(c.closers, closer)
+		scope.appendCloser(closer)
 	}
 
 	return val, err
+}
+
+func (c *Container) appendCloser(closer Closer) {
+	c.closersMu.Lock()
+	c.closers = append(c.closers, closer)
+	c.closersMu.Unlock()
 }
 
 // Close closes the Container and all of its services.
@@ -261,13 +267,13 @@ func (c *Container) resolve(
 //
 // Close will return an error if called more than once.
 func (c *Container) Close(ctx context.Context) error {
-	// Take resolve lock so no more services can be resolved
-	c.resolveMu.Lock()
-	defer c.resolveMu.Unlock()
+	c.closeMu.Lock()
+	defer c.closeMu.Unlock()
 
-	if c.closed.Swap(true) {
+	if c.closed {
 		return errors.Wrap(ErrContainerClosed, "already closed")
 	}
+	c.closed = true
 
 	// TODO: Track child scopes to make sure all child scopes have been closed.
 
@@ -289,8 +295,30 @@ var (
 )
 
 type resolvedService struct {
-	Val any
-	Err error
+	val any
+	err error
+	wg  sync.WaitGroup
+}
+
+func newResolvedService() *resolvedService {
+	rs := &resolvedService{
+		wg: sync.WaitGroup{},
+	}
+	rs.wg.Add(1)
+	return rs
+}
+
+func (rs *resolvedService) SetResult(val any, err error) {
+	rs.val = val
+	rs.err = err
+
+	rs.wg.Done()
+}
+
+func (rs *resolvedService) Result() (any, error) {
+	rs.wg.Wait()
+
+	return rs.val, rs.err
 }
 
 type resolveVisitor map[serviceKey]struct{}

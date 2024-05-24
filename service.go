@@ -21,7 +21,7 @@ type service interface {
 	// Dependencies returns the types of the services that this service depends on.
 	Dependencies() []serviceKey
 	// GetValue uses the dependencies to get an instance of the service.
-	GetValue(deps []any) (any, error)
+	GetValue(deps []reflect.Value) (any, error)
 	// GetCloser returns a Closer that will close the service.
 	GetCloser(val any) Closer
 

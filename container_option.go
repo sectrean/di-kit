@@ -14,8 +14,8 @@ type ContainerOption interface {
 
 type containerOption func(*Container) error
 
-func (f containerOption) applyContainer(c *Container) error {
-	return f(c)
+func (o containerOption) applyContainer(c *Container) error {
+	return o(c)
 }
 
 // WithParent can be used to create a new Container with a child scope.
@@ -29,13 +29,34 @@ func (f containerOption) applyContainer(c *Container) error {
 //		WithParent(c),
 //		Register(valueForChildContainer),
 //	)
+//
+// This option should come before any other options.
 func WithParent(parent *Container) ContainerOption {
 	return containerOption(func(c *Container) error {
-		if parent.closed.Load() {
+		lock := parent.closeMu.RLock()
+		defer parent.closeMu.RUnlock(lock)
+
+		if parent.closed {
 			return errors.Wrap(ErrContainerClosed, "with parent")
 		}
 
+		if c.parent != nil {
+			return errors.New("with parent: parent already set")
+		}
+
 		c.parent = parent
+
+		if c.services == nil {
+			c.services = parent.services
+		} else {
+			// Copy services from parent
+			for k, v := range parent.services {
+				if _, ok := c.services[k]; !ok {
+					c.services[k] = v
+				}
+			}
+		}
+
 		return nil
 	})
 }

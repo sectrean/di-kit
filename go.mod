@@ -4,7 +4,10 @@ go 1.22
 
 toolchain go1.22.3
 
-require github.com/stretchr/testify v1.9.0
+require (
+	github.com/puzpuzpuz/xsync/v3 v3.1.0
+	github.com/stretchr/testify v1.9.0
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
