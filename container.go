@@ -17,7 +17,7 @@ import (
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		services: nil,
-		resolved: xsync.NewMapOf[serviceKey, *resolvedService](),
+		resolved: xsync.NewMapOf[serviceKey, *serviceFuture](),
 		closeMu:  xsync.NewRBMutex(),
 	}
 
@@ -40,7 +40,7 @@ type Container struct {
 	parent   *Container
 	services map[serviceKey]service
 
-	resolved *xsync.MapOf[serviceKey, *resolvedService]
+	resolved *xsync.MapOf[serviceKey, *serviceFuture]
 
 	closersMu sync.Mutex
 	closers   []Closer
@@ -195,12 +195,6 @@ func (c *Container) resolve(
 		return nil, ErrTypeNotRegistered
 	}
 
-	// Throw an error if we've already visited this service
-	if visited := visitor.Enter(key); visited {
-		return nil, ErrDependencyCycle
-	}
-	defer visitor.Leave(key)
-
 	// For scoped services, use the current container.
 	// For singleton services, use the root container.
 	scope := c
@@ -208,17 +202,26 @@ func (c *Container) resolve(
 		scope = c.root()
 	}
 
+	// Throw an error if we've already visited this service
+	if visited := visitor.Enter(key); visited {
+		return nil, ErrDependencyCycle
+	}
+	defer visitor.Leave(key)
+
+	// TODO: Make sure aliases that are singletons are not created per alias.
+
 	// For Singleton or Scoped services, we store the result
+	// in a future to prevent multiple calls to the service.
 	if svc.Lifetime() != Transient {
-		rs, loaded := scope.resolved.LoadOrCompute(key, newResolvedService)
+		fut, loaded := scope.resolved.LoadOrCompute(key, newServiceFuture)
 		if loaded {
 			// This will block until the value and error are set
-			return rs.Result()
+			return fut.Result()
 		}
 
-		// This will set the result once this function returns
 		defer func() {
-			rs.SetResult(val, err)
+			// Set the result when this function returns
+			fut.SetResult(val, err)
 		}()
 	}
 
@@ -294,31 +297,27 @@ var (
 	scopeType   = reflect.TypeFor[Scope]()
 )
 
-type resolvedService struct {
-	val any
-	err error
-	wg  sync.WaitGroup
+type serviceFuture struct {
+	val  any
+	err  error
+	done chan struct{}
 }
 
-func newResolvedService() *resolvedService {
-	rs := &resolvedService{
-		wg: sync.WaitGroup{},
+func newServiceFuture() *serviceFuture {
+	return &serviceFuture{
+		done: make(chan struct{}),
 	}
-	rs.wg.Add(1)
-	return rs
 }
 
-func (rs *resolvedService) SetResult(val any, err error) {
-	rs.val = val
-	rs.err = err
-
-	rs.wg.Done()
+func (f *serviceFuture) SetResult(val any, err error) {
+	f.val = val
+	f.err = err
+	close(f.done)
 }
 
-func (rs *resolvedService) Result() (any, error) {
-	rs.wg.Wait()
-
-	return rs.val, rs.err
+func (f *serviceFuture) Result() (any, error) {
+	<-f.done
+	return f.val, f.err
 }
 
 type resolveVisitor map[serviceKey]struct{}

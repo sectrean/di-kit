@@ -6,7 +6,6 @@ import (
 
 	"github.com/johnrutherford/di-kit"
 	"github.com/johnrutherford/di-kit/internal/testtypes"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -105,28 +104,113 @@ func BenchmarkContainer_Resolve_OneFunc_Singleton(b *testing.B) {
 	}
 }
 
-func BenchmarkContainer_Resolve_OneFunc_Scoped_WithScope(b *testing.B) {
-	c, err := di.NewContainer(
+func BenchmarkContainer_Resolve_Scopes(b *testing.B) {
+	parent, err := di.NewContainer(
 		di.Register(testtypes.NewInterfaceA, di.Singleton),
 		di.Register(testtypes.NewInterfaceB, di.Scoped),
 	)
 	require.NoError(b, err)
 
-	ctx := context.Background()
+	var newChildScope = func(b *testing.B) *di.Container {
+		scope, err := di.NewContainer(di.WithParent(parent))
+		require.NoError(b, err)
+		return scope
+	}
 
-	b.ResetTimer()
+	var newChildScopes = func(b *testing.B) []*di.Container {
+		scopes := make([]*di.Container, b.N)
+		for i := 0; i < b.N; i++ {
+			scopes[i], err = di.NewContainer(di.WithParent(parent))
+			require.NoError(b, err)
+		}
+		return scopes
+	}
 
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			scope, err := di.NewContainer(di.WithParent(c))
-			assert.NoError(b, err)
-
-			_, _ = di.Resolve[testtypes.InterfaceB](ctx, scope)
-
-			err = scope.Close(ctx)
-			assert.NoError(b, err)
+	b.Run("create child scope", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = di.NewContainer(di.WithParent(parent))
 		}
 	})
+
+	b.Run("resolve singleton first time", func(b *testing.B) {
+		ctx := context.Background()
+		scopes := newChildScopes(b)
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			_, _ = di.Resolve[testtypes.InterfaceA](ctx, scopes[i])
+		}
+	})
+
+	b.Run("resolve singleton", func(b *testing.B) {
+		ctx := context.Background()
+		scope := newChildScope(b)
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			_, _ = di.Resolve[testtypes.InterfaceA](ctx, scope)
+		}
+	})
+
+	b.Run("resolve singleton parallel", func(b *testing.B) {
+		ctx := context.Background()
+		scope := newChildScope(b)
+		b.ResetTimer()
+
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = di.Resolve[testtypes.InterfaceA](ctx, scope)
+			}
+		})
+	})
+
+	b.Run("resolve scoped first time", func(b *testing.B) {
+		ctx := context.Background()
+		scopes := newChildScopes(b)
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			_, _ = di.Resolve[testtypes.InterfaceB](ctx, scopes[i])
+		}
+	})
+
+	b.Run("resolve scoped", func(b *testing.B) {
+		ctx := context.Background()
+		scope := newChildScope(b)
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			_, _ = di.Resolve[testtypes.InterfaceB](ctx, scope)
+		}
+	})
+
+	b.Run("resolve scoped parallel", func(b *testing.B) {
+		ctx := context.Background()
+		scope := newChildScope(b)
+		b.ResetTimer()
+
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = di.Resolve[testtypes.InterfaceB](ctx, scope)
+			}
+		})
+	})
+
+	// b.Run("close child scope", func(b *testing.B) {
+	// 	b.StopTimer()
+	// 	ctx := context.Background()
+	// 	scopes := newChildScopes(b)
+
+	// 	for i := 0; i < b.N; i++ {
+	// 		_, _ = di.Resolve[testtypes.InterfaceA](ctx, scopes[i])
+	// 	}
+
+	// 	b.StartTimer()
+
+	// 	for i := 0; i < b.N; i++ {
+	// 		_ = scopes[i].Close(ctx)
+	// 	}
+	// })
 }
 
 func BenchmarkContainer_Resolve_OneFunc_Transient(b *testing.B) {
@@ -158,21 +242,4 @@ func BenchmarkContainer_Resolve_TwoFunc_Transient(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _ = di.Resolve[testtypes.InterfaceB](ctx, c)
 	}
-}
-
-func BenchmarkContainer_Resolve_Concurrent(b *testing.B) {
-	c, err := di.NewContainer(
-		di.Register(testtypes.NewInterfaceA, di.Transient),
-		di.Register(testtypes.NewInterfaceB, di.Transient),
-		di.Register(testtypes.NewInterfaceC, di.Transient),
-	)
-	require.NoError(b, err)
-
-	ctx := context.Background()
-
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_, _ = di.Resolve[testtypes.InterfaceC](ctx, c)
-		}
-	})
 }
