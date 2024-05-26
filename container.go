@@ -17,7 +17,7 @@ import (
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		services: nil,
-		resolved: xsync.NewMapOf[serviceKey, *serviceFuture](),
+		resolved: xsync.NewMapOf[serviceKey, *resolveFuture](),
 		closeMu:  xsync.NewRBMutex(),
 	}
 
@@ -40,7 +40,7 @@ type Container struct {
 	parent   *Container
 	services map[serviceKey]service
 
-	resolved *xsync.MapOf[serviceKey, *serviceFuture]
+	resolved *xsync.MapOf[serviceKey, *resolveFuture]
 
 	closersMu sync.Mutex
 	closers   []Closer
@@ -213,7 +213,7 @@ func (c *Container) resolve(
 	// For Singleton or Scoped services, we store the result
 	// in a future to prevent multiple calls to the service.
 	if svc.Lifetime() != Transient {
-		fut, loaded := scope.resolved.LoadOrCompute(key, newServiceFuture)
+		fut, loaded := scope.resolved.LoadOrCompute(key, newFuture)
 		if loaded {
 			// This will block until the value and error are set
 			return fut.Result()
@@ -221,7 +221,7 @@ func (c *Container) resolve(
 
 		defer func() {
 			// Set the result when this function returns
-			fut.SetResult(val, err)
+			fut.setResult(val, err)
 		}()
 	}
 
@@ -296,29 +296,6 @@ var (
 	contextType = reflect.TypeFor[context.Context]()
 	scopeType   = reflect.TypeFor[Scope]()
 )
-
-type serviceFuture struct {
-	val  any
-	err  error
-	done chan struct{}
-}
-
-func newServiceFuture() *serviceFuture {
-	return &serviceFuture{
-		done: make(chan struct{}),
-	}
-}
-
-func (f *serviceFuture) SetResult(val any, err error) {
-	f.val = val
-	f.err = err
-	close(f.done)
-}
-
-func (f *serviceFuture) Result() (any, error) {
-	<-f.done
-	return f.val, f.err
-}
 
 type resolveVisitor map[serviceKey]struct{}
 

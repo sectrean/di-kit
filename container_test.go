@@ -122,7 +122,7 @@ func Test_NewContainer(t *testing.T) {
 type testContainerConfig struct {
 	parent   *Container
 	services map[serviceKey]service
-	resolved map[serviceKey]*serviceFuture
+	resolved map[serviceKey]*resolveFuture
 	closers  []Closer
 	closed   bool
 	setup    func(t *testing.T, c *testContainerConfig)
@@ -133,14 +133,14 @@ func newTestContainer(t *testing.T, config testContainerConfig) *Container {
 		config.services = map[serviceKey]service{}
 	}
 	if config.resolved == nil {
-		config.resolved = map[serviceKey]*serviceFuture{}
+		config.resolved = map[serviceKey]*resolveFuture{}
 	}
 
 	if config.setup != nil {
 		config.setup(t, &config)
 	}
 
-	resolved := xsync.NewMapOfPresized[serviceKey, *serviceFuture](len(config.resolved))
+	resolved := xsync.NewMapOfPresized[serviceKey, *resolveFuture](len(config.resolved))
 	for k, v := range config.resolved {
 		resolved.Store(k, v)
 	}
