@@ -140,9 +140,10 @@ func newTestContainer(t *testing.T, config testContainerConfig) *Container {
 		config.setup(t, &config)
 	}
 
-	resolved := xsync.NewMapOfPresized[serviceKey, *resolveFuture](len(config.resolved))
+	resolved := xsync.NewMapOfPresized[service, *resolveFuture](len(config.resolved))
 	for k, v := range config.resolved {
-		resolved.Store(k, v)
+		svc := config.services[k]
+		resolved.Store(svc, v)
 	}
 
 	c := &Container{

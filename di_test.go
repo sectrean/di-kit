@@ -147,6 +147,35 @@ func TestAliases(t *testing.T) {
 	assert.ErrorIs(t, err, di.ErrTypeNotRegistered)
 }
 
+func TestAliases_SameInstance(t *testing.T) {
+	a := &testtypes.StructA{}
+	calls := 0
+
+	c, err := di.NewContainer(
+		di.Register(
+			func() *testtypes.StructA {
+				calls++
+				return a
+			},
+			di.As[testtypes.InterfaceA](),
+			di.As[*testtypes.StructA](),
+		),
+	)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+
+	got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+	assert.Same(t, a, got)
+	assert.NoError(t, err)
+
+	got, err = di.Resolve[*testtypes.StructA](ctx, c)
+	assert.Same(t, a, got)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, calls, "constructor func should only be called once")
+}
+
 func TestFuncServiceError(t *testing.T) {
 	c, err := di.NewContainer(
 		di.Register(func() (testtypes.InterfaceA, error) {

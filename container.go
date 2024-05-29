@@ -17,7 +17,7 @@ import (
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		services: nil,
-		resolved: xsync.NewMapOf[serviceKey, *resolveFuture](),
+		resolved: xsync.NewMapOf[service, *resolveFuture](),
 		closeMu:  xsync.NewRBMutex(),
 	}
 
@@ -41,7 +41,7 @@ type Container struct {
 	parent   *Container
 	services map[serviceKey]service
 
-	resolved *xsync.MapOf[serviceKey, *resolveFuture]
+	resolved *xsync.MapOf[service, *resolveFuture]
 
 	closersMu sync.Mutex
 	closers   []Closer
@@ -214,7 +214,7 @@ func (c *Container) resolve(
 	// For Singleton or Scoped services, we store the result
 	// in a future to prevent multiple calls to the service.
 	if svc.Lifetime() != Transient {
-		fut, loaded := scope.resolved.LoadOrCompute(key, newFuture)
+		fut, loaded := scope.resolved.LoadOrCompute(svc, newFuture)
 		if loaded {
 			// This will block until the value and error are set
 			return fut.Result()
