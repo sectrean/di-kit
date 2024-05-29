@@ -4,13 +4,10 @@ import (
 	"github.com/johnrutherford/di-kit/internal/errors"
 )
 
-// ContainerOption is used to configure a new Container.
+// ContainerOption is used to configure a new Container when calling [NewContainer].
 type ContainerOption interface {
 	applyContainer(*Container) error
 }
-
-// TODO: Implement additional Container options:
-// - Validate dependencies--make sure all types are resolvable, no cycles
 
 type containerOption func(*Container) error
 

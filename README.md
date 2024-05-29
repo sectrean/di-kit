@@ -153,4 +153,7 @@ svc, err := dicontext.Resolve[MyRequestValue](ctx)
 [x] HTTP middleware for Scopes
 [ ] Tasks/scripts for tests, benchmarking, codegen, etc. 
 	https://taskfile.dev/
+[ ]	Implement additional Container options:
+		- Validate dependencies--make sure all types are resolvable, no cycles
+
 

@@ -35,7 +35,8 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 	return c, nil
 }
 
-// Container allows you to resolve registered services.
+// Container is a dependency injection container.
+// It is used to resolve services by first resolving their dependencies.
 type Container struct {
 	parent   *Container
 	services map[serviceKey]service
