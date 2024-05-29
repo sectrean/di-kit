@@ -12,10 +12,32 @@ import (
 // The function may take any number of arguments. These dependencies must be registered with the container.
 // The function may also accept a [context.Context].
 // The function must return a service and optionally an error.
+//
+// Available options:
+//   - [Lifetime] is used to specify how services are created when resolved.
+//   - [As] registers an alias for a service.
+//   - [WithTag] specifies the tag associated with a service.
+//   - [WithDependencyTag] specifies a tag for a dependency when calling [Register].
+//   - [WithCloseFunc] specifies a function to be called when the service is closed.
+//   - [IgnoreCloser] specifies that the service should not be closed by the Container.
+//     Function services are closed by default if they implement [Closer] or a compatible function signature.
+//   - [WithCloser] specifies that the service should be closed by the Container if it implements [Closer] or a compatible function signature.
+//     This is the default for function services. Value services are not be closed by default.
 func Register(fnOrValue any, opts ...RegisterOption) ContainerOption {
+	// Use a single Register function for both function and value services
+	// because it's easier to use than separate functions.
+	//
+	// Examples:
+	// RegisterFunc(NewService) // Correct
+	// RegisterFunc(NewService()) // Wrong - easy mistake
+	// RegisterValue(NewService()) // Correct
+	// RegisterValue(NewService) // Wrong - easy mistake
+	// Register(NewService) // This works as a func
+	// Register(NewService()) // This works as a value
+
 	return containerOption(func(c *Container) error {
 		if _, ok := fnOrValue.(RegisterOption); ok {
-			return errors.New("with service: unexpected RegisterOption for first arg")
+			return errors.Errorf("register %T: unexpected RegisterOption for first arg", fnOrValue)
 		}
 
 		t := reflect.TypeOf(fnOrValue)
@@ -33,7 +55,7 @@ func Register(fnOrValue any, opts ...RegisterOption) ContainerOption {
 		}
 
 		if err != nil {
-			return errors.Wrapf(err, "with service %T", fnOrValue)
+			return errors.Wrapf(err, "register %T", fnOrValue)
 		}
 
 		c.register(svc)
@@ -41,18 +63,7 @@ func Register(fnOrValue any, opts ...RegisterOption) ContainerOption {
 	})
 }
 
-// RegisterOption can be used when calling [Register].
-//
-// Available options:
-//   - [Lifetime] is used to specify how services are created when resolved.
-//   - [As] registers an alias for a service.
-//   - [WithTag] specifies the tag associated with a service.
-//   - [WithDependencyTag] specifies a tag for a dependency when calling [Register].
-//   - [WithCloseFunc] specifies a function to be called when the service is closed.
-//   - [IgnoreCloser] specifies that the service should not be closed by the Container.
-//     Function services are closed by default if they implement [Closer] or a compatible function signature.
-//   - [WithCloser] specifies that the service should be closed by the Container if it implements [Closer] or a compatible function signature.
-//     This is the default for funtion services. Value services are not be closed by default.
+// RegisterOption is used to configure a service registration when calling [Register].
 type RegisterOption interface {
 	applyService(s service) error
 }

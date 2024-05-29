@@ -143,3 +143,14 @@ Then the `di.Scope` can be retrieved from the context and used as a [service loc
 svc, err := dicontext.Resolve[MyRequestValue](ctx)
 ```
 
+# TODO
+
+[ ] Support for injecting a `Future[T any]`: `WithFuture`
+[ ] Decorators
+[ ] Logging with `slog`
+[ ] Enable error stacktraces optionally
+[ ] Scope wrapper that will return errors until the service has finished resolving. Use channel for this?
+[x] HTTP middleware for Scopes
+[ ] Tasks/scripts for tests, benchmarking, codegen, etc. 
+	https://taskfile.dev/
+
