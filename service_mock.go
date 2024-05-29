@@ -210,7 +210,7 @@ func (_c *serviceMock_GetCloser_Call) RunAndReturn(run func(interface{}) Closer)
 }
 
 // GetValue provides a mock function with given fields: deps
-func (_m *serviceMock) GetValue(deps []interface{}) (interface{}, error) {
+func (_m *serviceMock) GetValue(deps []reflect.Value) (interface{}, error) {
 	ret := _m.Called(deps)
 
 	if len(ret) == 0 {
@@ -219,10 +219,10 @@ func (_m *serviceMock) GetValue(deps []interface{}) (interface{}, error) {
 
 	var r0 interface{}
 	var r1 error
-	if rf, ok := ret.Get(0).(func([]interface{}) (interface{}, error)); ok {
+	if rf, ok := ret.Get(0).(func([]reflect.Value) (interface{}, error)); ok {
 		return rf(deps)
 	}
-	if rf, ok := ret.Get(0).(func([]interface{}) interface{}); ok {
+	if rf, ok := ret.Get(0).(func([]reflect.Value) interface{}); ok {
 		r0 = rf(deps)
 	} else {
 		if ret.Get(0) != nil {
@@ -230,7 +230,7 @@ func (_m *serviceMock) GetValue(deps []interface{}) (interface{}, error) {
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func([]interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func([]reflect.Value) error); ok {
 		r1 = rf(deps)
 	} else {
 		r1 = ret.Error(1)
@@ -245,14 +245,14 @@ type serviceMock_GetValue_Call struct {
 }
 
 // GetValue is a helper method to define mock.On call
-//   - deps []interface{}
+//   - deps []reflect.Value
 func (_e *serviceMock_Expecter) GetValue(deps interface{}) *serviceMock_GetValue_Call {
 	return &serviceMock_GetValue_Call{Call: _e.mock.On("GetValue", deps)}
 }
 
-func (_c *serviceMock_GetValue_Call) Run(run func(deps []interface{})) *serviceMock_GetValue_Call {
+func (_c *serviceMock_GetValue_Call) Run(run func(deps []reflect.Value)) *serviceMock_GetValue_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].([]interface{}))
+		run(args[0].([]reflect.Value))
 	})
 	return _c
 }
@@ -262,7 +262,7 @@ func (_c *serviceMock_GetValue_Call) Return(_a0 interface{}, _a1 error) *service
 	return _c
 }
 
-func (_c *serviceMock_GetValue_Call) RunAndReturn(run func([]interface{}) (interface{}, error)) *serviceMock_GetValue_Call {
+func (_c *serviceMock_GetValue_Call) RunAndReturn(run func([]reflect.Value) (interface{}, error)) *serviceMock_GetValue_Call {
 	_c.Call.Return(run)
 	return _c
 }
