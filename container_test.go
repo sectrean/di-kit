@@ -97,7 +97,7 @@ func Test_NewContainer(t *testing.T) {
 			opts: []ContainerOption{
 				Register(1234),
 			},
-			wantErr: "new container: with service int: unsupported kind int",
+			wantErr: "new container: register int: unsupported kind int",
 		},
 	}
 
