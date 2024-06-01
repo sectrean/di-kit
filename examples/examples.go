@@ -1,4 +1,4 @@
-package examples
+package main
 
 import (
 	"context"
@@ -9,7 +9,8 @@ import (
 	"github.com/johnrutherford/di-kit/examples/foo"
 )
 
-func Example() error {
+func Example() {
+	ctx := context.Background()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	// Create the container
@@ -19,24 +20,23 @@ func Example() error {
 		di.Register(foo.NewFooService),
 	)
 	if err != nil {
-		return err
+		logger.ErrorContext(ctx, "error creating container", "error", err)
+		return
 	}
 
-	// Resolve a service from the container
-	ctx := context.Background()
+	// Close the container when done
+	defer func() {
+		err := c.Close(ctx)
+		if err != nil {
+			logger.ErrorContext(ctx, "error closing container", "error", err)
+		}
+	}()
+
+	// Resolve our service from the container
 	fooSvc := di.MustResolve[*foo.FooService](ctx, c)
 
-	// Use the service
 	err = fooSvc.Run(ctx)
 	if err != nil {
-		return err
+		logger.ErrorContext(ctx, "error running service", "error", err)
 	}
-
-	// Close the container
-	err = c.Close(ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

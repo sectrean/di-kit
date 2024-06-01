@@ -77,7 +77,6 @@ type depTagOption struct {
 }
 
 func (o depTagOption) applyDeps(deps []serviceKey) error {
-	// TODO: Should we somehow support multiple deps with the same type and different tags?
 	for i := 0; i < len(deps); i++ {
 		if deps[i].Type == o.t {
 			deps[i].Tag = o.tag

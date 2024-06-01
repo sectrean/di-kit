@@ -40,8 +40,6 @@ func WithCloser() RegisterOption {
 	})
 }
 
-// TODO: Should we implement support for Shutdown(context.Context) error?
-
 // IgnoreCloser is used when you do not want a service that implements Closer, or another
 // supported Close function signature, to be closed when the Container is closed.
 //

@@ -24,7 +24,6 @@ func newFuncService(fn any, opts ...RegisterOption) (*funcService, error) {
 		return nil, errors.Errorf("expected a function, got %v", fnType)
 	}
 
-	// TODO: Do we need to do anything special for variadic arguments?
 	// Or are they just treated as slices with reflection?
 	_ = fnType.IsVariadic()
 

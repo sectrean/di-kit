@@ -209,14 +209,13 @@ func (c *Container) resolve(
 	}
 	defer visitor.Leave(key)
 
-	// TODO: Make sure aliases that are singletons are not created per alias.
-
 	// For Singleton or Scoped services, we store the result
 	// in a future to prevent multiple calls to the service.
 	if svc.Lifetime() != Transient {
 		fut, loaded := scope.resolved.LoadOrCompute(svc, newFuture)
 		if loaded {
 			// This will block until the value and error are set
+			// by the first goroutine to resolve this service.
 			return fut.Result()
 		}
 
@@ -278,8 +277,6 @@ func (c *Container) Close(ctx context.Context) error {
 		return errors.Wrap(ErrContainerClosed, "already closed")
 	}
 	c.closed = true
-
-	// TODO: Track child scopes to make sure all child scopes have been closed.
 
 	// Close services in reverse order
 	var errs errors.MultiError
