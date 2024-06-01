@@ -2,7 +2,7 @@ module github.com/johnrutherford/di-kit
 
 go 1.22
 
-toolchain go1.22.3
+toolchain go1.22.0
 
 require (
 	github.com/puzpuzpuz/xsync/v3 v3.1.0
