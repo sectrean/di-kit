@@ -99,6 +99,20 @@ func Test_NewContainer(t *testing.T) {
 			},
 			wantErr: "new container: register int: unsupported kind int",
 		},
+		{
+			name: "with nil service",
+			opts: []ContainerOption{
+				Register((testtypes.InterfaceA)(nil)),
+			},
+			wantErr: "new container: register: funcOrValue is nil",
+		},
+		{
+			name: "no service, only options",
+			opts: []ContainerOption{
+				Register(Singleton, WithTag("tag")),
+			},
+			wantErr: "new container: register di.Lifetime: unexpected RegisterOption for first arg",
+		},
 	}
 
 	for _, tt := range tests {
@@ -518,6 +532,7 @@ func logErrorMessage(t *testing.T, err error) {
 		return
 	}
 
+	// We log our error messages so we can make sure they are helpful and informative
 	t.Helper()
 	t.Logf("error message:\n%v", err)
 }

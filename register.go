@@ -6,12 +6,22 @@ import (
 	"github.com/johnrutherford/di-kit/internal/errors"
 )
 
-// Register the provided function or value with the container.
+// Register the provided function or value with the Container when calling [NewContainer].
 //
-// The fnOrValue argument must be a function or a value.
-// The function may take any number of arguments. These dependencies must be registered with the container.
-// The function may also accept a [context.Context].
-// The function must return a service and optionally an error.
+// If a function is provided, it will be called to create the service when resolved.
+//
+// This function can take any number of arguments which will also be resolved from the Container.
+// The function may also accept a [context.Context] or [di.Scope].
+//
+// The function must return a service, or the service and an error.
+// The service will be registered as the return type of the function (struct, pointer, or interface).
+//
+// If the resolved service implements [Closer], or a compatible Close method signature,
+// it will be closed when the Container is closed.
+//
+// If a value is provided, it will be returned as the service when resolved.
+// The value can be a struct or pointer.
+// (It will be registered as the actual type even if the the variable was declared as an interface.)
 //
 // Available options:
 //   - [Lifetime] is used to specify how services are created when resolved.
@@ -22,8 +32,8 @@ import (
 //   - [IgnoreCloser] specifies that the service should not be closed by the Container.
 //     Function services are closed by default if they implement [Closer] or a compatible function signature.
 //   - [WithCloser] specifies that the service should be closed by the Container if it implements [Closer] or a compatible function signature.
-//     This is the default for function services. Value services are not be closed by default.
-func Register(fnOrValue any, opts ...RegisterOption) ContainerOption {
+//     This is the default for function services. Value services will not be closed by default.
+func Register(funcOrValue any, opts ...RegisterOption) ContainerOption {
 	// Use a single Register function for both function and value services
 	// because it's easier to use than separate functions.
 	//
@@ -36,26 +46,30 @@ func Register(fnOrValue any, opts ...RegisterOption) ContainerOption {
 	// Register(NewService()) // This works as a value
 
 	return containerOption(func(c *Container) error {
-		if _, ok := fnOrValue.(RegisterOption); ok {
-			return errors.Errorf("register %T: unexpected RegisterOption for first arg", fnOrValue)
+		if funcOrValue == nil {
+			return errors.Errorf("register: funcOrValue is nil")
 		}
 
-		t := reflect.TypeOf(fnOrValue)
+		if _, ok := funcOrValue.(RegisterOption); ok {
+			return errors.Errorf("register %T: unexpected RegisterOption for funcOrValue", funcOrValue)
+		}
+
+		t := reflect.TypeOf(funcOrValue)
 
 		var svc service
 		var err error
 
 		switch t.Kind() {
 		case reflect.Func:
-			svc, err = newFuncService(fnOrValue, opts...)
+			svc, err = newFuncService(funcOrValue, opts...)
 		case reflect.Interface, reflect.Ptr, reflect.Struct:
-			svc, err = newValueService(fnOrValue, opts...)
+			svc, err = newValueService(funcOrValue, opts...)
 		default:
 			err = errors.Errorf("unsupported kind %v", t.Kind())
 		}
 
 		if err != nil {
-			return errors.Wrapf(err, "register %T", fnOrValue)
+			return errors.Wrapf(err, "register %T", funcOrValue)
 		}
 
 		c.register(svc)
