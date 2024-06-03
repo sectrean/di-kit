@@ -51,7 +51,7 @@ func Register(funcOrValue any, opts ...RegisterOption) ContainerOption {
 		}
 
 		if _, ok := funcOrValue.(RegisterOption); ok {
-			return errors.Errorf("register %T: unexpected RegisterOption for funcOrValue", funcOrValue)
+			return errors.Errorf("register %T: unexpected RegisterOption as funcOrValue", funcOrValue)
 		}
 
 		t := reflect.TypeOf(funcOrValue)

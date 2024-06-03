@@ -111,7 +111,7 @@ func Test_NewContainer(t *testing.T) {
 			opts: []ContainerOption{
 				Register(Singleton, WithTag("tag")),
 			},
-			wantErr: "new container: register di.Lifetime: unexpected RegisterOption for first arg",
+			wantErr: "new container: register di.Lifetime: unexpected RegisterOption as funcOrValue",
 		},
 	}
 

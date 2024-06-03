@@ -24,9 +24,6 @@ func newFuncService(fn any, opts ...RegisterOption) (*funcService, error) {
 		return nil, errors.Errorf("expected a function, got %v", fnType)
 	}
 
-	// Or are they just treated as slices with reflection?
-	_ = fnType.IsVariadic()
-
 	// Get the return type
 	var t reflect.Type
 	if fnType.NumOut() == 1 {
