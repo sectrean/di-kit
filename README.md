@@ -4,29 +4,13 @@ DI-Kit
 **DI-Kit** is a dependency injection toolkit for modern Go applications.
 It's designed to be easy-to-use, unobtrusive, flexible, and performant.
 
-Features:
-
-- Generics
-- Lifetimes - Singleton, Scoped, and Transient
-- Type aliases
-- Support for interfaces
-- Support for "closing" services
-- Support for `context.Context` as a parameter.
-- Doesn't spread into your code
-- Support for injecting a slice of services
-- HTTP request scope middleware
-
 ## Usage
 
-1. Create a new `Container` and `Register` services using values and functions.
-2. `Resolve` services from the `Container` and use them.
-3. `Close` the `Container` when you're done.
-
 ```go
-// Create the Container and register services
+// Create the Container and register services using values and constructor functions.
 c, err := di.NewContainer(
-    di.Register(logger), // var logger *slog.Logger
-    di.Register(myservice.NewService), // NewService(*slog.Logger) *myservice.Service
+    di.Register(logger),				// var logger *slog.Logger
+    di.Register(myservice.NewService),	// NewService(*slog.Logger) *myservice.Service
 )
 // ...
 
@@ -43,6 +27,18 @@ fooSvc, err := di.Resolve[*foo.FooService](ctx, c)
 // Use your services
 fooSvc.Run(ctx)
 ```
+
+## Features
+
+- Generics
+- Lifetimes - Singleton, Scoped, and Transient
+- Type aliases
+- Support for interfaces
+- Support for "closing" services
+- Support for `context.Context` as a parameter.
+- Doesn't spread into your code
+- Support for injecting a slice of services
+- HTTP request scope middleware
 
 ## Registering Services
 
@@ -179,10 +175,9 @@ svc, err := dicontext.Resolve[MyRequestValue](ctx)
 - [ ] Finish support for `Future[T any]`; add `WithFuture`
 - [ ] Track child scopes to make sure all child scopes have been closed. Use closerMu.
 - [ ] Variadic arguments--add tests and add support if necessary.
-- [ ] Decorators
+- [ ] Support decorator functions `func(T) T`
 - [ ] Implement additional Container options:
 	- [ ] Validate dependencies--make sure all types are resolvable, no cycles
-- [ ] CI jobs
 - [ ] Enable error stacktraces optionally
 - [ ] Logging with `slog`
 - [ ] Support for `Shutdown` functions like `Closer`?
