@@ -182,14 +182,6 @@ func (c *Container) resolve(
 	key serviceKey,
 	visitor resolveVisitor,
 ) (val any, err error) {
-	// Check if the type is a special type
-	switch key.Type {
-	case contextType:
-		return ctx, nil
-	case scopeType:
-		return c, nil
-	}
-
 	// Look up the service
 	svc, ok := c.services[key]
 	if !ok {
@@ -226,13 +218,30 @@ func (c *Container) resolve(
 	}
 
 	// Recursively resolve dependencies
-	var deps = svc.Dependencies()
 	var depValues []reflect.Value
+	if len(svc.Dependencies()) > 0 {
+		depValues = make([]reflect.Value, len(svc.Dependencies()))
+		for i, depKey := range svc.Dependencies() {
+			var depVal any
+			var depErr error
 
-	if len(deps) > 0 {
-		depValues = make([]reflect.Value, len(deps))
-		for i, depKey := range deps {
-			depVal, depErr := scope.resolve(ctx, depKey, visitor)
+			switch depKey.Type {
+			case contextType:
+				// Pass along the context
+				depVal = ctx
+
+			case scopeType:
+				// We wrap the scope to prevent Resolve from being called on it
+				// until we finish resolving this service
+				var ready func()
+				depVal, ready = newInjectedScope(key, scope)
+				defer ready()
+
+			default:
+				// Recursive call
+				depVal, depErr = scope.resolve(ctx, depKey, visitor)
+			}
+
 			if depErr != nil {
 				// Stop at the first error
 				return depVal, errors.Wrapf(depErr, "resolve dependency %s", depKey)

@@ -280,8 +280,6 @@ func Test_Container_Contains(t *testing.T) {
 func Test_Container_Resolve(t *testing.T) {
 	t.Parallel()
 
-	ctxWithValue := ContextWithValue("test")
-
 	type args struct {
 		ctx context.Context
 		t   reflect.Type
@@ -341,11 +339,10 @@ func Test_Container_Resolve(t *testing.T) {
 		{
 			name: "resolve context.Context",
 			args: args{
-				ctx: ctxWithValue,
+				ctx: context.Background(),
 				t:   reflect.TypeFor[context.Context](),
 			},
-			want:     ctxWithValue,
-			wantSame: true,
+			wantErr: "resolve context.Context: type not registered",
 		},
 		{
 			name: "dependency cycle",

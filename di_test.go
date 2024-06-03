@@ -2,6 +2,7 @@ package di_test
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/johnrutherford/di-kit"
@@ -274,4 +275,66 @@ func TestClosers(t *testing.T) {
 
 	err = scope.Close(ctx)
 	assert.EqualError(t, err, "close container: err c\nerr a")
+}
+
+func TestResolveWithContext(t *testing.T) {
+	ctx := context.WithValue(context.Background(), "key", "value")
+
+	c, err := di.NewContainer(
+		di.Register(func(ctxDep context.Context) testtypes.InterfaceA {
+			assert.Same(t, ctx, ctxDep)
+			return &testtypes.StructA{}
+		}),
+	)
+	require.NoError(t, err)
+
+	got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+	assert.NotNil(t, got)
+	assert.NoError(t, err)
+}
+
+func TestResolveWithScope(t *testing.T) {
+	ctx := context.Background()
+
+	c, err := di.NewContainer(
+		di.Register(testtypes.NewInterfaceA),
+		di.Register(func(scope di.Scope) *Factory {
+			ctx := context.Background()
+
+			// We cannot call Resolve on the scope here.
+			a, err := di.Resolve[testtypes.InterfaceA](ctx, scope)
+			assert.Nil(t, a)
+			assert.EqualError(t, err,
+				"resolve testtypes.InterfaceA: "+
+					"resolve not supported on di.Scope while resolving *di_test.Factory: "+
+					"the scope must be stored and used later")
+
+			// Contains can be called though
+			hasA := scope.Contains(reflect.TypeFor[testtypes.InterfaceA]())
+			assert.True(t, hasA)
+
+			// We have to store it and we can call Resolve later.
+			return &Factory{scope: scope}
+		}),
+	)
+	require.NoError(t, err)
+
+	factory, err := di.Resolve[*Factory](ctx, c)
+	require.NoError(t, err)
+
+	a := factory.BuildA(ctx, "arg")
+	assert.NotNil(t, a)
+}
+
+type Factory struct {
+	scope di.Scope
+}
+
+func (f *Factory) BuildA(ctx context.Context, _ string) testtypes.InterfaceA {
+	a, err := di.Resolve[testtypes.InterfaceA](ctx, f.scope)
+	if err != nil {
+		panic(err)
+	}
+
+	return a
 }
