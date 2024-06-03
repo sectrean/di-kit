@@ -12,10 +12,6 @@ packages:
           dir: .
           inpackage: true
           mockname: "scopeMock"
-      service:
-        config:
-          dir: .
-          inpackage: true
   github.com/johnrutherford/di-kit/internal/testtypes:
     interfaces:
       InterfaceA:
