@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -12,7 +13,7 @@ import (
 	"github.com/johnrutherford/di-kit/examples/foo"
 )
 
-func Example_HTTP() error {
+func HTTP_Example() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	c, err := di.NewContainer(
@@ -21,7 +22,7 @@ func Example_HTTP() error {
 		di.Register(bar.NewBarService, di.Scoped),
 	)
 	if err != nil {
-		return err
+		logger.Error("error creating container", "error", err)
 	}
 
 	scopeMiddleware := dihttp.NewScopeMiddleware(
@@ -36,6 +37,11 @@ func Example_HTTP() error {
 	mux := http.NewServeMux()
 	mux.Handle("/", scopeMiddleware(handler))
 
-	http.ListenAndServe(":8080", nil)
-	return nil
+	err = http.ListenAndServe(":8080", nil)
+	if !errors.Is(err, http.ErrServerClosed) {
+		logger.Error("http server error", "error", err)
+		return
+	}
+
+	logger.Info("server stopped")
 }
