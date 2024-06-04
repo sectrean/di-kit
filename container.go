@@ -304,6 +304,29 @@ var (
 	scopeType   = reflect.TypeFor[Scope]()
 )
 
+type resolveFuture struct {
+	val  any
+	err  error
+	done chan struct{}
+}
+
+func newFuture() *resolveFuture {
+	return &resolveFuture{
+		done: make(chan struct{}),
+	}
+}
+
+func (f *resolveFuture) setResult(val any, err error) {
+	f.val = val
+	f.err = err
+	close(f.done)
+}
+
+func (f *resolveFuture) Result() (any, error) {
+	<-f.done
+	return f.val, f.err
+}
+
 type resolveVisitor map[serviceKey]struct{}
 
 func (v resolveVisitor) Enter(key serviceKey) (visited bool) {
