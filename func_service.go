@@ -100,8 +100,14 @@ func (s *funcService) Dependencies() []serviceKey {
 }
 
 func (s *funcService) GetValue(deps []reflect.Value) (any, error) {
+	var out []reflect.Value
+
 	// Call the function
-	out := s.fn.Call(deps)
+	if s.fn.Type().IsVariadic() {
+		out = s.fn.CallSlice(deps)
+	} else {
+		out = s.fn.Call(deps)
+	}
 
 	// Extract the return value and error, if any
 	val := out[0].Interface()

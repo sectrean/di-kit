@@ -217,6 +217,40 @@ func TestServicesWithTags(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestSliceServices(t *testing.T) {
+	ctx := context.Background()
+
+	a1 := &testtypes.StructA{}
+	a2 := &testtypes.StructA{}
+	want := []testtypes.InterfaceA{a1, a2}
+
+	c, err := di.NewContainer(
+		di.Register(a1, di.As[testtypes.InterfaceA]()),
+		di.Register(a2, di.As[testtypes.InterfaceA]()),
+		di.Register(func(aa []testtypes.InterfaceA) testtypes.InterfaceB {
+			assert.Equal(t, want, aa)
+			return &testtypes.StructB{}
+		}),
+		di.Register(func(_ testtypes.InterfaceB, aa ...testtypes.InterfaceA) testtypes.InterfaceD {
+			assert.Equal(t, want, aa)
+			return &testtypes.StructD{}
+		}),
+	)
+	require.NoError(t, err)
+
+	slice, err := di.Resolve[[]testtypes.InterfaceA](ctx, c)
+	assert.Equal(t, want, slice)
+	assert.NoError(t, err)
+
+	b, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+	assert.NotNil(t, b)
+	assert.NoError(t, err)
+
+	d, err := di.Resolve[testtypes.InterfaceD](ctx, c)
+	assert.NotNil(t, d)
+	assert.NoError(t, err)
+}
+
 func TestServiceWithDependencyTags(t *testing.T) {
 	a1 := &testtypes.StructA{}
 

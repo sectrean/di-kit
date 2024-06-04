@@ -113,6 +113,14 @@ c, err := di.NewContainer(
 )
 ```
 
+## Slices of Services
+
+If you register multiple services of the same type, you can resolve a slice.
+
+- Inject slice
+- Variadic args
+- Use for things like Healthchecks
+
 ## Scopes
 
 Scopes are ...
@@ -148,9 +156,8 @@ svc, err := dicontext.Resolve[MyRequestValue](ctx)
 
 # TODO
 
-- [ ] Finish support for `Future[T any]`; add `WithFuture`
+- [ ] Implement feature to inject `Future[T any]`
 - [ ] Track child scopes to make sure all child scopes have been closed. Use closerMu.
-- [ ] Variadic arguments--add tests and add support if necessary.
 - [ ] Support decorator functions `func(T) T`
 - [ ] Implement additional Container options:
 	- [ ] Validate dependencies--make sure all types are resolvable, no cycles
