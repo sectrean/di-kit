@@ -1,7 +1,7 @@
-DI-Kit
+di-kit
 ======
 
-**DI-Kit** is a dependency injection toolkit for modern Go applications.
+**di-kit** is a dependency injection toolkit for modern Go applications.
 It's designed to be easy-to-use, unobtrusive, flexible, and performant.
 
 ## Usage
@@ -35,7 +35,7 @@ fooSvc.Run(ctx)
 - Type aliases
 - Support for interfaces
 - Support for "closing" services
-- Support for `context.Context` as a parameter.
+- Support for `context.Context` as a parameter
 - Doesn't spread into your code
 - Support for injecting a slice of services
 - HTTP request scope middleware
@@ -115,7 +115,9 @@ c, err := di.NewContainer(
 
 ## Scopes
 
-Create child scopes by creating a new `Container` and providing the parent `Container`. Services can also be registered with the new scope.
+Scopes are ...
+
+Create child scopes for scoped by creating a new `Container` and providing the parent `Container`. Services can also be registered with the new scope.
 
 ```go
 var scopeVal ScopeValue
@@ -134,32 +136,7 @@ Use the `dicontext` package to attach `di.Scope` to a `context.Context`.
 You can create child scopes and attach them to a context. Example HTTP middleware to create per-request scopes:
 
 ```go
-func RequestScopeMiddleware(parent *di.Container) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Create a new scope for the request
-			scope, err := di.NewContainer(
-				di.WithParent(parent),
-				// Register any request-specific services here
-			)
-			if err != nil {
-				// ...log error...
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
 
-			// Add the scope to the request context
-			ctx := dicontext.WithScope(r.Context(), scope)
-			next.ServeHTTP(w, r.WithContext(ctx))
-
-			// Close the scope when the request is done
-			err = scope.Close(ctx)
-			if err != nil {
-				// ...log error...
-			}
-		})
-	}
-}
 ```
 
 Then the `di.Scope` can be retrieved from the context and used as a [service locator](https://en.wikipedia.org/wiki/Service_locator_pattern).
@@ -171,7 +148,6 @@ svc, err := dicontext.Resolve[MyRequestValue](ctx)
 
 # TODO
 
-- [ ] Scope wrapper that will return errors until the service has finished resolving.
 - [ ] Finish support for `Future[T any]`; add `WithFuture`
 - [ ] Track child scopes to make sure all child scopes have been closed. Use closerMu.
 - [ ] Variadic arguments--add tests and add support if necessary.
