@@ -10,6 +10,7 @@ packages:
       Scope:
         config:
           dir: .
+          filename: "scope_mock_test.go"
           inpackage: true
           mockname: "scopeMock"
   github.com/johnrutherford/di-kit/internal/testtypes:
