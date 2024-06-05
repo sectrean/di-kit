@@ -95,7 +95,7 @@ func TestScoped(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 3; i++ {
-		scope, err := di.NewContainer(di.WithParent(root))
+		scope, err := root.NewScope()
 		require.NoError(t, err)
 
 		b, err := di.Resolve[testtypes.InterfaceB](ctx, scope)

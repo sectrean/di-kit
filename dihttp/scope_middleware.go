@@ -11,15 +11,17 @@ import (
 // NewScopeMiddleware creates a new middleware that creates a new [di.Scope] for each request.
 // The scope is closed after the request has been processed.
 //
+// The [*http.Request] is automatically registered with the scope. It can be used as a dependency for scoped services.
+//
 // The scope is stored on the request context and can be accessed using [dicontext.Scope], [dicontext.Resolve], or [dicontext.MustResolve].
 //
 // Available options:
-//   - WithParent: Set the parent [di.Container] for the new scope.
-//   - WithContainerOptions: Set additional [di.Container] options.
+//   - WithScopeOptions: Set [di.ContainerOptions]s options to use when creating each request scope.
 //   - WithNewScopeErrorHandler: Set the error handler for when there is an error creating a new scope.
 //   - WithScopeCloseErrorHandler: Set the error handler for when there is an error closing the scope.
-func NewScopeMiddleware(opts ...ScopeMiddlewareOption) func(http.Handler) http.Handler {
+func NewScopeMiddleware(c *di.Container, opts ...ScopeMiddlewareOption) func(http.Handler) http.Handler {
 	mw := &scopeMiddleware{
+		c:               c,
 		newScopeHandler: defaultNewScopeErrorHandler,
 		closeHandler:    defaultScopeCloseErrorHandler,
 	}
@@ -55,19 +57,20 @@ func defaultScopeCloseErrorHandler(r *http.Request, err error) {
 }
 
 type scopeMiddleware struct {
+	c               *di.Container
+	opts            []di.ContainerOption
 	newScopeHandler NewScopeErrorHandler
 	closeHandler    ScopeCloseErrorHandler
-	opts            []di.ContainerOption
 	next            http.Handler
 }
 
 func (m *scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	opts := append(m.opts,
-		// Add the *http.Request to the scope
+		// Register the *http.Request with the new scope
 		di.Register(r),
 	)
 
-	scope, err := di.NewContainer(opts...)
+	scope, err := m.c.NewScope(opts...)
 	if err != nil {
 		if m.newScopeHandler != nil {
 			m.newScopeHandler(w, r, err)

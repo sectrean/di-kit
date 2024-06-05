@@ -52,11 +52,6 @@ func ContextWithValue(s string) context.Context {
 func Test_NewContainer(t *testing.T) {
 	t.Parallel()
 
-	parent, err := NewContainer(
-		Register(testtypes.NewStructAPtr()),
-	)
-	assert.NoError(t, err)
-
 	tests := []struct {
 		name    string
 		opts    []ContainerOption
@@ -70,27 +65,6 @@ func Test_NewContainer(t *testing.T) {
 				assert.NotNil(t, c)
 				assert.Len(t, c.services, 0)
 			},
-		},
-		{
-			name: "with parent",
-			opts: []ContainerOption{
-				WithParent(parent),
-			},
-			want: func(t *testing.T, c *Container) {
-				assert.NotNil(t, c)
-				assert.Same(t, parent, c.parent)
-			},
-		},
-		{
-			name: "with closed parent",
-			opts: []ContainerOption{
-				WithParent(newTestContainer(t,
-					testContainerConfig{
-						closed: true,
-					},
-				)),
-			},
-			wantErr: "new container: with parent: container closed",
 		},
 		{
 			name: "with unsupported service kind",
@@ -128,6 +102,83 @@ func Test_NewContainer(t *testing.T) {
 				assert.EqualError(t, err, tt.wantErr)
 			} else {
 				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_Container_NewScope(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		parent  testContainerConfig
+		opts    []ContainerOption
+		want    func(*testing.T, *Container)
+		wantErr string
+	}{
+		{
+			name: "success",
+			parent: testContainerConfig{
+				services: map[serviceKey]service{
+					InterfaceAKey: &funcService{},
+				},
+			},
+			want: func(t *testing.T, c *Container) {
+				assert.NotNil(t, c)
+				assert.NotNil(t, c.parent)
+				assert.Equal(t, c.parent.services, c.services)
+			},
+		},
+		{
+			name: "success with register",
+			parent: testContainerConfig{
+				services: map[serviceKey]service{
+					InterfaceAKey: &funcService{},
+				},
+			},
+			opts: []ContainerOption{
+				Register(testtypes.NewInterfaceB),
+			},
+			want: func(t *testing.T, c *Container) {
+				assert.NotNil(t, c)
+				assert.NotNil(t, c.parent)
+				assert.NotEqual(t, c.parent.services, c.services)
+
+				assert.Len(t, c.services, 2)
+				assert.Contains(t, c.services, InterfaceAKey)
+				assert.Contains(t, c.services, InterfaceBKey)
+			},
+		},
+		{
+			name: "parent container closed",
+			parent: testContainerConfig{
+				closed: true,
+			},
+			want: func(t *testing.T, c *Container) {
+				assert.Nil(t, c)
+			},
+			wantErr: "new scope: container closed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := newTestContainer(t, tt.parent)
+			scope, err := c.NewScope(tt.opts...)
+
+			logErrorMessage(t, err)
+
+			if tt.want != nil {
+				tt.want(t, scope)
+			}
+
+			if tt.wantErr != "" {
+				assert.EqualError(t, err, tt.wantErr)
+				assert.Nil(t, scope)
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, scope)
 			}
 		})
 	}

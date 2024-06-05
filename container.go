@@ -12,7 +12,6 @@ import (
 // NewContainer creates a new Container with the provided options.
 //
 // Available options:
-//   - [WithParent] specifies a parent Container.
 //   - [Register] registers a service with a value or a function.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
@@ -123,6 +122,43 @@ func (c *Container) registerType(t reflect.Type, s service) {
 
 	// The last service registered for a type will win
 	c.services[key] = s
+}
+
+// NewScope creates a new Container with a child scope.
+//
+// Services registered with the parent Container will be inherited by the child Container.
+// Additional services can be registered with the new Scope if needed.
+// They will only be available to the new scope.
+//
+// Available options:
+//   - [Register] registers a service with a value or a function.
+func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
+	lock := c.closeMu.RLock()
+	defer c.closeMu.RUnlock(lock)
+
+	if c.closed {
+		return nil, errors.Wrap(ErrContainerClosed, "new scope")
+	}
+
+	scope := &Container{
+		parent:   c,
+		services: c.services,
+		resolved: xsync.NewMapOf[service, *resolveFuture](),
+		closeMu:  xsync.NewRBMutex(),
+	}
+
+	// Apply options
+	var errs errors.MultiError
+	for _, opt := range opts {
+		err := opt.applyContainer(scope)
+		errs = errs.Append(err)
+	}
+
+	if len(errs) > 0 {
+		return nil, errs.Wrap("new scope")
+	}
+
+	return scope, nil
 }
 
 // Contains returns true if the Container has a service registered for the given [reflect.Type].

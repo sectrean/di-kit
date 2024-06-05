@@ -18,7 +18,7 @@ func BenchmarkNewContainer(b *testing.B) {
 	}
 }
 
-func BenchmarkNewContainer_WithParent(b *testing.B) {
+func BenchmarkContainer_NewScope(b *testing.B) {
 	root, err := di.NewContainer(
 		di.Register(testtypes.NewInterfaceA),
 		di.Register(testtypes.NewInterfaceB, di.Scoped),
@@ -28,7 +28,7 @@ func BenchmarkNewContainer_WithParent(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, _ = di.NewContainer(di.WithParent(root))
+		_, _ = root.NewScope()
 	}
 }
 
@@ -112,7 +112,7 @@ func BenchmarkContainer_Resolve_Scopes(b *testing.B) {
 	require.NoError(b, err)
 
 	var newChildScope = func(b *testing.B) *di.Container {
-		scope, err := di.NewContainer(di.WithParent(parent))
+		scope, err := parent.NewScope()
 		require.NoError(b, err)
 		return scope
 	}
@@ -120,7 +120,7 @@ func BenchmarkContainer_Resolve_Scopes(b *testing.B) {
 	var newChildScopes = func(b *testing.B) []*di.Container {
 		scopes := make([]*di.Container, b.N)
 		for i := 0; i < b.N; i++ {
-			scopes[i], err = di.NewContainer(di.WithParent(parent))
+			scopes[i], err = parent.NewScope()
 			require.NoError(b, err)
 		}
 		return scopes
@@ -128,7 +128,7 @@ func BenchmarkContainer_Resolve_Scopes(b *testing.B) {
 
 	b.Run("create child scope", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, _ = di.NewContainer(di.WithParent(parent))
+			_, _ = parent.NewScope()
 		}
 	})
 

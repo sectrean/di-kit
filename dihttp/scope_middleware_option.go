@@ -4,7 +4,7 @@ import (
 	"github.com/johnrutherford/di-kit"
 )
 
-// ScopeMiddlewareOption is an option used when calling [NewScopeMiddleware] to configure the scope middleware.
+// ScopeMiddlewareOption is an option used to configure the scope middleware when calling [NewScopeMiddleware].
 type ScopeMiddlewareOption interface {
 	applyScopeMiddleware(*scopeMiddleware)
 }
@@ -15,16 +15,8 @@ func (o scopeMiddlewareOption) applyScopeMiddleware(m *scopeMiddleware) {
 	o(m)
 }
 
-// WithParent sets the parent [di.Container] for new scopes.
-func WithParent(parent *di.Container) ScopeMiddlewareOption {
-	return scopeMiddlewareOption(func(m *scopeMiddleware) {
-		m.opts = append(m.opts, di.WithParent(parent))
-	})
-}
-
-// WithContainerOptions sets additional [di.Container] options for new scopes.
-// This can be used to register services or set other options on each new child scope.
-func WithContainerOptions(opts ...di.ContainerOption) ScopeMiddlewareOption {
+// WithScopeOptions sets the options to use when calling [di.Container.NewScope] for each request.
+func WithScopeOptions(opts ...di.ContainerOption) ScopeMiddlewareOption {
 	return scopeMiddlewareOption(func(m *scopeMiddleware) {
 		m.opts = append(m.opts, opts...)
 	})

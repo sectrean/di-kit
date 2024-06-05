@@ -25,16 +25,14 @@ func HTTP_Example() {
 		logger.Error("error creating container", "error", err)
 	}
 
-	scopeMiddleware := dihttp.NewScopeMiddleware(
-		dihttp.WithParent(c),
-	)
-
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		svc := dicontext.MustResolve[*bar.BarService](r.Context())
 		svc.HandleRequest(r, w)
 	})
 
 	mux := http.NewServeMux()
+
+	scopeMiddleware := dihttp.NewScopeMiddleware(c)
 	mux.Handle("/", scopeMiddleware(handler))
 
 	err = http.ListenAndServe(":8080", nil)
