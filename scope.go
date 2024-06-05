@@ -9,15 +9,32 @@ import (
 	"github.com/johnrutherford/di-kit/internal/errors"
 )
 
-// Scope allows you to resolve services.
+// A Scope allows you to resolve services.
 //
-// A Scope can be injected into functions to allow them to resolve services. However,
-// it cannot be used within the constructor function. It can be stored in a struct or
-// used in a closure after the constructor function has returned.
+// Scope can be used as an argument for a service's constructor function.
+// This can be used to create a "factory" service.
+//
+// Note that the Scope should be stored on the service struct for later use.
+// [Scope.Resolve] cannot be called from within the constructor function.
+// It will return an error.
+//
+// Example:
+//
+//	type DBFactory struct {
+//		scope di.Scope
+//	}
+//
+//	func NewDBFactory(scope di.Scope) *DBFactory {
+//		return &DBFactory{scope: scope}
+//	}
+//
+//	func (f *DBFactory) NewDB(string dbName) *DB {
+//		// Use the Scope to resolve dependencies...
+//	}
 //
 // Scope is implemented by *Container.
 type Scope interface {
-	// Contains returns true if the Scope has a service of the given type.
+	// Contains returns whether the Scope can resolve a service of the given type.
 	//
 	// Available options:
 	// 	- [WithTag] specifies the tag associated with the service.
@@ -31,6 +48,8 @@ type Scope interface {
 }
 
 // Resolve a service of the given type from the [Scope].
+//
+// See [Scope.Resolve] for more information.
 func Resolve[T any](ctx context.Context, s Scope, opts ...ServiceOption) (T, error) {
 	var val T
 	anyVal, err := s.Resolve(ctx, reflect.TypeFor[T](), opts...)
@@ -43,7 +62,9 @@ func Resolve[T any](ctx context.Context, s Scope, opts ...ServiceOption) (T, err
 
 // MustResolve resolves a service of the given type from the [Scope].
 //
-// If the service cannot be resolved, this function will panic.
+// See [Scope.Resolve] for more information.
+//
+// This will panic if the service cannot be resolved.
 func MustResolve[T any](ctx context.Context, s Scope, opts ...ServiceOption) T {
 	val, err := Resolve[T](ctx, s, opts...)
 	if err != nil {
