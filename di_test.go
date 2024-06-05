@@ -311,6 +311,67 @@ func TestClosers(t *testing.T) {
 	assert.EqualError(t, err, "close container: err c\nerr a")
 }
 
+func TestNoCloser(t *testing.T) {
+	a := mocks.NewInterfaceAMock(t)
+
+	c, err := di.NewContainer(
+		di.Register(func() testtypes.InterfaceA { return a }, di.IgnoreCloser()),
+	)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	_ = di.MustResolve[testtypes.InterfaceA](ctx, c)
+
+	err = c.Close(ctx)
+	assert.NoError(t, err)
+}
+
+func TestWithCloser(t *testing.T) {
+	a := mocks.NewInterfaceAMock(t)
+	a.EXPECT().
+		Close(mock.Anything).
+		Return(nil).
+		Once()
+
+	c, err := di.NewContainer(
+		di.Register(a,
+			di.As[testtypes.InterfaceA](),
+			di.WithCloser(),
+		),
+	)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	_ = di.MustResolve[testtypes.InterfaceA](ctx, c)
+
+	err = c.Close(ctx)
+	assert.NoError(t, err)
+}
+
+func TestWithCloseFunc(t *testing.T) {
+	a := mocks.NewInterfaceAMock(t)
+	calls := 0
+
+	c, err := di.NewContainer(
+		di.Register(
+			func() testtypes.InterfaceA { return a },
+			di.WithCloseFunc(func(ctx context.Context, a testtypes.InterfaceA) error {
+				calls++
+				return nil
+			}),
+		),
+	)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	_ = di.MustResolve[testtypes.InterfaceA](ctx, c)
+
+	err = c.Close(ctx)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, calls)
+}
+
 func TestResolveWithContext(t *testing.T) {
 	ctx := context.WithValue(context.Background(), "key", "value")
 
