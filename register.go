@@ -26,8 +26,8 @@ import (
 // Available options:
 //   - [Lifetime] is used to specify how services are created when resolved.
 //   - [As] registers an alias for a service.
-//   - [WithTag] specifies the tag associated with a service.
-//   - [WithDependencyTag] specifies a tag for a dependency when calling [Register].
+//   - [WithKey] specifies a key differentiate between services of the same type.
+//   - [WithKeyed] specifies a key for a service dependency.
 //   - [WithCloseFunc] specifies a function to be called when the service is closed.
 //   - [IgnoreCloser] specifies that the service should not be closed by the Container.
 //     Function services are closed by default if they implement [Closer] or a compatible function signature.

@@ -16,8 +16,8 @@ type service interface {
 	// AddAlias adds an alias for the service.
 	// The alias must be assignable to the service type.
 	AddAlias(alias reflect.Type) error
-	// Tag returns the tag of the service.
-	Tag() any
+	// Key returns the key of the service.
+	Key() any
 	// Dependencies returns the types of the services that this service depends on.
 	Dependencies() []serviceKey
 	// GetValue uses the dependencies to get an instance of the service.
@@ -26,26 +26,26 @@ type service interface {
 	GetCloser(val any) Closer
 
 	setLifetime(Lifetime)
-	setTag(any)
+	setKey(any)
 	setCloserFactory(closerFactory)
 }
 
 // ServiceOption can be used when calling [Container.Contains], [Container.Resolve], and [Resolve].
 //
 // Available options:
-//   - [WithTag]
+//   - [WithKey]
 type ServiceOption interface {
 	applyServiceKey(serviceKey) serviceKey
 }
 
 type serviceKey struct {
 	Type reflect.Type
-	Tag  any
+	Key  any
 }
 
 func (k serviceKey) String() string {
-	if k.Tag == nil {
+	if k.Key == nil {
 		return k.Type.String()
 	}
-	return fmt.Sprintf("%s (Tag %v)", k.Type, k.Tag)
+	return fmt.Sprintf("%s (Key %v)", k.Type, k.Key)
 }

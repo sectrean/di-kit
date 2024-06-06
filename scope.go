@@ -37,13 +37,13 @@ type Scope interface {
 	// Contains returns whether the Scope can resolve a service of the given type.
 	//
 	// Available options:
-	// 	- [WithTag] specifies the tag associated with the service.
+	// 	- [WithKey] specifies the key associated with the service.
 	Contains(t reflect.Type, opts ...ServiceOption) bool
 
 	// Resolve returns a service of the given type from the Scope.
 	//
 	// Available options:
-	// 	- [WithTag] specifies the tag associated with the service.
+	// 	- [WithKey] specifies the key associated with the service.
 	Resolve(ctx context.Context, t reflect.Type, opts ...ServiceOption) (any, error)
 }
 

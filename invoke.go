@@ -47,8 +47,8 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 	for i, dep := range config.deps {
 		var depVal any
 		var depErr error
-		if dep.Tag != nil {
-			depVal, depErr = s.Resolve(ctx, dep.Type, WithTag(dep.Tag))
+		if dep.Key != nil {
+			depVal, depErr = s.Resolve(ctx, dep.Type, WithKey(dep.Key))
 		} else {
 			depVal, depErr = s.Resolve(ctx, dep.Type)
 		}

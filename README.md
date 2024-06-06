@@ -108,22 +108,48 @@ c, err := di.NewContainer(
 )
 ```
 
-### Tags
+### Keyed Services
+
+Use `di.WithKey()` to differentiate between multiple services of the same type.
+Use `di.WithKeyed[T]()` when registering a dependent service to specify the key for a dependency.
+
+```go
+c, err := di.NewContainer(
+	di.Register(db.NewPrimaryDB, // NewPrimaryDB() (*db.DB, error)
+		di.WithKey(db.Primary),
+	),
+	di.Register(db.NewReplicaDB, // NewReplicaDB() (*db.DB, error)
+		di.WithKey(db.Replica),
+	),
+	di.Register(storage.NewReadWriteStore, // NewReadWriteStore(*db.DB) storage.*ReadWriteStore
+		di.WithKeyed[db.DB](db.Primary),
+	),
+	di.Register(storage.NewReadOnlyStore, // NewReadOnlyStore(*db.DB) storage.*ReadOnlyStore
+		di.WithKeyed[db.DB](db.Replica),
+	),
+)
+```
+
+Use `di.WithKey()` to specify a key when resolving a service directly from a container.
+
+```go
+primary, err := di.Resolve[db.DB](ctx, c, di.WithKey(db.Primary)) 
+```
 
 ### Lifetimes
 
-Three different lifetimes afor registered services:
+Lifetimes control how services are created:
 
 - **Singleton**: Only one instance of the service is created and reused every time it is resolved from the container. This is the default lifetime.
-- **Scoped**: A new instance of the service is created for each child scope of the container.
+- **Scoped**: A new instance of the service is created for each child scope of the container. See [Scopes](#scopes) for more information.
 - **Transient**: A new instance of the service is created every time it is resolved from the container.
 
 Specify a lifetime when registering a function for a service:
 
 ```go
 c, err := di.NewContainer(
-	di.Register(service.NewScopedService, di.Scoped)
-    di.Register(service.NewTransientService, di.Transient)
+	di.Register(service.NewScopedService, di.Scoped),
+	di.Register(service.NewTransientService, di.Transient),
 )
 ```
 
@@ -157,7 +183,7 @@ Scopes are useful...
 ```go
 c, err := di.NewContainer(
 	di.Register(logger),
-	di.Register(service.NewService)
+	di.Register(service.NewService),
 	di.Register(service.NewScopedService, di.Scoped),
 )
 ```
@@ -201,12 +227,11 @@ handler = scopeMiddleware(handler)
 
 # TODO
 
-- [ ] Track child scopes to make sure all child scopes have been closed. Use closerMu.
-- [ ] Implement feature to inject `di.Lazy[T any]` or `di.Future[T any]`
+- [ ] Track child scopes to make sure all child scopes have been closed.
 - [ ] Add support for "decorator" functions `func(T [, deps...]) T`
+- [ ] Get around dependency cycles by injecting `di.Lazy[T any]`
 - [ ] Implement additional Container options:
-	- [ ] Validate dependencies--make sure all types are resolvable, no cycles
+	- [ ] Validate dependencies--make sure all types are resolvable, no cycles?
+- [ ] Support for `Shutdown` functions like `Closer`?
 - [ ] Enable error stacktraces optionally?
 - [ ] Logging with `slog`?
-- [ ] Support for `Shutdown` functions like `Closer`?
-- [ ] Support injecting dependencies of the same type with different tags?

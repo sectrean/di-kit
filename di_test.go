@@ -191,22 +191,22 @@ func TestFuncServiceError(t *testing.T) {
 	assert.EqualError(t, err, "resolve testtypes.InterfaceA: constructor error")
 }
 
-func TestServicesWithTags(t *testing.T) {
+func TestServicesWithKeys(t *testing.T) {
 	a1 := &testtypes.StructA{}
 	a2 := &testtypes.StructA{}
 
 	c, err := di.NewContainer(
-		di.Register(func() testtypes.InterfaceA { return a1 }, di.WithTag("1")),
-		di.Register(func() testtypes.InterfaceA { return a2 }, di.WithTag("2")),
+		di.Register(func() testtypes.InterfaceA { return a1 }, di.WithKey("1")),
+		di.Register(func() testtypes.InterfaceA { return a2 }, di.WithKey("2")),
 	)
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	got1, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag("1"))
+	got1, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithKey("1"))
 	assert.Exactly(t, a1, got1)
 	assert.NoError(t, err)
 
-	got2, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag("2"))
+	got2, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithKey("2"))
 	assert.Exactly(t, a2, got2)
 	assert.NoError(t, err)
 
@@ -251,18 +251,18 @@ func TestSliceServices(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestServiceWithDependencyTags(t *testing.T) {
+func TestServiceWithKeys(t *testing.T) {
 	a1 := &testtypes.StructA{}
 
 	c, err := di.NewContainer(
-		di.Register(func() testtypes.InterfaceA { return a1 }, di.WithTag("B")),
+		di.Register(func() testtypes.InterfaceA { return a1 }, di.WithKey("B")),
 		di.Register(func() testtypes.InterfaceA { panic("shouldn't get called") }),
 		di.Register(
 			func(a testtypes.InterfaceA) testtypes.InterfaceB {
 				assert.Same(t, a1, a)
 				return &testtypes.StructB{}
 			},
-			di.WithDependencyTag[testtypes.InterfaceA]("B"),
+			di.WithKeyed[testtypes.InterfaceA]("B"),
 		),
 	)
 	require.NoError(t, err)

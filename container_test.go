@@ -83,7 +83,7 @@ func Test_NewContainer(t *testing.T) {
 		{
 			name: "no service, only options",
 			opts: []ContainerOption{
-				Register(Singleton, WithTag("tag")),
+				Register(Singleton, WithKey("key")),
 			},
 			wantErr: "new container: register di.Lifetime: unexpected RegisterOption as funcOrValue",
 		},
@@ -260,31 +260,31 @@ func Test_Container_Contains(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "type registered with tag",
+			name: "type registered with key",
 			config: testContainerConfig{
 				services: map[serviceKey]service{
-					{Type: InterfaceAType, Tag: "tag"}: &funcService{},
+					{Type: InterfaceAType, Key: "key"}: &funcService{},
 				},
 			},
 			args: args{
 				t: InterfaceAType,
 				opts: []ServiceOption{
-					WithTag("tag"),
+					WithKey("key"),
 				},
 			},
 			want: true,
 		},
 		{
-			name: "type not registered with tag",
+			name: "type not registered with key",
 			config: testContainerConfig{
 				services: map[serviceKey]service{
-					{Type: InterfaceAType, Tag: "tag"}: &funcService{},
+					{Type: InterfaceAType, Key: "key"}: &funcService{},
 				},
 			},
 			args: args{
 				t: InterfaceAType,
 				opts: []ServiceOption{
-					WithTag("other"),
+					WithKey("other"),
 				},
 			},
 			want: false,

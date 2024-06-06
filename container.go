@@ -103,7 +103,7 @@ func (c *Container) registerType(t reflect.Type, s service) {
 			c.services[sliceKey] = sliceSvc
 
 			// Add the existing service to the slice service
-			// and register a key with a unique tag
+			// and register a key with a unique key
 			c.services[sliceSvc.AddNewItem()] = existing
 		}
 
@@ -111,13 +111,13 @@ func (c *Container) registerType(t reflect.Type, s service) {
 		c.services[sliceSvc.AddNewItem()] = s
 	}
 
-	// Register the service with a tag
-	if s.Tag() != nil {
-		keyWithTag := serviceKey{
+	// Register the service with a key
+	if s.Key() != nil {
+		keyWithKey := serviceKey{
 			Type: s.Type(),
-			Tag:  s.Tag(),
+			Key:  s.Key(),
 		}
-		c.services[keyWithTag] = s
+		c.services[keyWithKey] = s
 	}
 
 	// The last service registered for a type will win
@@ -164,7 +164,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 // Contains returns true if the Container has a service registered for the given [reflect.Type].
 //
 // Available options:
-//   - [WithTag] specifies a tag associated with the service.
+//   - [WithKey] specifies a key associated with the service.
 func (c *Container) Contains(t reflect.Type, opts ...ServiceOption) bool {
 	key := serviceKey{Type: t}
 	for _, opt := range opts {
@@ -195,7 +195,7 @@ func (c *Container) root() *Container {
 // This will return an error if the Container has been closed.
 //
 // Available options:
-//   - [WithTag] specifies a tag associated with the service.
+//   - [WithKey] specifies a key associated with the service.
 func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...ServiceOption) (any, error) {
 	lock := c.closeMu.RLock()
 	defer c.closeMu.RUnlock(lock)

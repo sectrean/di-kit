@@ -9,7 +9,7 @@ import (
 type valueService struct {
 	t             reflect.Type
 	aliases       []reflect.Type
-	tag           any
+	key           any
 	val           any
 	closerFactory func(any) Closer
 }
@@ -67,12 +67,12 @@ func (s *valueService) setLifetime(Lifetime) {
 	// Values are always singletons.
 }
 
-func (s *valueService) Tag() any {
-	return s.tag
+func (s *valueService) Key() any {
+	return s.key
 }
 
-func (s *valueService) setTag(tag any) {
-	s.tag = tag
+func (s *valueService) setKey(key any) {
+	s.key = key
 }
 
 func (*valueService) Dependencies() []serviceKey {

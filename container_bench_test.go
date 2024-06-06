@@ -45,17 +45,17 @@ func BenchmarkContainer_Contains(b *testing.B) {
 	}
 }
 
-func BenchmarkContainer_Contains_WithTag(b *testing.B) {
+func BenchmarkContainer_Contains_WithKey(b *testing.B) {
 	c, err := di.NewContainer(
 		di.Register(&testtypes.StructA{}),
-		di.Register(&testtypes.StructA{}, di.WithTag("b")),
+		di.Register(&testtypes.StructA{}, di.WithKey("b")),
 	)
 	require.NoError(b, err)
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_ = c.Contains(di.InterfaceAType, di.WithTag("b"))
+		_ = c.Contains(di.InterfaceAType, di.WithKey("b"))
 	}
 }
 
