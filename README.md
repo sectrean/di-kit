@@ -103,7 +103,7 @@ c, err := di.NewContainer(
 	// ...
 	di.Register(service.NewService,	// returns *service.Service
 		di.As[service.Interface](),	// register as interface
-		di.As[*service.Service](),	// register as actual type
+		di.As[*service.Service](),	// also register as actual type
 	),
 )
 ```
@@ -136,6 +136,14 @@ Use `di.WithKey()` to specify a key when resolving a service directly from a con
 primary, err := di.Resolve[db.DB](ctx, c, di.WithKey(db.Primary)) 
 ```
 
+### Slice Services
+
+If you register multiple services of the same type, you can resolve a slice.
+
+- Inject slice
+- Variadic args
+- Use for things like Healthchecks
+
 ### Lifetimes
 
 Lifetimes control how services are created:
@@ -151,29 +159,6 @@ c, err := di.NewContainer(
 	di.Register(service.NewScopedService, di.Scoped),
 	di.Register(service.NewTransientService, di.Transient),
 )
-```
-
-### Slices of Services
-
-If you register multiple services of the same type, you can resolve a slice.
-
-- Inject slice
-- Variadic args
-- Use for things like Healthchecks
-
-### Context
-
-Use the `dicontext` package to attach a container to a `context.Context`.
-
-```go
-ctx = dicontext.WithScope(ctx, c)
-```
-
-Then the container can be retrieved from the context and used as a [service locator](https://en.wikipedia.org/wiki/Service_locator_pattern).
-
-```go
-// Resolve from the container on the context
-svc, err := dicontext.Resolve[*service.Service](ctx)
 ```
 
 ### Scopes
@@ -199,6 +184,21 @@ defer func() {
 	err := scope.Close(ctx)
 	//...
 }
+```
+
+### Context
+
+Use the `dicontext` package to attach a container to a `context.Context`.
+
+```go
+ctx = dicontext.WithScope(ctx, c)
+```
+
+Then the container can be retrieved from the context and used as a [service locator](https://en.wikipedia.org/wiki/Service_locator_pattern).
+
+```go
+// Resolve from the container on the context
+svc, err := dicontext.Resolve[*service.Service](ctx)
 ```
 
 ### HTTP Request Scope Middleware
@@ -227,11 +227,11 @@ handler = scopeMiddleware(handler)
 
 # TODO
 
-- [ ] Track child scopes to make sure all child scopes have been closed.
-- [ ] Add support for "decorator" functions `func(T [, deps...]) T`
-- [ ] Get around dependency cycles by injecting `di.Lazy[T any]`
-- [ ] Implement additional Container options:
-	- [ ] Validate dependencies--make sure all types are resolvable, no cycles?
-- [ ] Support for `Shutdown` functions like `Closer`?
-- [ ] Enable error stacktraces optionally?
-- [ ] Logging with `slog`?
+- Track child scopes to make sure all child scopes have been closed.
+- Add support for "decorator" functions `func(T [, deps...]) T`
+- Get around dependency cycles by injecting `di.Lazy[T any]`
+- Implement additional Container options:
+	- Validate dependencies--make sure all types are resolvable, no cycles?
+- Support for `Shutdown` functions like `Closer`?
+- Enable error stacktraces optionally?
+- Logging with `slog`?
