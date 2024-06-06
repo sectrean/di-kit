@@ -1,72 +1,53 @@
-di-kit
-======
+🧰 di-kit
+==========
 
 **di-kit** is a dependency injection toolkit for modern Go applications.
-It's designed to be simple-to-use, unobtrusive, flexible, and performant.
+It's designed to be easy-to-use, unobtrusive, flexible, and performant.
 
 ## Usage
 
+1. Create the `Container` and register *services* using values and constructor functions.
+2. Resolve *services* by type from the `Container`.
+3. Close the `Container` when you're done.
+
 ```go
-// Create the Container and register services using values and constructor functions.
+// 1. Create the Container and register services using values and constructor functions.
 c, err := di.NewContainer(
-	di.Register(logger),				// var logger *slog.Logger
-	di.Register(storage.NewStore),		// NewPostgresStore(context.Context) (storage.Store, error)
-	di.Register(service.NewService),	// NewService(*slog.Logger, storage.Store) *service.Service
+	di.Register(logger),             // var logger *slog.Logger
+	di.Register(storage.NewDBStore), // NewDBStore(context.Context) (storage.Store, error)
+	di.Register(service.NewService), // NewService(*slog.Logger, storage.Store) *service.Service
 )
 // ...
 
-// Close the Container when you're done
 defer func() {
+	// 3. Close the Container when you're done.
 	err := c.Close(ctx)
 	// ...
 }()
 
-// Resolve services by type from the Container
+// 2. Resolve services by type from the Container.
 svc, err := di.Resolve[*service.Service](ctx, c)
 // ...
-
-// Use your services
-svc.Run(ctx)
 ```
 
-## Features
+### Installation
 
-- Generics
-- Lifetimes - Singleton, Scoped, and Transient
-- Type aliases
-- Support for interfaces
-- Support for "closing" services
-- Support for `context.Context` as a parameter
-- Doesn't spread into your code
-- Support for injecting a slice of services
-- HTTP request scope middleware
+```shell
+go get github.com/johnrutherford/di-kit
+```
+*Requires Go 1.22+.*
 
-## Registering Services
+### Registering Services
 
 Use `di.Register()` to register services with either a value or a constructor function.
 
 The function may accept any number and type of arguments which must also be registered with the `Container`. The service will be registered as the function return type, and may also return an `error`.
 
-### Aliases
-
-Use the `di.As[T]()` option to register a service as the specified type.
-This can be used to register a service as as an interface. The alias type must be assignable to the service type.
-
-```go
-c, err := di.NewContainer(
-	// ...
-	di.Register(service.NewService,	// returns *service.Service
-		di.As[service.Interface](),	// register as interface
-		di.As[*service.Service](),	// register as actual type
-	),
-)
-```
-
-## Resolving Services
+### Resolving Services
 
 
 
-## Closing Services
+### Closing Services
 
 Services often need to do some clean up when they're done being used.
 The `Container` can be responsible for closing services when the `Container` is closed.
@@ -110,9 +91,28 @@ c, err := di.NewContainer(
 
 Value services are not closed by default since they are not created by the Container. If you want to have the Container close the value service, use the `di.WithCloser()` option to call a supported `Close` method. Or use the `di.WithCloseFunc()` option to specify a custom close function.
 
-## Lifetimes
+## Features
 
-DI-Kit supports three different lifetimes for registered services:
+### Aliases
+
+Use the `di.As[T]()` option to register a service as the specified type.
+This can be used to register a service as as an interface. The alias type must be assignable to the service type.
+
+```go
+c, err := di.NewContainer(
+	// ...
+	di.Register(service.NewService,	// returns *service.Service
+		di.As[service.Interface](),	// register as interface
+		di.As[*service.Service](),	// register as actual type
+	),
+)
+```
+
+### Tags
+
+### Lifetimes
+
+Three different lifetimes afor registered services:
 
 - **Singleton**: Only one instance of the service is created and reused every time it is resolved from the container. This is the default lifetime.
 - **Scoped**: A new instance of the service is created for each child scope of the container.
@@ -122,12 +122,12 @@ Specify a lifetime when registering a function for a service:
 
 ```go
 c, err := di.NewContainer(
-	di.Register(NewRequestService, di.Scoped)
-    di.Register(NewUserStore, di.Transient)
+	di.Register(service.NewScopedService, di.Scoped)
+    di.Register(service.NewTransientService, di.Transient)
 )
 ```
 
-## Slices of Services
+### Slices of Services
 
 If you register multiple services of the same type, you can resolve a slice.
 
@@ -135,7 +135,7 @@ If you register multiple services of the same type, you can resolve a slice.
 - Variadic args
 - Use for things like Healthchecks
 
-## Context
+### Context
 
 Use the `dicontext` package to attach a container to a `context.Context`.
 
@@ -150,7 +150,7 @@ Then the container can be retrieved from the context and used as a [service loca
 svc, err := dicontext.Resolve[*service.Service](ctx)
 ```
 
-## Scopes
+### Scopes
 
 Scopes are useful...
 
@@ -175,7 +175,7 @@ defer func() {
 }
 ```
 
-## HTTP Request Scope Middleware
+### HTTP Request Scope Middleware
 
 The `dihttp` package has configurable HTTP middleware to create a new child scope for each request.
 
@@ -198,7 +198,6 @@ handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 })
 handler = scopeMiddleware(handler)
 ```
-
 
 # TODO
 
