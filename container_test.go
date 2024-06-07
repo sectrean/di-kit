@@ -87,6 +87,13 @@ func Test_NewContainer(t *testing.T) {
 			},
 			wantErr: "new container: register di.Lifetime: unexpected RegisterOption as funcOrValue",
 		},
+		{
+			name: "WithKeyed with dep not found",
+			opts: []ContainerOption{
+				Register(testtypes.NewInterfaceA, WithKeyed[testtypes.InterfaceB]("key")),
+			},
+			wantErr: "new container: register func() testtypes.InterfaceA: with keyed testtypes.InterfaceB: argument not found",
+		},
 	}
 
 	for _, tt := range tests {

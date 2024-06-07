@@ -196,21 +196,20 @@ func BenchmarkContainer_Resolve_Scopes(b *testing.B) {
 		})
 	})
 
-	// b.Run("close child scope", func(b *testing.B) {
-	// 	b.StopTimer()
-	// 	ctx := context.Background()
-	// 	scopes := newChildScopes(b)
+	b.Run("close child scope", func(b *testing.B) {
+		ctx := context.Background()
+		scopes := newChildScopes(b)
 
-	// 	for i := 0; i < b.N; i++ {
-	// 		_, _ = di.Resolve[testtypes.InterfaceA](ctx, scopes[i])
-	// 	}
+		b.ResetTimer()
 
-	// 	b.StartTimer()
+		for i := 0; i < b.N; i++ {
+			b.StopTimer()
+			_, _ = di.Resolve[testtypes.InterfaceA](ctx, scopes[i])
+			b.StartTimer()
 
-	// 	for i := 0; i < b.N; i++ {
-	// 		_ = scopes[i].Close(ctx)
-	// 	}
-	// })
+			_ = scopes[i].Close(ctx)
+		}
+	})
 }
 
 func BenchmarkContainer_Resolve_OneFunc_Transient(b *testing.B) {

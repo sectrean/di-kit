@@ -21,6 +21,8 @@ func WithKey(key any) ServiceKeyOption {
 // WithKeyed is used to specify a key for a dependency when calling
 // [Register] or [Invoke].
 //
+// This option can be used multiple times to specify keys for function service dependencies.
+//
 // Example:
 //
 //	c, err := di.NewContainer(
@@ -77,14 +79,15 @@ type depKeyOption struct {
 }
 
 func (o depKeyOption) applyDeps(deps []serviceKey) error {
-	// TODO: Support multiple dependencies of the same type with different keys
 	for i := 0; i < len(deps); i++ {
-		if deps[i].Type == o.t {
+		// Find a dependency with the right type
+		// Skip past any that have already been assigned a key
+		if deps[i].Type == o.t && deps[i].Key == nil {
 			deps[i].Key = o.key
 			return nil
 		}
 	}
-	return errors.Errorf("dependency %s not found", o.t)
+	return errors.Errorf("with keyed %s: argument not found", o.t)
 }
 
 func (o depKeyOption) applyInvokeConfig(c *invokeConfig) error {
@@ -92,13 +95,12 @@ func (o depKeyOption) applyInvokeConfig(c *invokeConfig) error {
 }
 
 func (o depKeyOption) applyService(s service) error {
-	fs, ok := s.(*funcService)
-	if !ok {
-		// Option will be ignored
-		return nil
+	// This option only applies to function services
+	if fs, ok := s.(*funcService); ok {
+		return o.applyDeps(fs.deps)
 	}
 
-	return o.applyDeps(fs.deps)
+	return nil
 }
 
 var _ DependencyKeyOption = depKeyOption{}

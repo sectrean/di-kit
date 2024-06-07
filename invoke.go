@@ -34,7 +34,7 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 	var errs errors.MultiError
 	for _, opt := range opts {
 		err := opt.applyInvokeConfig(&config)
-		errs = append(errs, err)
+		errs = errs.Append(err)
 	}
 
 	if len(errs) > 0 {

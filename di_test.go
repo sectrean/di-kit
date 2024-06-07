@@ -198,6 +198,12 @@ func TestServicesWithKeys(t *testing.T) {
 	c, err := di.NewContainer(
 		di.Register(func() testtypes.InterfaceA { return a1 }, di.WithKey("1")),
 		di.Register(func() testtypes.InterfaceA { return a2 }, di.WithKey("2")),
+		di.Register(func(aa1 testtypes.InterfaceA, aa2 testtypes.InterfaceA) testtypes.InterfaceB {
+			assert.Same(t, a1, aa1)
+			assert.Same(t, a2, aa2)
+			return &testtypes.StructB{}
+		}),
+		di.Register(testtypes.NewInterfaceC, di.WithKeyed[testtypes.InterfaceA]("blah")),
 	)
 	require.NoError(t, err)
 
