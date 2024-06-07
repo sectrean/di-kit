@@ -30,7 +30,9 @@ svc, err := di.Resolve[*service.Service](ctx, c)
 // ...
 ```
 
-### Installation
+## Getting Started
+
+### Install
 
 ```shell
 go get github.com/johnrutherford/di-kit
@@ -115,17 +117,17 @@ Use `di.WithKeyed[T]()` when registering a dependent service to specify the key 
 
 ```go
 c, err := di.NewContainer(
-	di.Register(db.NewPrimaryDB, // NewPrimaryDB() (*db.DB, error)
+	di.Register(db.NewPrimaryDB, // NewPrimaryDB(context.Context) (*db.DB, error)
 		di.WithKey(db.Primary),
 	),
-	di.Register(db.NewReplicaDB, // NewReplicaDB() (*db.DB, error)
+	di.Register(db.NewReplicaDB, // NewReplicaDB(context.Context) (*db.DB, error)
 		di.WithKey(db.Replica),
 	),
-	di.Register(storage.NewReadWriteStore, // NewReadWriteStore(*db.DB) storage.*ReadWriteStore
-		di.WithKeyed[db.DB](db.Primary),
+	di.Register(storage.NewReadWriteStore, // NewReadWriteStore(*db.DB) *ReadWriteStore
+		di.WithKeyed[*db.DB](db.Primary),
 	),
-	di.Register(storage.NewReadOnlyStore, // NewReadOnlyStore(*db.DB) storage.*ReadOnlyStore
-		di.WithKeyed[db.DB](db.Replica),
+	di.Register(storage.NewReadOnlyStore, // NewReadOnlyStore(*db.DB) *ReadOnlyStore
+		di.WithKeyed[*db.DB](db.Replica),
 	),
 )
 ```
@@ -133,7 +135,7 @@ c, err := di.NewContainer(
 Use `di.WithKey()` to specify a key when resolving a service directly from a container.
 
 ```go
-primary, err := di.Resolve[db.DB](ctx, c, di.WithKey(db.Primary)) 
+primary, err := di.Resolve[*db.DB](ctx, c, di.WithKey(db.Primary)) 
 ```
 
 ### Slice Services
@@ -146,13 +148,13 @@ If you register multiple services of the same type, you can resolve a slice.
 
 ### Lifetimes
 
-Lifetimes control how services are created:
+Lifetimes control how function services are created:
 
-- **Singleton**: Only one instance of the service is created and reused every time it is resolved from the container. This is the default lifetime.
-- **Scoped**: A new instance of the service is created for each child scope of the container. See [Scopes](#scopes) for more information.
-- **Transient**: A new instance of the service is created every time it is resolved from the container.
+- `Singleton`: Only one instance of the service is created and reused every time it is resolved from the container. This is the default lifetime.
+- `Scoped`: A new instance of the service is created for each child scope of the container. See [Scopes](#scopes) for more information.
+- `Transient`: A new instance of the service is created every time it is resolved from the container.
 
-Specify a lifetime when registering a function for a service:
+Specify a lifetime when registering a function service:
 
 ```go
 c, err := di.NewContainer(
@@ -186,29 +188,30 @@ defer func() {
 }
 ```
 
-### Context
+## `dicontext`
 
-Use the `dicontext` package to attach a container to a `context.Context`.
+This package allows you to add a container scope to a `context.Context`.
+Then the scope can be retrieved from the context and used as a [service locator](https://en.wikipedia.org/wiki/Service_locator_pattern).
 
 ```go
+// Add container scope to context
 ctx = dicontext.WithScope(ctx, c)
 ```
 
-Then the container can be retrieved from the context and used as a [service locator](https://en.wikipedia.org/wiki/Service_locator_pattern).
-
 ```go
-// Resolve from the container on the context
+// Resolve from the scope on the context
 svc, err := dicontext.Resolve[*service.Service](ctx)
 ```
 
-### HTTP Request Scope Middleware
+## `dihttp`
 
-The `dihttp` package has configurable HTTP middleware to create a new child scope for each request.
+The `dihttp` package provides configurable HTTP middleware to create new child scopes for each request.
 
 ```go
 c, err := di.NewContainer(
 	di.Register(logger),
-	di.Register(service.NewRequestService, di.Scoped), // NewRequestService(*slog.Logger, *http.Request) *RequestService
+	// NewRequestService(*slog.Logger, *http.Request) *service.RequestService
+	di.Register(service.NewRequestService, di.Scoped),
 )
 // ...
 
@@ -218,14 +221,13 @@ var handler http.Handler
 handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	// Access the scope from the request context
 	ctx := r.Context()
-	scope := dicontext.Scope(ctx)
 	svc, err := dicontext.Resolve[*service.RequestService](ctx)
 	//...
 })
 handler = scopeMiddleware(handler)
 ```
 
-# TODO
+## TODO
 
 - Track child scopes to make sure all child scopes have been closed.
 - Add support for "decorator" functions `func(T [, deps...]) T`
