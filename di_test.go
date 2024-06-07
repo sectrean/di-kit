@@ -378,6 +378,15 @@ func TestWithCloseFunc(t *testing.T) {
 	assert.Equal(t, 1, calls)
 }
 
+func TestResolveWithEmptyContainer(t *testing.T) {
+	c, err := di.NewContainer()
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	_, err = di.Resolve[testtypes.InterfaceA](ctx, c)
+	assert.ErrorIs(t, err, di.ErrTypeNotRegistered)
+}
+
 func TestResolveWithContext(t *testing.T) {
 	ctx := context.WithValue(context.Background(), "key", "value")
 

@@ -15,7 +15,6 @@ import (
 //   - [Register] registers a service with a value or a function.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
-		services: nil,
 		resolved: xsync.NewMapOf[service, *resolveFuture](),
 		closeMu:  xsync.NewRBMutex(),
 	}
