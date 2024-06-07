@@ -2,13 +2,13 @@
 ==========
 
 **di-kit** is a dependency injection toolkit for modern Go applications.
-It's designed to be easy-to-use, unobtrusive, flexible, and performant.
+It's designed to be easy-to-use, lightweight, and full-featured.
 
 ## Usage
 
-1. Create the `Container` and register *services* using values and constructor functions.
-2. Resolve *services* by type from the `Container`.
-3. Close the `Container` when you're done.
+1. Create the `Container` and register services using values and constructor functions.
+2. Resolve services by type from the `Container`.
+3. Close the `Container` when you're done. This will also close services.
 
 ```go
 // 1. Create the Container and register services using values and constructor functions.
@@ -20,7 +20,7 @@ c, err := di.NewContainer(
 // ...
 
 defer func() {
-	// 3. Close the Container when you're done.
+	// 3. Close the Container when you're done. This will also close services.
 	err := c.Close(ctx)
 	// ...
 }()
