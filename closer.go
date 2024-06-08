@@ -24,6 +24,7 @@ import (
 //   - [WithCloser]
 //   - [WithCloseFunc]
 type Closer interface {
+	// Close is used to clean up resources when the service is no longer needed.
 	Close(ctx context.Context) error
 }
 
@@ -77,12 +78,12 @@ type closeFuncOption[T any] struct {
 }
 
 func (o closeFuncOption[T]) applyService(s service) error {
+	optType := reflect.TypeFor[T]()
 	svcType := s.Type()
-	closerType := reflect.TypeFor[T]()
 
-	if !svcType.AssignableTo(closerType) {
-		return errors.Errorf("service type %s is not assignable to close func type %s",
-			svcType, closerType)
+	if !svcType.AssignableTo(optType) {
+		return errors.Errorf("with close func %s: service type %s is not assignable",
+			optType, svcType)
 	}
 
 	s.setCloserFactory(func(val any) Closer {

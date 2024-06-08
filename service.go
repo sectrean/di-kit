@@ -49,3 +49,26 @@ func (k serviceKey) String() string {
 	}
 	return fmt.Sprintf("%s (Key %v)", k.Type, k.Key)
 }
+
+type servicePromise struct {
+	val  any
+	err  error
+	done chan struct{}
+}
+
+func newServicePromise() *servicePromise {
+	return &servicePromise{
+		done: make(chan struct{}),
+	}
+}
+
+func (f *servicePromise) setResult(val any, err error) {
+	f.val = val
+	f.err = err
+	close(f.done)
+}
+
+func (f *servicePromise) Result() (any, error) {
+	<-f.done
+	return f.val, f.err
+}

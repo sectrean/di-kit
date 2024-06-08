@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/puzpuzpuz/xsync/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -194,7 +193,7 @@ func Test_Container_NewScope(t *testing.T) {
 type testContainerConfig struct {
 	parent   *Container
 	services map[serviceKey]service
-	resolved map[serviceKey]*resolveFuture
+	resolved map[serviceKey]*servicePromise
 	closers  []Closer
 	closed   bool
 	setup    func(t *testing.T, c *testContainerConfig)
@@ -205,17 +204,17 @@ func newTestContainer(t *testing.T, config testContainerConfig) *Container {
 		config.services = map[serviceKey]service{}
 	}
 	if config.resolved == nil {
-		config.resolved = map[serviceKey]*resolveFuture{}
+		config.resolved = map[serviceKey]*servicePromise{}
 	}
 
 	if config.setup != nil {
 		config.setup(t, &config)
 	}
 
-	resolved := xsync.NewMapOfPresized[service, *resolveFuture](len(config.resolved))
+	resolved := make(map[service]*servicePromise, len(config.resolved))
 	for k, v := range config.resolved {
 		svc := config.services[k]
-		resolved.Store(svc, v)
+		resolved[svc] = v
 	}
 
 	c := &Container{
@@ -223,7 +222,6 @@ func newTestContainer(t *testing.T, config testContainerConfig) *Container {
 		services: config.services,
 		resolved: resolved,
 		closers:  config.closers,
-		closeMu:  xsync.NewRBMutex(),
 		closed:   config.closed,
 	}
 
@@ -413,8 +411,8 @@ func Test_Container_Resolve(t *testing.T) {
 			args: args{
 				t: reflect.TypeFor[testtypes.InterfaceA](),
 			},
-			wantErr: "resolve testtypes.InterfaceA: resolve dependency testtypes.InterfaceB: " +
-				"resolve dependency testtypes.InterfaceA: dependency cycle detected",
+			wantErr: "resolve testtypes.InterfaceA: dependency testtypes.InterfaceB: " +
+				"dependency testtypes.InterfaceA: dependency cycle detected",
 			wantErrIs: ErrDependencyCycle,
 		},
 		{
@@ -524,7 +522,7 @@ func Test_Container_Close(t *testing.T) {
 				closed: true,
 			},
 			ctx:     context.Background(),
-			wantErr: "already closed: container closed",
+			wantErr: "close: already closed: container closed",
 		},
 		{
 			name:   "no closers",

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"reflect"
-	"sync/atomic"
 
 	"github.com/johnrutherford/di-kit/internal/errors"
 )
@@ -73,10 +72,10 @@ func MustResolve[T any](ctx context.Context, s Scope, opts ...ServiceOption) T {
 	return val
 }
 
-func newInjectedScope(key serviceKey, s Scope) (*injectedScope, func()) {
+func newInjectedScope(s Scope, key serviceKey) (*injectedScope, func()) {
 	wrapper := &injectedScope{
-		key:   key,
 		scope: s,
+		key:   key,
 	}
 
 	return wrapper, wrapper.setReady
@@ -84,14 +83,14 @@ func newInjectedScope(key serviceKey, s Scope) (*injectedScope, func()) {
 
 // injectedScope wraps a Container to be injected as a Scope dependency.
 type injectedScope struct {
+	scope Scope
 	// key is the service the Scope is getting injected into
 	key   serviceKey
-	scope Scope
-	ready atomic.Bool
+	ready bool
 }
 
 func (s *injectedScope) setReady() {
-	s.ready.Store(true)
+	s.ready = true
 }
 
 func (s *injectedScope) Contains(t reflect.Type, opts ...ServiceOption) bool {
@@ -103,12 +102,14 @@ func (s *injectedScope) Resolve(
 	t reflect.Type,
 	opts ...ServiceOption,
 ) (any, error) {
-	if !s.ready.Load() {
+	if !s.ready {
 		return nil, errors.Errorf(
 			"resolve %v: "+
-				"resolve not supported on di.Scope while resolving %s: "+
+				"resolve not supported on %s while resolving %s: "+
 				"the scope must be stored and used later",
-			t, s.key,
+			t,
+			scopeType,
+			s.key,
 		)
 	}
 

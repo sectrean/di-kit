@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/johnrutherford/di-kit/internal/errors"
-	"github.com/puzpuzpuz/xsync/v3"
 )
 
 // NewContainer creates a new Container with the provided options.
@@ -15,8 +14,8 @@ import (
 //   - [Register] registers a service with a value or a function.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
-		resolved: xsync.NewMapOf[service, *resolveFuture](),
-		closeMu:  xsync.NewRBMutex(),
+		services: make(map[serviceKey]service),
+		resolved: make(map[service]*servicePromise),
 	}
 
 	// Apply options
@@ -39,49 +38,33 @@ type Container struct {
 	parent   *Container
 	services map[serviceKey]service
 
-	resolved *xsync.MapOf[service, *resolveFuture]
+	resolvedMu sync.Mutex
+	resolved   map[service]*servicePromise
 
 	closersMu sync.Mutex
 	closers   []Closer
 
-	closeMu *xsync.RBMutex
-	closed  bool
+	closedMu sync.RWMutex
+	closed   bool
 }
-
-var (
-	// ErrTypeNotRegistered is returned when a type is not registered.
-	ErrTypeNotRegistered = errors.New("type not registered")
-
-	// ErrDependencyCycle is returned when a dependency cycle is detected.
-	ErrDependencyCycle = errors.New("dependency cycle detected")
-
-	// ErrContainerClosed is returned when the container is closed.
-	ErrContainerClosed = errors.New("container closed")
-)
 
 var _ Scope = (*Container)(nil)
 
 // Register registers the provided service.
 func (c *Container) register(s service) {
-	c.initServices()
+	if c.parent != nil && len(c.parent.services) == len(c.services) {
+		// Copy the parent's services map because we don't want to modify it
+		c.services = make(map[serviceKey]service, len(c.parent.services))
+		for k, v := range c.parent.services {
+			c.services[k] = v
+		}
+	}
 
 	if len(s.Aliases()) == 0 {
 		c.registerType(s.Type(), s)
 	} else {
 		for _, alias := range s.Aliases() {
 			c.registerType(alias, s)
-		}
-	}
-}
-
-func (c *Container) initServices() {
-	if c.services == nil {
-		c.services = make(map[serviceKey]service)
-	} else if c.parent != nil && len(c.parent.services) == len(c.services) {
-		// Copy the parent's services to avoid modifying it
-		c.services = make(map[serviceKey]service, len(c.parent.services))
-		for k, v := range c.parent.services {
-			c.services[k] = v
 		}
 	}
 }
@@ -132,8 +115,8 @@ func (c *Container) registerType(t reflect.Type, s service) {
 // Available options:
 //   - [Register] registers a service with a value or a function.
 func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
-	lock := c.closeMu.RLock()
-	defer c.closeMu.RUnlock(lock)
+	c.closedMu.RLock()
+	defer c.closedMu.RUnlock()
 
 	if c.closed {
 		return nil, errors.Wrap(ErrContainerClosed, "new scope")
@@ -142,8 +125,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 	scope := &Container{
 		parent:   c,
 		services: c.services,
-		resolved: xsync.NewMapOf[service, *resolveFuture](),
-		closeMu:  xsync.NewRBMutex(),
+		resolved: make(map[service]*servicePromise),
 	}
 
 	// Apply options
@@ -188,7 +170,7 @@ func (c *Container) root() *Container {
 	return c.parent.root()
 }
 
-// Resolve returns a service for the given [reflect.Type].
+// Resolve a service of the given [reflect.Type].
 //
 // The type must be registered with the Container.
 // This will return an error if the Container has been closed.
@@ -196,8 +178,8 @@ func (c *Container) root() *Container {
 // Available options:
 //   - [WithKey] specifies a key associated with the service.
 func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...ServiceOption) (any, error) {
-	lock := c.closeMu.RLock()
-	defer c.closeMu.RUnlock(lock)
+	c.closedMu.RLock()
+	defer c.closedMu.RUnlock()
 
 	if c.closed {
 		return nil, errors.Wrapf(ErrContainerClosed, "resolve %s", t)
@@ -236,29 +218,39 @@ func (c *Container) resolve(
 	}
 	defer visitor.Leave(key)
 
-	// For Singleton or Scoped services, we store the result
-	// in a future to prevent multiple calls to the service.
+	// For Singleton or Scoped services, we store a promise for each service.
+	// The first request for a service will create the promise and then
+	// continue to resolve the service and set the result.
+	// Subsequent requests will just wait on the promise.
 	if svc.Lifetime() != Transient {
-		fut, loaded := scope.resolved.LoadOrCompute(svc, newFuture)
+		scope.resolvedMu.Lock()
+
+		promise, loaded := scope.resolved[svc]
+		if !loaded {
+			promise = newServicePromise()
+			scope.resolved[svc] = promise
+		}
+
+		scope.resolvedMu.Unlock()
+
 		if loaded {
 			// This will block until the value and error are set
 			// by the first goroutine to resolve this service.
-			return fut.Result()
+			return promise.Result()
 		}
 
 		defer func() {
 			// Set the result when this function returns
-			fut.setResult(val, err)
+			promise.setResult(val, err)
 		}()
 	}
 
 	// Recursively resolve dependencies
-	var depValues []reflect.Value
+	var deps []reflect.Value
 	if len(svc.Dependencies()) > 0 {
-		depValues = make([]reflect.Value, len(svc.Dependencies()))
+		deps = make([]reflect.Value, len(svc.Dependencies()))
 		for i, depKey := range svc.Dependencies() {
 			var depVal any
-			var depErr error
 
 			switch depKey.Type {
 			case contextType:
@@ -267,21 +259,23 @@ func (c *Container) resolve(
 
 			case scopeType:
 				// We wrap the scope to prevent Resolve from being called on it
-				// until we finish resolving this service
+				// until we finish resolving this service. Otherwise it could
+				// cause a deadlock.
 				var ready func()
-				depVal, ready = newInjectedScope(key, scope)
+				depVal, ready = newInjectedScope(scope, key)
 				defer ready()
 
 			default:
+				var depErr error
 				// Recursive call
 				depVal, depErr = scope.resolve(ctx, depKey, visitor)
+				if depErr != nil {
+					// Stop at the first error
+					return depVal, errors.Wrapf(depErr, "dependency %s", depKey)
+				}
 			}
 
-			if depErr != nil {
-				// Stop at the first error
-				return depVal, errors.Wrapf(depErr, "resolve dependency %s", depKey)
-			}
-			depValues[i] = reflect.ValueOf(depVal)
+			deps[i] = reflect.ValueOf(depVal)
 		}
 	}
 
@@ -290,35 +284,31 @@ func (c *Container) resolve(
 		return nil, ctx.Err()
 	}
 
-	// Create the instance
-	val, err = svc.GetValue(depValues)
+	// Create the service
+	val, err = svc.GetValue(deps)
 
 	// Add Closer for the service
 	if closer := svc.GetCloser(val); closer != nil {
-		scope.appendCloser(closer)
+		scope.closersMu.Lock()
+		scope.closers = append(scope.closers, closer)
+		scope.closersMu.Unlock()
 	}
 
 	return val, err
 }
 
-func (c *Container) appendCloser(closer Closer) {
-	c.closersMu.Lock()
-	c.closers = append(c.closers, closer)
-	c.closersMu.Unlock()
-}
-
-// Close closes the Container and all of its services.
+// Close the Container and resolved services.
 //
 // Services are closed in the reverse order they were resolved/created.
 // Errors returned from closing services are joined together.
 //
 // Close will return an error if called more than once.
 func (c *Container) Close(ctx context.Context) error {
-	c.closeMu.Lock()
-	defer c.closeMu.Unlock()
+	c.closedMu.Lock()
+	defer c.closedMu.Unlock()
 
 	if c.closed {
-		return errors.Wrap(ErrContainerClosed, "already closed")
+		return errors.Wrap(ErrContainerClosed, "close: already closed")
 	}
 	c.closed = true
 
@@ -332,35 +322,22 @@ func (c *Container) Close(ctx context.Context) error {
 	return errs.Wrap("close container")
 }
 
-// Common types
 var (
+	// ErrTypeNotRegistered is returned when a type is not registered.
+	ErrTypeNotRegistered = errors.New("type not registered")
+
+	// ErrDependencyCycle is returned when a dependency cycle is detected.
+	ErrDependencyCycle = errors.New("dependency cycle detected")
+
+	// ErrContainerClosed is returned when the container is closed.
+	ErrContainerClosed = errors.New("container closed")
+
+	// Common types
+
 	errorType   = reflect.TypeFor[error]()
 	contextType = reflect.TypeFor[context.Context]()
 	scopeType   = reflect.TypeFor[Scope]()
 )
-
-type resolveFuture struct {
-	val  any
-	err  error
-	done chan struct{}
-}
-
-func newFuture() *resolveFuture {
-	return &resolveFuture{
-		done: make(chan struct{}),
-	}
-}
-
-func (f *resolveFuture) setResult(val any, err error) {
-	f.val = val
-	f.err = err
-	close(f.done)
-}
-
-func (f *resolveFuture) Result() (any, error) {
-	<-f.done
-	return f.val, f.err
-}
 
 type resolveVisitor map[serviceKey]struct{}
 
