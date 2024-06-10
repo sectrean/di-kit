@@ -105,46 +105,35 @@ func BenchmarkContainer_Resolve_OneFunc_Singleton(b *testing.B) {
 }
 
 func BenchmarkContainer_Resolve_Scopes(b *testing.B) {
-	parent, err := di.NewContainer(
-		di.Register(testtypes.NewInterfaceA, di.Singleton),
-		di.Register(testtypes.NewInterfaceB, di.Scoped),
-	)
-	require.NoError(b, err)
-
-	var newChildScope = func(b *testing.B) *di.Container {
-		scope, err := parent.NewScope()
+	var newParent = func(b *testing.B) *di.Container {
+		parent, err := di.NewContainer(
+			di.Register(testtypes.NewInterfaceA, di.Singleton),
+			di.Register(testtypes.NewInterfaceB, di.Scoped),
+		)
 		require.NoError(b, err)
-		return scope
+		return parent
 	}
 
-	var newChildScopes = func(b *testing.B) []*di.Container {
+	var newChildScopes = func(b *testing.B, parent *di.Container) []*di.Container {
 		scopes := make([]*di.Container, b.N)
 		for i := 0; i < b.N; i++ {
-			scopes[i], err = parent.NewScope()
-			require.NoError(b, err)
+			scopes[i], _ = parent.NewScope()
 		}
 		return scopes
 	}
 
 	b.Run("create child scope", func(b *testing.B) {
+		parent := newParent(b)
+
 		for i := 0; i < b.N; i++ {
 			_, _ = parent.NewScope()
 		}
 	})
 
-	b.Run("resolve singleton first time", func(b *testing.B) {
-		ctx := context.Background()
-		scopes := newChildScopes(b)
-		b.ResetTimer()
-
-		for i := 0; i < b.N; i++ {
-			_, _ = di.Resolve[testtypes.InterfaceA](ctx, scopes[i])
-		}
-	})
-
 	b.Run("resolve singleton", func(b *testing.B) {
 		ctx := context.Background()
-		scope := newChildScope(b)
+		parent := newParent(b)
+		scope, _ := parent.NewScope()
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
@@ -154,7 +143,8 @@ func BenchmarkContainer_Resolve_Scopes(b *testing.B) {
 
 	b.Run("resolve singleton parallel", func(b *testing.B) {
 		ctx := context.Background()
-		scope := newChildScope(b)
+		parent := newParent(b)
+		scope, _ := parent.NewScope()
 		b.ResetTimer()
 
 		b.RunParallel(func(pb *testing.PB) {
@@ -166,7 +156,9 @@ func BenchmarkContainer_Resolve_Scopes(b *testing.B) {
 
 	b.Run("resolve scoped first time", func(b *testing.B) {
 		ctx := context.Background()
-		scopes := newChildScopes(b)
+		parent := newParent(b)
+		_, _ = di.Resolve[testtypes.InterfaceA](ctx, parent)
+		scopes := newChildScopes(b, parent)
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
@@ -176,7 +168,8 @@ func BenchmarkContainer_Resolve_Scopes(b *testing.B) {
 
 	b.Run("resolve scoped", func(b *testing.B) {
 		ctx := context.Background()
-		scope := newChildScope(b)
+		parent := newParent(b)
+		scope, _ := parent.NewScope()
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
@@ -186,7 +179,8 @@ func BenchmarkContainer_Resolve_Scopes(b *testing.B) {
 
 	b.Run("resolve scoped parallel", func(b *testing.B) {
 		ctx := context.Background()
-		scope := newChildScope(b)
+		parent := newParent(b)
+		scope, _ := parent.NewScope()
 		b.ResetTimer()
 
 		b.RunParallel(func(pb *testing.PB) {
@@ -197,14 +191,16 @@ func BenchmarkContainer_Resolve_Scopes(b *testing.B) {
 	})
 
 	b.Run("close child scope", func(b *testing.B) {
+		b.StopTimer()
 		ctx := context.Background()
-		scopes := newChildScopes(b)
-
+		parent := newParent(b)
+		_, _ = di.Resolve[testtypes.InterfaceA](ctx, parent)
+		scopes := newChildScopes(b, parent)
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
 			b.StopTimer()
-			_, _ = di.Resolve[testtypes.InterfaceA](ctx, scopes[i])
+			_, _ = di.Resolve[testtypes.InterfaceB](ctx, scopes[i])
 			b.StartTimer()
 
 			_ = scopes[i].Close(ctx)
