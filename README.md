@@ -6,9 +6,9 @@ It's designed to be easy-to-use, lightweight, and full-featured.
 
 ## Usage
 
-1. Create the `Container` and register services using values and constructor functions.
-2. Resolve services by type from the `Container`.
-3. Close the `Container` when you're done. This will also close services.
+1. Create the `Container` and register *services* using values and constructor functions.
+2. Resolve your *services* by type from the `Container`.
+3. Close the `Container` and *services* when you're done.
 
 ```go
 // 1. Create the Container and register services using values and constructor functions.
@@ -20,7 +20,7 @@ c, err := di.NewContainer(
 // ...
 
 defer func() {
-	// 3. Close the Container when you're done. This will also close services.
+	// 3. Close the Container and services when you're done.
 	err := c.Close(ctx)
 	// ...
 }()
@@ -95,6 +95,11 @@ Value services are not closed by default since they are not created by the Conta
 
 ## Features
 
+- Automatically close services
+- Concurrency-safe
+- Fast
+- Minimal dependencies
+
 ### Aliases
 
 Use the `di.As[T]()` option to register a service as the specified type.
@@ -112,7 +117,8 @@ c, err := di.NewContainer(
 
 ### Keyed Services
 
-Use `di.WithKey()` to differentiate between multiple services of the same type.
+Use `di.WithKey()` when registering a service to differentiate between different services of the same type.
+
 Use `di.WithKeyed[T]()` when registering a dependent service to specify the key for a dependency.
 
 ```go
@@ -123,10 +129,10 @@ c, err := di.NewContainer(
 	di.Register(db.NewReplicaDB, // NewReplicaDB(context.Context) (*db.DB, error)
 		di.WithKey(db.Replica),
 	),
-	di.Register(storage.NewReadWriteStore, // NewReadWriteStore(*db.DB) *ReadWriteStore
+	di.Register(storage.NewReadWriteStore, // NewReadWriteStore(*db.DB) storage.*ReadWriteStore
 		di.WithKeyed[*db.DB](db.Primary),
 	),
-	di.Register(storage.NewReadOnlyStore, // NewReadOnlyStore(*db.DB) *ReadOnlyStore
+	di.Register(storage.NewReadOnlyStore, // NewReadOnlyStore(*db.DB) storage.*ReadOnlyStore
 		di.WithKeyed[*db.DB](db.Replica),
 	),
 )
@@ -222,9 +228,10 @@ handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	// Access the scope from the request context
 	ctx := r.Context()
 	svc, err := dicontext.Resolve[*service.RequestService](ctx)
-	//...
+	// ...
 })
 handler = scopeMiddleware(handler)
+// ...
 ```
 
 ## TODO
@@ -232,6 +239,7 @@ handler = scopeMiddleware(handler)
 - Track child scopes to make sure all child scopes have been closed.
 - Add support for "decorator" functions `func(T [, deps...]) T`
 - Get around dependency cycles by injecting `di.Lazy[T any]`
+- Optional dependencies?
 - Implement additional Container options:
 	- Validate dependencies--make sure all types are resolvable, no cycles?
 - Support for `Shutdown` functions like `Closer`?
