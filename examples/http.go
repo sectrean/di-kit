@@ -32,7 +32,7 @@ func HTTP_Example() {
 
 	mux := http.NewServeMux()
 
-	scopeMiddleware := dihttp.NewScopeMiddleware(c)
+	scopeMiddleware := dihttp.RequestScopeMiddleware(c)
 	mux.Handle("/", scopeMiddleware(handler))
 
 	err = http.ListenAndServe(":8080", nil)

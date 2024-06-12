@@ -8,10 +8,10 @@ import (
 	"github.com/johnrutherford/di-kit/dicontext"
 )
 
-// NewScopeMiddleware creates a new middleware that creates a new [di.Scope] for each request.
+// RequestScopeMiddleware creates creates a new child container scope for each request.
 // The scope is closed after the request has been processed.
 //
-// The [*http.Request] is automatically registered with the scope. It can be used as a dependency for scoped services.
+// The current [*http.Request] is automatically registered with the scope. It can be used as a dependency for scoped services.
 //
 // The scope is stored on the request context and can be accessed using [dicontext.Scope], [dicontext.Resolve], or [dicontext.MustResolve].
 //
@@ -19,7 +19,7 @@ import (
 //   - WithScopeOptions: Set [di.ContainerOptions]s options to use when creating each request scope.
 //   - WithNewScopeErrorHandler: Set the error handler for when there is an error creating a new scope.
 //   - WithScopeCloseErrorHandler: Set the error handler for when there is an error closing the scope.
-func NewScopeMiddleware(c *di.Container, opts ...ScopeMiddlewareOption) func(http.Handler) http.Handler {
+func RequestScopeMiddleware(c *di.Container, opts ...ScopeMiddlewareOption) func(http.Handler) http.Handler {
 	mw := &scopeMiddleware{
 		c:               c,
 		newScopeHandler: defaultNewScopeErrorHandler,

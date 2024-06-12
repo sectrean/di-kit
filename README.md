@@ -185,12 +185,12 @@ Create a new Container with a child scope:
 
 ```go
 scope, err := c.NewScope()
-//...
+// ...
 
 // Don't forget to Close the scope when you're done
 defer func() {
 	err := scope.Close(ctx)
-	//...
+	// ...
 }
 ```
 
@@ -202,6 +202,11 @@ Then the scope can be retrieved from the context and used as a [service locator]
 ```go
 // Add container scope to context
 ctx = dicontext.WithScope(ctx, c)
+```
+
+```go
+// Get container scope from the context
+scope := dicontext.Scope(ctx)
 ```
 
 ```go
@@ -221,7 +226,7 @@ c, err := di.NewContainer(
 )
 // ...
 
-scopeMiddleware := dihttp.NewScopeMiddleware(c)
+scopeMiddleware := dihttp.RequestScopeMiddleware(c)
 
 var handler http.Handler
 handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

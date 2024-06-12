@@ -4,7 +4,7 @@ import (
 	"github.com/johnrutherford/di-kit"
 )
 
-// ScopeMiddlewareOption is an option used to configure the scope middleware when calling [NewScopeMiddleware].
+// ScopeMiddlewareOption is an option used to configure the scope middleware when calling [RequestScopeMiddleware].
 type ScopeMiddlewareOption interface {
 	applyScopeMiddleware(*scopeMiddleware)
 }
