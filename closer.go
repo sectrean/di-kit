@@ -8,44 +8,60 @@ import (
 )
 
 // Closer is used to close a service when closing the Container.
+// This is useful for cleaning up resources when the service is no longer needed.
 //
-// If a resolved service implements Closer, or one of the other compatible function signatures,
-// the Close function will be called when the Container is closed.
-//
-// Any of these Close method signatures are supported:
+// The Container can automatically close services that implement Closer,
+// or a compatible Close function signature:
 //
 //	Close(context.Context) error
 //	Close(context.Context)
 //	Close() error
 //	Close()
 //
-// See related options:
-//   - [IgnoreCloser]
-//   - [WithCloser]
-//   - [WithCloseFunc]
+// This is the default behavior for function services.
+// When the Container creates a service, it will be responsible for closing it.
+// Use the [IgnoreClose] option to ignore a Close method for a service.
+//
+// Value services are not closed by default.
+// Since value services are not created by the Container, it is assumed that
+// their lifetime will be managed outside of the Container.
+// Use the [WithClose] option to automatically close a value service when the Container is closed.
+//
+// Use the [WithCloseFunc] option to specify a custom function to close a service.
 type Closer interface {
 	// Close is used to clean up resources when the service is no longer needed.
 	Close(ctx context.Context) error
 }
 
-// WithCloser is used to close a service when the Container is closed.
+// WithClose is used to close a service when the Container is closed.
 //
-// If a service implements Closer, or one of the other compatible Close function signatures, the Close
-// function will be called when the Container is closed.
+// If the service implements Closer, or a compatible Close function signature,
+// it will be called when the Container is closed.
 //
-// Value services are not closed by default. To close a value service, use this option.
-func WithCloser() RegisterOption {
+// Value services are not closed by default.
+// Use this option if you want the Container to close a value service.
+//
+// This is the default behavior for function services.
+//
+// See Closer for more information.
+func WithClose() RegisterOption {
 	return registerOption(func(s service) error {
 		s.setCloserFactory(getCloser)
 		return nil
 	})
 }
 
-// IgnoreCloser is used when you do not want a service that implements Closer, or another
-// supported Close function signature, to be closed when the Container is closed.
+// IgnoreClose is used when you do not want a service to be automatically closed by the Container.
 //
 // This is useful when you want to manage the lifecycle of a service outside of the Container.
-func IgnoreCloser() RegisterOption {
+//
+// Function services are closed by default.
+// Use this option if you do not want a function service to be closed by the Container.
+//
+// This is the default behavior for value services.
+//
+// See Closer for more information.
+func IgnoreClose() RegisterOption {
 	return registerOption(func(s service) error {
 		s.setCloserFactory(nil)
 		return nil
@@ -54,7 +70,7 @@ func IgnoreCloser() RegisterOption {
 
 type closerFactory func(val any) Closer
 
-// WithCloseFunc can be used to set a custom function to call for a Service when the Container is closed.
+// WithCloseFunc can be used to set a custom function to call for a service when the Container is closed.
 //
 // This is useful if a service has a method called Shutdown or Stop instead of Close that should be
 // used to close the service.
@@ -65,8 +81,7 @@ type closerFactory func(val any) Closer
 //		return s.Shutdown(ctx)
 //	})
 //
-// This can also be used to close a service registered with a value rather than a function.
-// Services registered with a value will not be closed by default.
+// See Closer for more information.
 //
 // This option will return an error if the service type is not assignable to T.
 func WithCloseFunc[T any](f func(context.Context, T) error) RegisterOption {

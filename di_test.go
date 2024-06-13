@@ -321,7 +321,7 @@ func TestNoCloser(t *testing.T) {
 	a := mocks.NewInterfaceAMock(t)
 
 	c, err := di.NewContainer(
-		di.WithService(func() testtypes.InterfaceA { return a }, di.IgnoreCloser()),
+		di.WithService(func() testtypes.InterfaceA { return a }, di.IgnoreClose()),
 	)
 	require.NoError(t, err)
 
@@ -342,7 +342,7 @@ func TestWithCloser(t *testing.T) {
 	c, err := di.NewContainer(
 		di.WithService(a,
 			di.As[testtypes.InterfaceA](),
-			di.WithCloser(),
+			di.WithClose(),
 		),
 	)
 	require.NoError(t, err)

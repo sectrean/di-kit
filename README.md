@@ -61,14 +61,14 @@ By default, services that the `Container` *creates* (registered with a function,
 - `Close() error`
 - `Close()`
 
-This behavior can be disabled using the `di.IgnoreCloser()` option:
+This behavior can be disabled using the `di.IgnoreClose()` option:
 
 ```go
 c, err := di.NewContainer(
 	di.WithService(logger),
 	di.WithService(service.NewService,
 		// We don't want the container to automatically call Close
-		di.IgnoreCloser(),
+		di.IgnoreClose(),
 	),
 )
 // ...
@@ -91,7 +91,7 @@ c, err := di.NewContainer(
 )
 ```
 
-Value services are not closed by default since they are not created by the Container. If you want to have the Container close the value service, use the `di.WithCloser()` option to call a supported `Close` method. Or use the `di.WithCloseFunc()` option to specify a custom close function.
+Value services are not closed by default since they are not created by the Container. If you want to have the Container close the value service, use the `di.WithClose()` option to call a supported `Close` method. Or use the `di.WithCloseFunc()` option to specify a custom close function.
 
 ## Features
 

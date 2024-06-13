@@ -30,9 +30,9 @@ import (
 //   - [WithKey] specifies a key differentiate between services of the same type.
 //   - [WithKeyed] specifies a key for a service dependency.
 //   - [WithCloseFunc] specifies a function to be called when the service is closed.
-//   - [IgnoreCloser] specifies that the service should not be closed by the Container.
+//   - [IgnoreClose] specifies that the service should not be closed by the Container.
 //     Function services are closed by default if they implement [Closer] or a compatible function signature.
-//   - [WithCloser] specifies that the service should be closed by the Container if it implements [Closer] or a compatible function signature.
+//   - [WithClose] specifies that the service should be closed by the Container if it implements [Closer] or a compatible function signature.
 //     This is the default for function services. Value services will not be closed by default.
 func WithService(funcOrValue any, opts ...RegisterOption) ContainerOption {
 	// Use a single WithService function for both function and value services
@@ -78,7 +78,7 @@ func WithService(funcOrValue any, opts ...RegisterOption) ContainerOption {
 	})
 }
 
-// RegisterOption is used to configure a service registration when calling [WithService].
+// RegisterOption is used to configure registration for a service when calling [WithService].
 type RegisterOption interface {
 	applyService(s service) error
 }
