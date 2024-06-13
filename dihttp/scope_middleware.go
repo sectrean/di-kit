@@ -67,7 +67,7 @@ type scopeMiddleware struct {
 func (m *scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	opts := append(m.opts,
 		// Register the *http.Request with the new scope
-		di.Register(r),
+		di.WithService(r),
 	)
 
 	scope, err := m.c.NewScope(opts...)

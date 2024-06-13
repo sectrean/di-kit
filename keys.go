@@ -9,7 +9,7 @@ import (
 // WithKey is used to specify the key associated with a service.
 //
 // WithKey can be used with:
-//   - [Register]
+//   - [WithService]
 //   - [Resolve]
 //   - [MustResolve]
 //   - [Container.Resolve]
@@ -19,19 +19,19 @@ func WithKey(key any) ServiceKeyOption {
 }
 
 // WithKeyed is used to specify a key for a dependency when calling
-// [Register] or [Invoke].
+// [WithService] or [Invoke].
 //
 // This option can be used multiple times to specify keys for function service dependencies.
 //
 // Example:
 //
 //	c, err := di.NewContainer(
-//		di.Register(db.NewPrimaryDB, di.WithKey(db.Primary)),
-//		di.Register(db.NewReplicaDB, di.WithKey(db.Replica)),
-//		di.Register(storage.NewReadWriteStore,
+//		di.WithService(db.NewPrimaryDB, di.WithKey(db.Primary)),
+//		di.WithService(db.NewReplicaDB, di.WithKey(db.Replica)),
+//		di.WithService(storage.NewReadWriteStore,
 //			di.WithKeyed[*db.DB](db.Primary),
 //		),
-//		di.Register(storage.NewReadOnlyStore,
+//		di.WithService(storage.NewReadOnlyStore,
 //			di.WithKeyed[*db.DB](db.Replica),
 //		),
 //	)
@@ -42,14 +42,14 @@ func WithKeyed[T any](key any) DependencyKeyOption {
 	}
 }
 
-// ServiceKeyOption is used to specify the key associated with a service when calling [Register],
+// ServiceKeyOption is used to specify the key associated with a service when calling [WithService],
 // [Resolve], [Container.Resolve], or [Container.Contains].
 type ServiceKeyOption interface {
 	RegisterOption
 	ServiceOption
 }
 
-// DependencyKeyOption is used to specify a key for a dependency when calling [Register] or [Invoke].
+// DependencyKeyOption is used to specify a key for a dependency when calling [WithService] or [Invoke].
 type DependencyKeyOption interface {
 	RegisterOption
 	InvokeOption

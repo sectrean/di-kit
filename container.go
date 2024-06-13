@@ -11,7 +11,7 @@ import (
 // NewContainer creates a new Container with the provided options.
 //
 // Available options:
-//   - [Register] registers a service with a value or a function.
+//   - [WithService] registers a service with a value or a function.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		services: make(map[serviceKey]service),
@@ -50,7 +50,6 @@ type Container struct {
 
 var _ Scope = (*Container)(nil)
 
-// Register registers the provided service.
 func (c *Container) register(s service) {
 	if c.parent != nil && len(c.parent.services) == len(c.services) {
 		// Copy the parent's services map because we don't want to modify it
@@ -113,7 +112,7 @@ func (c *Container) registerType(t reflect.Type, s service) {
 // They will only be available to the new scope.
 //
 // Available options:
-//   - [Register] registers a service with a value or a function.
+//   - [WithService] registers a service with a value or a function.
 func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 	c.closedMu.RLock()
 	defer c.closedMu.RUnlock()

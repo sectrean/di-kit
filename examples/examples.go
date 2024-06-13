@@ -16,8 +16,8 @@ func Example() {
 	// Create the container
 	c, err := di.NewContainer(
 		// Register services with values and functions
-		di.Register(logger),
-		di.Register(foo.NewFooService),
+		di.WithService(logger),
+		di.WithService(foo.NewFooService),
 	)
 	if err != nil {
 		logger.ErrorContext(ctx, "error creating container", "error", err)

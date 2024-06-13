@@ -19,7 +19,7 @@ func TestSingleton(t *testing.T) {
 	a := &testtypes.StructA{}
 
 	c, err := di.NewContainer(
-		di.Register(
+		di.WithService(
 			func() testtypes.InterfaceA {
 				calls++
 				return a
@@ -46,7 +46,7 @@ func TestTransient(t *testing.T) {
 	b := &testtypes.StructB{}
 
 	c, err := di.NewContainer(
-		di.Register(
+		di.WithService(
 			func() testtypes.InterfaceB {
 				calls++
 				return b
@@ -74,14 +74,14 @@ func TestScoped(t *testing.T) {
 	a := &testtypes.StructA{}
 
 	root, err := di.NewContainer(
-		di.Register(
+		di.WithService(
 			func() testtypes.InterfaceA {
 				aCalls++
 				return a
 			},
 			di.Singleton,
 		),
-		di.Register(
+		di.WithService(
 			func(depA testtypes.InterfaceA) testtypes.InterfaceB {
 				assert.Equal(t, a, depA)
 				bCalls++
@@ -115,8 +115,8 @@ func TestScoped(t *testing.T) {
 
 func TestSliceService(t *testing.T) {
 	c, err := di.NewContainer(
-		di.Register(testtypes.NewInterfaceA),
-		di.Register(testtypes.NewInterfaceA),
+		di.WithService(testtypes.NewInterfaceA),
+		di.WithService(testtypes.NewInterfaceA),
 	)
 	require.NoError(t, err)
 
@@ -133,7 +133,7 @@ func TestSliceService(t *testing.T) {
 
 func TestAliases(t *testing.T) {
 	c, err := di.NewContainer(
-		di.Register(testtypes.NewInterfaceA,
+		di.WithService(testtypes.NewInterfaceA,
 			di.As[testtypes.InterfaceA](),
 		),
 	)
@@ -153,7 +153,7 @@ func TestAliases_SameInstance(t *testing.T) {
 	calls := 0
 
 	c, err := di.NewContainer(
-		di.Register(
+		di.WithService(
 			func() *testtypes.StructA {
 				calls++
 				return a
@@ -179,7 +179,7 @@ func TestAliases_SameInstance(t *testing.T) {
 
 func TestFuncServiceError(t *testing.T) {
 	c, err := di.NewContainer(
-		di.Register(func() (testtypes.InterfaceA, error) {
+		di.WithService(func() (testtypes.InterfaceA, error) {
 			return &testtypes.StructA{}, errors.New("constructor error")
 		}),
 	)
@@ -196,14 +196,14 @@ func TestServicesWithKeys(t *testing.T) {
 	a2 := &testtypes.StructA{}
 
 	c, err := di.NewContainer(
-		di.Register(func() testtypes.InterfaceA { return a1 }, di.WithKey("1")),
-		di.Register(func() testtypes.InterfaceA { return a2 }, di.WithKey("2")),
-		di.Register(func(aa1 testtypes.InterfaceA, aa2 testtypes.InterfaceA) testtypes.InterfaceB {
+		di.WithService(func() testtypes.InterfaceA { return a1 }, di.WithKey("1")),
+		di.WithService(func() testtypes.InterfaceA { return a2 }, di.WithKey("2")),
+		di.WithService(func(aa1 testtypes.InterfaceA, aa2 testtypes.InterfaceA) testtypes.InterfaceB {
 			assert.Same(t, a1, aa1)
 			assert.Same(t, a2, aa2)
 			return &testtypes.StructB{}
 		}),
-		di.Register(testtypes.NewInterfaceC, di.WithKeyed[testtypes.InterfaceA]("blah")),
+		di.WithService(testtypes.NewInterfaceC, di.WithKeyed[testtypes.InterfaceA]("blah")),
 	)
 	require.NoError(t, err)
 
@@ -231,13 +231,13 @@ func TestSliceServices(t *testing.T) {
 	want := []testtypes.InterfaceA{a1, a2}
 
 	c, err := di.NewContainer(
-		di.Register(a1, di.As[testtypes.InterfaceA]()),
-		di.Register(a2, di.As[testtypes.InterfaceA]()),
-		di.Register(func(aa []testtypes.InterfaceA) testtypes.InterfaceB {
+		di.WithService(a1, di.As[testtypes.InterfaceA]()),
+		di.WithService(a2, di.As[testtypes.InterfaceA]()),
+		di.WithService(func(aa []testtypes.InterfaceA) testtypes.InterfaceB {
 			assert.Equal(t, want, aa)
 			return &testtypes.StructB{}
 		}),
-		di.Register(func(_ testtypes.InterfaceB, aa ...testtypes.InterfaceA) testtypes.InterfaceD {
+		di.WithService(func(_ testtypes.InterfaceB, aa ...testtypes.InterfaceA) testtypes.InterfaceD {
 			assert.Equal(t, want, aa)
 			return &testtypes.StructD{}
 		}),
@@ -261,9 +261,9 @@ func TestServiceWithKeys(t *testing.T) {
 	a1 := &testtypes.StructA{}
 
 	c, err := di.NewContainer(
-		di.Register(func() testtypes.InterfaceA { return a1 }, di.WithKey("B")),
-		di.Register(func() testtypes.InterfaceA { panic("shouldn't get called") }),
-		di.Register(
+		di.WithService(func() testtypes.InterfaceA { return a1 }, di.WithKey("B")),
+		di.WithService(func() testtypes.InterfaceA { panic("shouldn't get called") }),
+		di.WithService(
 			func(a testtypes.InterfaceA) testtypes.InterfaceB {
 				assert.Same(t, a1, a)
 				return &testtypes.StructB{}
@@ -300,10 +300,10 @@ func TestClosers(t *testing.T) {
 		Once()
 
 	scope, err := di.NewContainer(
-		di.Register(func() testtypes.InterfaceA { return a }),
-		di.Register(func(testtypes.InterfaceA) testtypes.InterfaceB { return b }),
-		di.Register(func(testtypes.InterfaceB) testtypes.InterfaceC { return c }),
-		di.Register(func(testtypes.InterfaceC) testtypes.InterfaceD { return d }),
+		di.WithService(func() testtypes.InterfaceA { return a }),
+		di.WithService(func(testtypes.InterfaceA) testtypes.InterfaceB { return b }),
+		di.WithService(func(testtypes.InterfaceB) testtypes.InterfaceC { return c }),
+		di.WithService(func(testtypes.InterfaceC) testtypes.InterfaceD { return d }),
 	)
 	require.NoError(t, err)
 
@@ -321,7 +321,7 @@ func TestNoCloser(t *testing.T) {
 	a := mocks.NewInterfaceAMock(t)
 
 	c, err := di.NewContainer(
-		di.Register(func() testtypes.InterfaceA { return a }, di.IgnoreCloser()),
+		di.WithService(func() testtypes.InterfaceA { return a }, di.IgnoreCloser()),
 	)
 	require.NoError(t, err)
 
@@ -340,7 +340,7 @@ func TestWithCloser(t *testing.T) {
 		Once()
 
 	c, err := di.NewContainer(
-		di.Register(a,
+		di.WithService(a,
 			di.As[testtypes.InterfaceA](),
 			di.WithCloser(),
 		),
@@ -359,7 +359,7 @@ func TestWithCloseFunc(t *testing.T) {
 	calls := 0
 
 	c, err := di.NewContainer(
-		di.Register(
+		di.WithService(
 			func() testtypes.InterfaceA { return a },
 			di.WithCloseFunc(func(ctx context.Context, a testtypes.InterfaceA) error {
 				calls++
@@ -391,7 +391,7 @@ func TestResolveWithContext(t *testing.T) {
 	ctx := context.WithValue(context.Background(), "key", "value")
 
 	c, err := di.NewContainer(
-		di.Register(func(ctxDep context.Context) testtypes.InterfaceA {
+		di.WithService(func(ctxDep context.Context) testtypes.InterfaceA {
 			assert.Same(t, ctx, ctxDep)
 			return &testtypes.StructA{}
 		}),
@@ -407,8 +407,8 @@ func TestResolveWithScope(t *testing.T) {
 	ctx := context.Background()
 
 	c, err := di.NewContainer(
-		di.Register(testtypes.NewInterfaceA),
-		di.Register(func(scope di.Scope) *Factory {
+		di.WithService(testtypes.NewInterfaceA),
+		di.WithService(func(scope di.Scope) *Factory {
 			ctx := context.Background()
 
 			// We cannot call Resolve on the scope here.

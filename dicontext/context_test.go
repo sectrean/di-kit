@@ -29,7 +29,7 @@ func TestScope_NoScope(t *testing.T) {
 
 func TestResolve(t *testing.T) {
 	c, err := di.NewContainer(
-		di.Register(testtypes.NewInterfaceA),
+		di.WithService(testtypes.NewInterfaceA),
 	)
 	require.NoError(t, err)
 
@@ -51,7 +51,7 @@ func TestResolve_NoScope(t *testing.T) {
 
 func TestMustResolve(t *testing.T) {
 	c, err := di.NewContainer(
-		di.Register(testtypes.NewInterfaceA),
+		di.WithService(testtypes.NewInterfaceA),
 	)
 	require.NoError(t, err)
 

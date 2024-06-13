@@ -15,8 +15,8 @@ import (
 
 func TestRequestScopeMiddleware(t *testing.T) {
 	c, err := di.NewContainer(
-		di.Register(testtypes.NewInterfaceA),
-		di.Register(func(a testtypes.InterfaceA, r *http.Request) testtypes.InterfaceB {
+		di.WithService(testtypes.NewInterfaceA),
+		di.WithService(func(a testtypes.InterfaceA, r *http.Request) testtypes.InterfaceB {
 			assert.NotNil(t, a)
 			assert.NotNil(t, r)
 

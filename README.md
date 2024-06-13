@@ -13,9 +13,9 @@ It's designed to be easy-to-use, lightweight, and full-featured.
 ```go
 // 1. Create the Container and register services using values and constructor functions.
 c, err := di.NewContainer(
-	di.Register(logger),             // var logger *slog.Logger
-	di.Register(storage.NewDBStore), // NewDBStore(context.Context) (storage.Store, error)
-	di.Register(service.NewService), // NewService(*slog.Logger, storage.Store) *service.Service
+	di.WithService(logger),             // var logger *slog.Logger
+	di.WithService(storage.NewDBStore), // NewDBStore(context.Context) (storage.Store, error)
+	di.WithService(service.NewService), // NewService(*slog.Logger, storage.Store) *service.Service
 )
 // ...
 
@@ -41,7 +41,7 @@ go get github.com/johnrutherford/di-kit
 
 ### Registering Services
 
-Use `di.Register()` to register services with either a value or a constructor function.
+Use `di.WithService()` to register services with either a value or a constructor function.
 
 The function may accept any number and type of arguments which must also be registered with the `Container`. The service will be registered as the function return type, and may also return an `error`.
 
@@ -65,8 +65,8 @@ This behavior can be disabled using the `di.IgnoreCloser()` option:
 
 ```go
 c, err := di.NewContainer(
-	di.Register(logger),
-	di.Register(service.NewService,
+	di.WithService(logger),
+	di.WithService(service.NewService,
 		// We don't want the container to automatically call Close
 		di.IgnoreCloser(),
 	),
@@ -82,8 +82,8 @@ If a service uses another method to clean up, a custom close function can be con
 
 ``` go
 c, err := di.NewContainer(
-	di.Register(logger),
-	di.Register(service.NewService,
+	di.WithService(logger),
+	di.WithService(service.NewService,
 		di.WithCloseFunc(func (ctx context.Context, svc *service.Service) error {
 			return svc.Shutdown(ctx)
 		}),
@@ -108,7 +108,7 @@ This can be used to register a service as as an interface. The alias type must b
 ```go
 c, err := di.NewContainer(
 	// ...
-	di.Register(service.NewService,	// returns *service.Service
+	di.WithService(service.NewService,	// returns *service.Service
 		di.As[service.Interface](),	// register as interface
 		di.As[*service.Service](),	// also register as actual type
 	),
@@ -123,16 +123,16 @@ Use `di.WithKeyed[T]()` when registering a dependent service to specify the key 
 
 ```go
 c, err := di.NewContainer(
-	di.Register(db.NewPrimaryDB, // NewPrimaryDB(context.Context) (*db.DB, error)
+	di.WithService(db.NewPrimaryDB, // NewPrimaryDB(context.Context) (*db.DB, error)
 		di.WithKey(db.Primary),
 	),
-	di.Register(db.NewReplicaDB, // NewReplicaDB(context.Context) (*db.DB, error)
+	di.WithService(db.NewReplicaDB, // NewReplicaDB(context.Context) (*db.DB, error)
 		di.WithKey(db.Replica),
 	),
-	di.Register(storage.NewReadWriteStore, // NewReadWriteStore(*db.DB) storage.*ReadWriteStore
+	di.WithService(storage.NewReadWriteStore, // NewReadWriteStore(*db.DB) storage.*ReadWriteStore
 		di.WithKeyed[*db.DB](db.Primary),
 	),
-	di.Register(storage.NewReadOnlyStore, // NewReadOnlyStore(*db.DB) storage.*ReadOnlyStore
+	di.WithService(storage.NewReadOnlyStore, // NewReadOnlyStore(*db.DB) storage.*ReadOnlyStore
 		di.WithKeyed[*db.DB](db.Replica),
 	),
 )
@@ -164,8 +164,8 @@ Specify a lifetime when registering a function service:
 
 ```go
 c, err := di.NewContainer(
-	di.Register(service.NewScopedService, di.Scoped),
-	di.Register(service.NewTransientService, di.Transient),
+	di.WithService(service.NewScopedService, di.Scoped),
+	di.WithService(service.NewTransientService, di.Transient),
 )
 ```
 
@@ -175,9 +175,9 @@ Scopes are useful...
 
 ```go
 c, err := di.NewContainer(
-	di.Register(logger),
-	di.Register(service.NewService),
-	di.Register(service.NewScopedService, di.Scoped),
+	di.WithService(logger),
+	di.WithService(service.NewService),
+	di.WithService(service.NewScopedService, di.Scoped),
 )
 ```
 
@@ -220,9 +220,9 @@ The `dihttp` package provides configurable HTTP middleware to create new child s
 
 ```go
 c, err := di.NewContainer(
-	di.Register(logger),
+	di.WithService(logger),
 	// NewRequestService(*slog.Logger, *http.Request) *service.RequestService
-	di.Register(service.NewRequestService, di.Scoped),
+	di.WithService(service.NewRequestService, di.Scoped),
 )
 // ...
 

@@ -6,7 +6,8 @@ import (
 	"github.com/johnrutherford/di-kit/internal/errors"
 )
 
-// Register the provided function or value with the Container when calling [NewContainer].
+// WithService registers the provided function or value with a new Container
+// when calling [NewContainer] or [Container.NewScope].
 //
 // If a function is provided, it will be called to create the service when resolved.
 //
@@ -33,8 +34,8 @@ import (
 //     Function services are closed by default if they implement [Closer] or a compatible function signature.
 //   - [WithCloser] specifies that the service should be closed by the Container if it implements [Closer] or a compatible function signature.
 //     This is the default for function services. Value services will not be closed by default.
-func Register(funcOrValue any, opts ...RegisterOption) ContainerOption {
-	// Use a single Register function for both function and value services
+func WithService(funcOrValue any, opts ...RegisterOption) ContainerOption {
+	// Use a single WithService function for both function and value services
 	// because it's easier to use than separate functions.
 	//
 	// Examples:
@@ -42,16 +43,16 @@ func Register(funcOrValue any, opts ...RegisterOption) ContainerOption {
 	// RegisterFunc(NewService()) // Wrong - easy mistake
 	// RegisterValue(NewService()) // Correct
 	// RegisterValue(NewService) // Wrong - easy mistake
-	// Register(NewService) // This works as a func
-	// Register(NewService()) // This works as a value
+	// WithService(NewService) // This works as a func
+	// WithService(NewService()) // This works as a value
 
 	return containerOption(func(c *Container) error {
 		if funcOrValue == nil {
-			return errors.Errorf("register: funcOrValue is nil")
+			return errors.Errorf("with service: funcOrValue is nil")
 		}
 
 		if _, ok := funcOrValue.(RegisterOption); ok {
-			return errors.Errorf("register %T: unexpected RegisterOption as funcOrValue", funcOrValue)
+			return errors.Errorf("with service %T: unexpected RegisterOption as funcOrValue", funcOrValue)
 		}
 
 		t := reflect.TypeOf(funcOrValue)
@@ -69,7 +70,7 @@ func Register(funcOrValue any, opts ...RegisterOption) ContainerOption {
 		}
 
 		if err != nil {
-			return errors.Wrapf(err, "register %T", funcOrValue)
+			return errors.Wrapf(err, "with service %T", funcOrValue)
 		}
 
 		c.register(svc)
@@ -77,7 +78,7 @@ func Register(funcOrValue any, opts ...RegisterOption) ContainerOption {
 	})
 }
 
-// RegisterOption is used to configure a service registration when calling [Register].
+// RegisterOption is used to configure a service registration when calling [WithService].
 type RegisterOption interface {
 	applyService(s service) error
 }
@@ -88,7 +89,7 @@ func (o registerOption) applyService(s service) error {
 	return o(s)
 }
 
-// As registers an alias for a service. Use when calling [Register].
+// As registers an alias for a service. Use when calling [WithService].
 func As[T any]() RegisterOption {
 	return registerOption(func(s service) error {
 		return s.AddAlias(reflect.TypeFor[T]())

@@ -68,30 +68,30 @@ func Test_NewContainer(t *testing.T) {
 		{
 			name: "with unsupported service kind",
 			opts: []ContainerOption{
-				Register(1234),
+				WithService(1234),
 			},
-			wantErr: "new container: register int: unsupported kind int",
+			wantErr: "new container: with service int: unsupported kind int",
 		},
 		{
 			name: "with nil service",
 			opts: []ContainerOption{
-				Register((testtypes.InterfaceA)(nil)),
+				WithService((testtypes.InterfaceA)(nil)),
 			},
-			wantErr: "new container: register: funcOrValue is nil",
+			wantErr: "new container: with service: funcOrValue is nil",
 		},
 		{
 			name: "no service, only options",
 			opts: []ContainerOption{
-				Register(Singleton, WithKey("key")),
+				WithService(Singleton, WithKey("key")),
 			},
-			wantErr: "new container: register di.Lifetime: unexpected RegisterOption as funcOrValue",
+			wantErr: "new container: with service di.Lifetime: unexpected RegisterOption as funcOrValue",
 		},
 		{
 			name: "WithKeyed with dep not found",
 			opts: []ContainerOption{
-				Register(testtypes.NewInterfaceA, WithKeyed[testtypes.InterfaceB]("key")),
+				WithService(testtypes.NewInterfaceA, WithKeyed[testtypes.InterfaceB]("key")),
 			},
-			wantErr: "new container: register func() testtypes.InterfaceA: with keyed testtypes.InterfaceB: argument not found",
+			wantErr: "new container: with service func() testtypes.InterfaceA: with keyed testtypes.InterfaceB: argument not found",
 		},
 	}
 
@@ -137,14 +137,14 @@ func Test_Container_NewScope(t *testing.T) {
 			},
 		},
 		{
-			name: "success with register",
+			name: "success with service",
 			parent: testContainerConfig{
 				services: map[serviceKey]service{
 					InterfaceAKey: &funcService{},
 				},
 			},
 			opts: []ContainerOption{
-				Register(testtypes.NewInterfaceB),
+				WithService(testtypes.NewInterfaceB),
 			},
 			want: func(t *testing.T, c *Container) {
 				assert.NotNil(t, c)

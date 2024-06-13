@@ -4,7 +4,7 @@ import "fmt"
 
 // Lifetime specifies how services are created when resolved.
 //
-// Use when registering a service with [Register].
+// Use when registering a service with [WithService].
 //
 // Available lifetimes:
 //   - [Singleton] specifies that a service is created once and subsequent requests return the same instance.
@@ -14,8 +14,8 @@ import "fmt"
 // Example:
 //
 //	c, err := di.NewContainer(
-//		di.Register(NewService, di.Transient),
-//		di.Register(NewRequestService, di.Scoped),
+//		di.WithService(NewService, di.Transient),
+//		di.WithService(NewRequestService, di.Scoped),
 //	)
 type Lifetime uint8
 

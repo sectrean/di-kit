@@ -12,16 +12,16 @@ import (
 func BenchmarkNewContainer(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _ = di.NewContainer(
-			di.Register(testtypes.NewInterfaceA),
-			di.Register(testtypes.NewInterfaceB),
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(testtypes.NewInterfaceB),
 		)
 	}
 }
 
 func BenchmarkContainer_NewScope(b *testing.B) {
 	root, err := di.NewContainer(
-		di.Register(testtypes.NewInterfaceA),
-		di.Register(testtypes.NewInterfaceB, di.Scoped),
+		di.WithService(testtypes.NewInterfaceA),
+		di.WithService(testtypes.NewInterfaceB, di.Scoped),
 	)
 	require.NoError(b, err)
 
@@ -34,7 +34,7 @@ func BenchmarkContainer_NewScope(b *testing.B) {
 
 func BenchmarkContainer_Contains(b *testing.B) {
 	c, err := di.NewContainer(
-		di.Register(&testtypes.StructA{}),
+		di.WithService(&testtypes.StructA{}),
 	)
 	require.NoError(b, err)
 
@@ -47,8 +47,8 @@ func BenchmarkContainer_Contains(b *testing.B) {
 
 func BenchmarkContainer_Contains_WithKey(b *testing.B) {
 	c, err := di.NewContainer(
-		di.Register(&testtypes.StructA{}),
-		di.Register(&testtypes.StructA{}, di.WithKey("b")),
+		di.WithService(&testtypes.StructA{}),
+		di.WithService(&testtypes.StructA{}, di.WithKey("b")),
 	)
 	require.NoError(b, err)
 
@@ -61,7 +61,7 @@ func BenchmarkContainer_Contains_WithKey(b *testing.B) {
 
 func BenchmarkContainer_Resolve_OneValueService(b *testing.B) {
 	c, err := di.NewContainer(
-		di.Register(&testtypes.StructA{}),
+		di.WithService(&testtypes.StructA{}),
 	)
 	require.NoError(b, err)
 
@@ -76,7 +76,7 @@ func BenchmarkContainer_Resolve_OneValueService(b *testing.B) {
 
 func BenchmarkContainer_Resolve_OneValueStruct(b *testing.B) {
 	c, err := di.NewContainer(
-		di.Register(testtypes.StructA{}),
+		di.WithService(testtypes.StructA{}),
 	)
 	require.NoError(b, err)
 
@@ -91,7 +91,7 @@ func BenchmarkContainer_Resolve_OneValueStruct(b *testing.B) {
 
 func BenchmarkContainer_Resolve_OneFunc_Singleton(b *testing.B) {
 	c, err := di.NewContainer(
-		di.Register(testtypes.NewInterfaceA, di.Singleton),
+		di.WithService(testtypes.NewInterfaceA, di.Singleton),
 	)
 	require.NoError(b, err)
 
@@ -107,8 +107,8 @@ func BenchmarkContainer_Resolve_OneFunc_Singleton(b *testing.B) {
 func BenchmarkContainer_Resolve_Scopes(b *testing.B) {
 	var newParent = func(b *testing.B) *di.Container {
 		parent, err := di.NewContainer(
-			di.Register(testtypes.NewInterfaceA, di.Singleton),
-			di.Register(testtypes.NewInterfaceB, di.Scoped),
+			di.WithService(testtypes.NewInterfaceA, di.Singleton),
+			di.WithService(testtypes.NewInterfaceB, di.Scoped),
 		)
 		require.NoError(b, err)
 		return parent
@@ -210,7 +210,7 @@ func BenchmarkContainer_Resolve_Scopes(b *testing.B) {
 
 func BenchmarkContainer_Resolve_OneFunc_Transient(b *testing.B) {
 	c, err := di.NewContainer(
-		di.Register(testtypes.NewInterfaceA, di.Transient),
+		di.WithService(testtypes.NewInterfaceA, di.Transient),
 	)
 	require.NoError(b, err)
 
@@ -225,8 +225,8 @@ func BenchmarkContainer_Resolve_OneFunc_Transient(b *testing.B) {
 
 func BenchmarkContainer_Resolve_TwoFunc_Transient(b *testing.B) {
 	c, err := di.NewContainer(
-		di.Register(testtypes.NewInterfaceA, di.Transient),
-		di.Register(testtypes.NewInterfaceB, di.Transient),
+		di.WithService(testtypes.NewInterfaceA, di.Transient),
+		di.WithService(testtypes.NewInterfaceB, di.Transient),
 	)
 	require.NoError(b, err)
 

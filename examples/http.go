@@ -17,9 +17,9 @@ func HTTP_Example() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	c, err := di.NewContainer(
-		di.Register(logger),
-		di.Register(foo.NewFooService),
-		di.Register(bar.NewBarService, di.Scoped),
+		di.WithService(logger),
+		di.WithService(foo.NewFooService),
+		di.WithService(bar.NewBarService, di.Scoped),
 	)
 	if err != nil {
 		logger.Error("error creating container", "error", err)

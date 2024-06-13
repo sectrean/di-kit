@@ -14,8 +14,8 @@ Example:
 
 	func main() {
 		c, err := di.NewContainer(
-			di.Register(NewService),
-			di.Register(NewOtherService, di.Scoped),
+			di.WithService(NewService),
+			di.WithService(NewOtherService, di.Scoped),
 		)
 
 		// Create a new scope middleware
