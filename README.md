@@ -1,16 +1,16 @@
-🧰 di-kit [![Build Status][ci-img]][ci]
-====================
-
-**di-kit** is a dependency injection toolkit for modern Go applications.
-It's designed to be easy-to-use, lightweight, and full-featured.
+# 🧰 di-kit 
+[![Build Status][ci-img]][ci]
 
 [ci-img]: https://github.com/johnrutherford/di-kit/actions/workflows/go.yaml/badge.svg
 [ci]: https://github.com/johnrutherford/di-kit/actions/workflows/go.yaml
 
+**di-kit** is a dependency injection toolkit for modern Go applications.
+It's designed to be easy-to-use, lightweight, and full-featured.
+
 ## Usage
 
-1. Create the `Container` and register *services* using values and constructor functions.
-2. Resolve your *services* by type from the `Container`.
+1. Create the `Container` and register your *services* using values and constructor functions.
+2. Resolve *services* by type from the `Container`.
 3. Close the `Container` and *services* when you're done.
 
 ```go
@@ -22,8 +22,8 @@ c, err := di.NewContainer(
 )
 // ...
 
+// 3. Close the Container and services when you're done.
 defer func() {
-	// 3. Close the Container and services when you're done.
 	err := c.Close(ctx)
 	// ...
 }()
@@ -97,11 +97,6 @@ c, err := di.NewContainer(
 Value services are not closed by default since they are not created by the Container. If you want to have the Container close the value service, use the `di.WithClose()` option to call a supported `Close` method. Or use the `di.WithCloseFunc()` option to specify a custom close function.
 
 ## Features
-
-- Automatically close services
-- Concurrency-safe
-- Fast
-- Minimal dependencies
 
 ### Aliases
 
