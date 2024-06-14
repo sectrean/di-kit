@@ -239,14 +239,15 @@ handler = scopeMiddleware(handler)
 
 ## TODO
 
-- pre-resolve value services, add closer
 - slice-of-one pseudo-service? `ServiceB` depends on `[]ServiceA`, but only 1 `ServiceA` service is registered.
 - Track child scopes to make sure all child scopes have been closed.
 - Add support for "decorator" functions `func(T [, deps...]) T`
 - Get around dependency cycles by injecting `di.Lazy[T any]`
 - Optional dependencies?
 - Implement additional Container options:
-	- Validate dependencies--make sure all types are resolvable, no cycles?
+	- Validate services: make sure all types are resolvable, with no cycles.
+		(Will need to exclude scoped services in the root container since they may have dependencies registered in child scopes.) 
+		
 - Support for `Shutdown` functions like `Closer`?
 - Enable error stacktraces optionally?
 - Logging with `slog`?

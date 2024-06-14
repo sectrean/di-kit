@@ -50,6 +50,18 @@ func (k serviceKey) String() string {
 	return fmt.Sprintf("%s (Key %v)", k.Type, k.Key)
 }
 
+type resolvedService interface {
+	Result() (any, error)
+}
+
+type valueResult struct {
+	val any
+}
+
+func (r valueResult) Result() (any, error) {
+	return r.val, nil
+}
+
 type servicePromise struct {
 	val  any
 	err  error
@@ -62,13 +74,13 @@ func newServicePromise() *servicePromise {
 	}
 }
 
-func (f *servicePromise) setResult(val any, err error) {
-	f.val = val
-	f.err = err
-	close(f.done)
+func (p *servicePromise) setResult(val any, err error) {
+	p.val = val
+	p.err = err
+	close(p.done)
 }
 
-func (f *servicePromise) Result() (any, error) {
-	<-f.done
-	return f.val, f.err
+func (p *servicePromise) Result() (any, error) {
+	<-p.done
+	return p.val, p.err
 }

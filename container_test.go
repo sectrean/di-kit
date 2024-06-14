@@ -158,7 +158,7 @@ func Test_Container_NewScope(t *testing.T) {
 type testContainerConfig struct {
 	parent   *Container
 	services map[serviceKey]service
-	resolved map[serviceKey]*servicePromise
+	resolved map[serviceKey]resolvedService
 	closers  []Closer
 	closed   bool
 	setup    func(t *testing.T, c *testContainerConfig)
@@ -169,14 +169,14 @@ func newTestContainer(t *testing.T, config testContainerConfig) *Container {
 		config.services = map[serviceKey]service{}
 	}
 	if config.resolved == nil {
-		config.resolved = map[serviceKey]*servicePromise{}
+		config.resolved = map[serviceKey]resolvedService{}
 	}
 
 	if config.setup != nil {
 		config.setup(t, &config)
 	}
 
-	resolved := make(map[service]*servicePromise, len(config.resolved))
+	resolved := make(map[service]resolvedService, len(config.resolved))
 	for k, v := range config.resolved {
 		svc := config.services[k]
 		resolved[svc] = v

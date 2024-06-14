@@ -15,7 +15,7 @@ import (
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		services: make(map[serviceKey]service),
-		resolved: make(map[service]*servicePromise),
+		resolved: make(map[service]resolvedService),
 	}
 
 	// Apply options
@@ -39,7 +39,7 @@ type Container struct {
 	services map[serviceKey]service
 
 	resolvedMu sync.Mutex
-	resolved   map[service]*servicePromise
+	resolved   map[service]resolvedService
 
 	closersMu sync.Mutex
 	closers   []Closer
@@ -64,6 +64,15 @@ func (c *Container) register(s service) {
 	} else {
 		for _, alias := range s.Aliases() {
 			c.registerType(alias, s)
+		}
+	}
+
+	// Pre-resolve value services and add closer
+	// We don't need to take locks here because this is only called when creating a new Container
+	if vs, ok := s.(*valueService); ok {
+		c.resolved[s] = valueResult{vs.val}
+		if closer := s.GetCloser(vs.val); closer != nil {
+			c.closers = append(c.closers, closer)
 		}
 	}
 }
@@ -124,7 +133,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 	scope := &Container{
 		parent:   c,
 		services: c.services,
-		resolved: make(map[service]*servicePromise),
+		resolved: make(map[service]resolvedService),
 	}
 
 	// Apply options
@@ -225,24 +234,25 @@ func (c *Container) resolve(
 	if svc.Lifetime() != Transient {
 		scope.resolvedMu.Lock()
 
-		promise, loaded := scope.resolved[svc]
-		if !loaded {
-			promise = newServicePromise()
+		res, exists := scope.resolved[svc]
+		if !exists {
+			// Create a promise that will be resolved when this function returns
+			promise := newServicePromise()
+			defer func() {
+				promise.setResult(val, err)
+			}()
+
+			res = promise
 			scope.resolved[svc] = promise
 		}
 
 		scope.resolvedMu.Unlock()
 
-		if loaded {
+		if exists {
 			// This will block until the value and error are set
-			// by the first goroutine to resolve this service.
-			return promise.Result()
+			// by the first request to resolve this service.
+			return res.Result()
 		}
-
-		defer func() {
-			// Set the result when this function returns
-			promise.setResult(val, err)
-		}()
 	}
 
 	// Recursively resolve dependencies

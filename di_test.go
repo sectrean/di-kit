@@ -342,9 +342,19 @@ func TestWithClose(t *testing.T) {
 		Return(nil).
 		Once()
 
+	b := mocks.NewInterfaceBMock(t)
+	// Close should get called for this service even if it's never resolved.
+	b.EXPECT().
+		Close(mock.Anything).
+		Once()
+
 	c, err := di.NewContainer(
 		di.WithService(a,
 			di.As[testtypes.InterfaceA](),
+			di.WithClose(),
+		),
+		di.WithService(b,
+			di.As[testtypes.InterfaceB](),
 			di.WithClose(),
 		),
 	)
