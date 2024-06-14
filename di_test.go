@@ -145,6 +145,7 @@ func TestAliases(t *testing.T) {
 	assert.NoError(t, err)
 
 	_, err = di.Resolve[*testtypes.StructA](ctx, c)
+	di.LogError(t, err)
 	assert.ErrorIs(t, err, di.ErrTypeNotRegistered)
 }
 
@@ -187,6 +188,7 @@ func TestFuncServiceError(t *testing.T) {
 
 	ctx := context.Background()
 	got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+	di.LogError(t, err)
 	assert.Equal(t, &testtypes.StructA{}, got)
 	assert.EqualError(t, err, "resolve testtypes.InterfaceA: constructor error")
 }
@@ -314,10 +316,11 @@ func TestClosers(t *testing.T) {
 	_ = di.MustResolve[testtypes.InterfaceA](ctx, scope)
 
 	err = scope.Close(ctx)
+	di.LogError(t, err)
 	assert.EqualError(t, err, "close container: err c\nerr a")
 }
 
-func TestNoCloser(t *testing.T) {
+func TestNoClose(t *testing.T) {
 	a := mocks.NewInterfaceAMock(t)
 
 	c, err := di.NewContainer(
@@ -332,7 +335,7 @@ func TestNoCloser(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestWithCloser(t *testing.T) {
+func TestWithClose(t *testing.T) {
 	a := mocks.NewInterfaceAMock(t)
 	a.EXPECT().
 		Close(mock.Anything).
@@ -384,6 +387,7 @@ func TestResolveWithEmptyContainer(t *testing.T) {
 
 	ctx := context.Background()
 	_, err = di.Resolve[testtypes.InterfaceA](ctx, c)
+	di.LogError(t, err)
 	assert.ErrorIs(t, err, di.ErrTypeNotRegistered)
 }
 
@@ -413,6 +417,7 @@ func TestResolveWithScope(t *testing.T) {
 
 			// We cannot call Resolve on the scope here.
 			a, err := di.Resolve[testtypes.InterfaceA](ctx, scope)
+			di.LogError(t, err)
 			assert.Nil(t, a)
 			assert.EqualError(t, err,
 				"resolve testtypes.InterfaceA: "+
@@ -447,4 +452,21 @@ func (f *Factory) BuildA(ctx context.Context, _ string) testtypes.InterfaceA {
 	}
 
 	return a
+}
+
+func Test_Resolve_DependencyError(t *testing.T) {
+	ctx := context.Background()
+
+	c, err := di.NewContainer(
+		di.WithService(func() (testtypes.InterfaceA, error) {
+			return &testtypes.StructA{}, errors.New("constructor func error")
+		}),
+		di.WithService(testtypes.NewInterfaceB),
+	)
+	require.NoError(t, err)
+
+	b, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+	di.LogError(t, err)
+	assert.Nil(t, b)
+	assert.EqualError(t, err, "resolve testtypes.InterfaceB: dependency testtypes.InterfaceA: constructor func error")
 }

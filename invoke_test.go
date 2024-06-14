@@ -32,7 +32,7 @@ func TestInvoke(t *testing.T) {
 		assert.NotNil(t, depB)
 		return nil
 	})
-	logErrorMessage(t, err)
+	LogError(t, err)
 	assert.NoError(t, err)
 }
 
@@ -46,7 +46,7 @@ func TestInvoke_Error(t *testing.T) {
 	err := Invoke(ctx, scope, func(testtypes.InterfaceA) error {
 		return errors.New("invoke error")
 	})
-	logErrorMessage(t, err)
+	LogError(t, err)
 	assert.EqualError(t, err, "invoke error")
 }
 
@@ -55,7 +55,7 @@ func TestInvoke_NotFunc(t *testing.T) {
 
 	ctx := context.Background()
 	err := Invoke(ctx, scope, 1234)
-	logErrorMessage(t, err)
+	LogError(t, err)
 	assert.EqualError(t, err, "invoke int: fn must be a function")
 }
 
@@ -67,7 +67,7 @@ func TestInvoke_ResolveError(t *testing.T) {
 
 	ctx := context.Background()
 	err := Invoke(ctx, scope, func(testtypes.InterfaceA) {})
-	logErrorMessage(t, err)
+	LogError(t, err)
 	assert.EqualError(t, err, "invoke func(testtypes.InterfaceA): resolve error")
 }
 
@@ -81,7 +81,7 @@ func TestInvoke_ContextError(t *testing.T) {
 
 	ctx := ContextCanceled()
 	err := Invoke(ctx, scope, func(context.Context) {})
-	logErrorMessage(t, err)
+	LogError(t, err)
 	assert.EqualError(t, err, "invoke func(context.Context): context canceled")
 }
 
@@ -93,7 +93,7 @@ func TestInvoke_NoError(t *testing.T) {
 
 	ctx := context.Background()
 	err := Invoke(ctx, scope, func(testtypes.InterfaceA) {})
-	logErrorMessage(t, err)
+	LogError(t, err)
 	assert.NoError(t, err)
 }
 
@@ -108,7 +108,7 @@ func TestInvoke_WithKeyed(t *testing.T) {
 		func(testtypes.InterfaceA) {},
 		WithKeyed[testtypes.InterfaceA]("key"),
 	)
-	logErrorMessage(t, err)
+	LogError(t, err)
 	assert.NoError(t, err)
 }
 
@@ -117,6 +117,6 @@ func TestInvoke_WithKeyed_DepNotFound(t *testing.T) {
 
 	ctx := context.Background()
 	err := Invoke(ctx, scope, func() {}, WithKeyed[testtypes.InterfaceA]("key"))
-	logErrorMessage(t, err)
+	LogError(t, err)
 	assert.EqualError(t, err, "invoke func(): with keyed testtypes.InterfaceA: argument not found")
 }

@@ -13,41 +13,6 @@ import (
 	"github.com/johnrutherford/di-kit/internal/testtypes"
 )
 
-var (
-	InterfaceAType = reflect.TypeFor[testtypes.InterfaceA]()
-	InterfaceBType = reflect.TypeFor[testtypes.InterfaceB]()
-
-	InterfaceAKey = serviceKey{Type: InterfaceAType}
-	InterfaceBKey = serviceKey{Type: InterfaceBType}
-)
-
-func Must[T any](val T, err error) T {
-	if err != nil {
-		panic(err)
-	}
-	return val
-}
-
-func ContextCanceled() context.Context {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	return ctx
-}
-
-func ContextDeadlineExceeded() context.Context {
-	ctx, cancel := context.WithTimeout(context.Background(), -1)
-	cancel()
-
-	return ctx
-}
-
-type testContextKey struct{}
-
-func ContextWithValue(s string) context.Context {
-	return context.WithValue(context.Background(), testContextKey{}, s)
-}
-
 func Test_NewContainer(t *testing.T) {
 	t.Parallel()
 
@@ -102,7 +67,7 @@ func Test_NewContainer(t *testing.T) {
 				tt.want(t, got)
 			}
 
-			logErrorMessage(t, err)
+			LogError(t, err)
 
 			if tt.wantErr != "" {
 				assert.EqualError(t, err, tt.wantErr)
@@ -173,7 +138,7 @@ func Test_Container_NewScope(t *testing.T) {
 			c := newTestContainer(t, tt.parent)
 			scope, err := c.NewScope(tt.opts...)
 
-			logErrorMessage(t, err)
+			LogError(t, err)
 
 			if tt.want != nil {
 				tt.want(t, scope)
@@ -492,7 +457,7 @@ func Test_Container_Resolve(t *testing.T) {
 				assert.Equal(t, tt.want, got)
 			}
 
-			logErrorMessage(t, err)
+			LogError(t, err)
 
 			if tt.wantErr != "" {
 				assert.EqualError(t, err, tt.wantErr)
@@ -568,7 +533,7 @@ func Test_Container_Close(t *testing.T) {
 
 			// Call the Close method
 			err := c.Close(tt.ctx)
-			logErrorMessage(t, err)
+			LogError(t, err)
 
 			// Check the error
 			if tt.wantErr != "" {
@@ -578,14 +543,4 @@ func Test_Container_Close(t *testing.T) {
 			}
 		})
 	}
-}
-
-func logErrorMessage(t *testing.T, err error) {
-	if err == nil {
-		return
-	}
-
-	// We log our error messages so we can make sure they are helpful and informative
-	t.Helper()
-	t.Logf("error message:\n%v", err)
 }
