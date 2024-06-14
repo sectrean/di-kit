@@ -199,8 +199,8 @@ func (c *Container) resolve(
 	visitor resolveVisitor,
 ) (val any, err error) {
 	// Look up the service
-	svc, ok := c.services[key]
-	if !ok {
+	svc, registered := c.services[key]
+	if !registered {
 		return nil, ErrTypeNotRegistered
 	}
 
@@ -208,6 +208,7 @@ func (c *Container) resolve(
 	// For singleton services, use the root container.
 	scope := c
 	if svc.Lifetime() == Singleton {
+		// TODO: We actually need to use the scope that the service was registered with
 		scope = c.root()
 	}
 
@@ -250,6 +251,7 @@ func (c *Container) resolve(
 		deps = make([]reflect.Value, len(svc.Dependencies()))
 		for i, depKey := range svc.Dependencies() {
 			var depVal any
+			var depErr error
 
 			switch depKey.Type {
 			case contextType:
@@ -265,16 +267,15 @@ func (c *Container) resolve(
 				defer ready()
 
 			default:
-				var depErr error
 				// Recursive call
 				depVal, depErr = scope.resolve(ctx, depKey, visitor)
-				if depErr != nil {
-					// Stop at the first error
-					return depVal, errors.Wrapf(depErr, "dependency %s", depKey)
-				}
 			}
 
 			deps[i] = reflect.ValueOf(depVal)
+			if depErr != nil {
+				// Stop at the first error
+				return nil, errors.Wrapf(depErr, "dependency %s", depKey)
+			}
 		}
 	}
 

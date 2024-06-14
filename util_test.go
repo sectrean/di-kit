@@ -16,6 +16,18 @@ var (
 	InterfaceBKey = serviceKey{Type: InterfaceBType}
 )
 
+// LogError is a test helper function to log an error message if it is not nil.
+//
+// This is to help make sure our error messages are helpful and informative.
+func LogError(t *testing.T, err error) {
+	if err == nil {
+		return
+	}
+
+	t.Helper()
+	t.Logf("error message:\n%v", err)
+}
+
 func Must[T any](val T, err error) T {
 	if err != nil {
 		panic(err)
@@ -35,16 +47,4 @@ func ContextDeadlineExceeded() context.Context {
 	cancel()
 
 	return ctx
-}
-
-// LogError is a test helper function to log an error message if it is not nil.
-//
-// This is to help make sure our error messages are helpful and informative.
-func LogError(t *testing.T, err error) {
-	if err == nil {
-		return
-	}
-
-	t.Helper()
-	t.Logf("error message:\n%v", err)
 }

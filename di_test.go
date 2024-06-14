@@ -407,6 +407,19 @@ func TestResolveWithContext(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+type Factory struct {
+	scope di.Scope
+}
+
+func (f *Factory) BuildA(ctx context.Context, _ string) testtypes.InterfaceA {
+	a, err := di.Resolve[testtypes.InterfaceA](ctx, f.scope)
+	if err != nil {
+		panic(err)
+	}
+
+	return a
+}
+
 func TestResolveWithScope(t *testing.T) {
 	ctx := context.Background()
 
@@ -441,19 +454,6 @@ func TestResolveWithScope(t *testing.T) {
 	assert.NotNil(t, a)
 }
 
-type Factory struct {
-	scope di.Scope
-}
-
-func (f *Factory) BuildA(ctx context.Context, _ string) testtypes.InterfaceA {
-	a, err := di.Resolve[testtypes.InterfaceA](ctx, f.scope)
-	if err != nil {
-		panic(err)
-	}
-
-	return a
-}
-
 func Test_Resolve_DependencyError(t *testing.T) {
 	ctx := context.Background()
 
@@ -466,7 +466,6 @@ func Test_Resolve_DependencyError(t *testing.T) {
 	require.NoError(t, err)
 
 	b, err := di.Resolve[testtypes.InterfaceB](ctx, c)
-	di.LogError(t, err)
 	assert.Nil(t, b)
 	assert.EqualError(t, err, "resolve testtypes.InterfaceB: dependency testtypes.InterfaceA: constructor func error")
 }
