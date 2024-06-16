@@ -18,16 +18,6 @@ func newValueService(val any, opts ...RegisterOption) (*valueService, error) {
 	t := reflect.TypeOf(val)
 	v := reflect.ValueOf(val)
 
-	switch t.Kind() {
-	case reflect.Interface,
-		reflect.Pointer,
-		reflect.Struct:
-		// These are the supported kinds.
-
-	default:
-		return nil, errors.Errorf("unsupported kind %s", t.Kind())
-	}
-
 	svc := &valueService{
 		t:   t,
 		val: v.Interface(),
@@ -80,13 +70,9 @@ func (*valueService) Dependencies() []serviceKey {
 }
 
 func (s *valueService) GetCloser(val any) Closer {
-	if val == nil {
-		return nil
-	}
-
 	// The container is not responsible for closing this value by default.
 	// But if a closer factory is provided, use it.
-	if s.closerFactory != nil {
+	if val != nil && s.closerFactory != nil {
 		return s.closerFactory(val)
 	}
 

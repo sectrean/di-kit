@@ -62,9 +62,8 @@ func (s *sliceService) setCloserFactory(closerFactory) {
 func (s *sliceService) GetValue(deps []reflect.Value) (any, error) {
 	sliceType := reflect.SliceOf(s.t)
 	slice := reflect.MakeSlice(sliceType, 0, len(deps))
-	for _, dep := range deps {
-		slice = reflect.Append(slice, dep)
-	}
+	slice = reflect.Append(slice, deps...)
+
 	return slice.Interface(), nil
 }
 

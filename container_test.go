@@ -63,9 +63,32 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "new container: with service di.Lifetime: unexpected RegisterOption as funcOrValue")
 	})
 
+	t.Run("alias not assignable", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA, di.As[*testtypes.StructA]()),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with service func() testtypes.InterfaceA: service type testtypes.InterfaceA is not assignable to alias type *testtypes.StructA")
+	})
+
 	t.Run("with keyed not found", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA,
+				di.WithKeyed[testtypes.InterfaceB]("key"),
+			),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with service func() testtypes.InterfaceA: with keyed testtypes.InterfaceB: argument not found")
+	})
+
+	t.Run("value with keyed", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA,
+				// This option will be ignored.
 				di.WithKeyed[testtypes.InterfaceB]("key"),
 			),
 		)
@@ -86,6 +109,17 @@ func Test_NewContainer(t *testing.T) {
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "new container: with service func() testtypes.InterfaceA: with close func: service type testtypes.InterfaceA is not assignable to *testtypes.StructA")
 	})
+
+	t.Run("unsupported func signature", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func() (testtypes.InterfaceA, testtypes.InterfaceB) { return nil, nil }),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err,
+			"new container: with service func() (testtypes.InterfaceA, testtypes.InterfaceB): function must return T or (T, error)")
+	})
 }
 
 func Test_Container_NewScope(t *testing.T) {
@@ -97,14 +131,11 @@ func Test_Container_NewScope(t *testing.T) {
 		require.NoError(t, err)
 
 		scope, err := c.NewScope()
-		assert.NoError(t, err)
-
 		assert.NotNil(t, scope)
-
-		ctx := context.Background()
-		b, err := di.Resolve[testtypes.InterfaceB](ctx, scope)
-		assert.NotNil(t, b)
 		assert.NoError(t, err)
+
+		assert.True(t, scope.Contains(reflect.TypeFor[testtypes.InterfaceA]()))
+		assert.True(t, scope.Contains(reflect.TypeFor[testtypes.InterfaceB]()))
 	})
 
 	t.Run("with new service", func(t *testing.T) {
@@ -154,6 +185,7 @@ func Test_Container_NewScope(t *testing.T) {
 
 		assert.Nil(t, scope)
 		assert.EqualError(t, err, "new scope: container closed")
+		assert.ErrorIs(t, err, di.ErrContainerClosed)
 	})
 }
 
@@ -333,7 +365,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.ErrorIs(t, err, di.ErrDependencyCycle)
 	})
 
-	t.Run("singleton", func(t *testing.T) {
+	t.Run("singleton lifetime", func(t *testing.T) {
 		calls := 0
 
 		c, err := di.NewContainer(
@@ -359,7 +391,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
-	t.Run("transient", func(t *testing.T) {
+	t.Run("transient lifetime", func(t *testing.T) {
 		calls := 0
 
 		c, err := di.NewContainer(
@@ -385,7 +417,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 2, calls)
 	})
 
-	t.Run("scoped", func(t *testing.T) {
+	t.Run("scoped lifetime", func(t *testing.T) {
 		calls := 0
 
 		c, err := di.NewContainer(
@@ -544,7 +576,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Same(t, a1, a2)
 	})
 
-	t.Run("with key", func(t *testing.T) {
+	t.Run("func with key", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA, di.WithKey("key")),
 		)
@@ -592,6 +624,21 @@ func Test_Container_Resolve(t *testing.T) {
 		got, err = di.Resolve[testtypes.InterfaceA](ctx, c)
 		assert.NotNil(t, got)
 		assert.NoError(t, err)
+	})
+
+	t.Run("with key not registered", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA, di.WithKey("key")),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithKey("other"))
+		LogError(t, err)
+
+		assert.Nil(t, got)
+		assert.EqualError(t, err, "resolve testtypes.InterfaceA (Key other): type not registered")
+		assert.ErrorIs(t, err, di.ErrTypeNotRegistered)
 	})
 
 	t.Run("with keyed", func(t *testing.T) {
@@ -866,7 +913,7 @@ func Test_Container_Close(t *testing.T) {
 		assert.EqualError(t, err, "close: err c\nerr a")
 	})
 
-	t.Run("ignore close", func(t *testing.T) {
+	t.Run("func ignore close", func(t *testing.T) {
 		aMock := mocks.NewInterfaceAMock(t)
 
 		scope, err := di.NewContainer(

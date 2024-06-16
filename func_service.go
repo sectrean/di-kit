@@ -20,10 +20,6 @@ func newFuncService(fn any, opts ...RegisterOption) (*funcService, error) {
 	fnType := reflect.TypeOf(fn)
 	fnVal := reflect.ValueOf(fn)
 
-	if fnType.Kind() != reflect.Func {
-		return nil, errors.Errorf("expected a function, got %v", fnType)
-	}
-
 	// Get the return type
 	var t reflect.Type
 	if fnType.NumOut() == 1 {
@@ -31,7 +27,7 @@ func newFuncService(fn any, opts ...RegisterOption) (*funcService, error) {
 	} else if fnType.NumOut() == 2 && fnType.Out(1) == errorType {
 		t = fnType.Out(0)
 	} else {
-		return nil, errors.Errorf("function %v must return T or (T, error)", fnType)
+		return nil, errors.New("function must return T or (T, error)")
 	}
 
 	// Get the dependencies
