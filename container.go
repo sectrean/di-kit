@@ -104,7 +104,7 @@ func (c *Container) registerType(t reflect.Type, s service) {
 	// Register the service with a key
 	if s.Key() != nil {
 		keyWithKey := serviceKey{
-			Type: s.Type(),
+			Type: t,
 			Key:  s.Key(),
 		}
 		c.services[keyWithKey] = s
@@ -165,9 +165,6 @@ func (c *Container) Contains(t reflect.Type, opts ...ServiceOption) bool {
 
 func (c *Container) contains(key serviceKey) bool {
 	_, found := c.services[key]
-	if !found && c.parent != nil {
-		found = c.parent.contains(key)
-	}
 	return found
 }
 
@@ -329,7 +326,7 @@ func (c *Container) Close(ctx context.Context) error {
 		errs = errs.Append(err)
 	}
 
-	return errs.Wrap("close container")
+	return errs.Wrap("close")
 }
 
 var (

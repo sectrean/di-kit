@@ -41,28 +41,31 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 		return errs.Wrapf("invoke %T", fn)
 	}
 
+	// Check for a context error before we start resolving deps
+	if ctx.Err() != nil {
+		return errors.Wrapf(ctx.Err(), "invoke %T", fn)
+	}
+
 	// Resolve deps from the Scope
 	// Stop at the first error
 	in := make([]reflect.Value, fnType.NumIn())
 	for i, dep := range config.deps {
 		var depVal any
 		var depErr error
-		if dep.Key != nil {
+
+		switch {
+		case dep.Type == contextType:
+			depVal = ctx
+		case dep.Key != nil:
 			depVal, depErr = s.Resolve(ctx, dep.Type, WithKey(dep.Key))
-		} else {
+		default:
 			depVal, depErr = s.Resolve(ctx, dep.Type)
 		}
 
+		in[i] = reflect.ValueOf(depVal)
 		if depErr != nil {
 			return errors.Wrapf(depErr, "invoke %T", fn)
 		}
-		in[i] = reflect.ValueOf(depVal)
-		continue
-	}
-
-	// Check for a context error before invoking the function
-	if ctx.Err() != nil {
-		return errors.Wrapf(ctx.Err(), "invoke %T", fn)
 	}
 
 	// Invoke the function

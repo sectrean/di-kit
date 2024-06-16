@@ -102,13 +102,14 @@ func (s *injectedScope) Resolve(
 	t reflect.Type,
 	opts ...ServiceOption,
 ) (any, error) {
+	// Resolve cannot be called until the constructor function has returned.
+	// Otherwise a deadlock is possible.
 	if !s.ready {
 		return nil, errors.Errorf(
 			"resolve %v: "+
-				"resolve not supported on %s while resolving %s: "+
-				"the scope must be stored and used later",
+				"resolve not supported within constructor function for %s: "+
+				"the di.Scope must be stored and used later",
 			t,
-			scopeType,
 			s.key,
 		)
 	}

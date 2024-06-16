@@ -9,7 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func BenchmarkNewContainer(b *testing.B) {
+// TODO: Re-organize the benchmarks to use more sub-tests.
+
+func Benchmark_NewContainer(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _ = di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
@@ -18,7 +20,7 @@ func BenchmarkNewContainer(b *testing.B) {
 	}
 }
 
-func BenchmarkContainer_NewScope(b *testing.B) {
+func Benchmark_Container_NewScope(b *testing.B) {
 	root, err := di.NewContainer(
 		di.WithService(testtypes.NewInterfaceA),
 		di.WithService(testtypes.NewInterfaceB, di.Scoped),
@@ -32,7 +34,7 @@ func BenchmarkContainer_NewScope(b *testing.B) {
 	}
 }
 
-func BenchmarkContainer_Contains(b *testing.B) {
+func Benchmark_Container_Contains(b *testing.B) {
 	c, err := di.NewContainer(
 		di.WithService(&testtypes.StructA{}),
 	)
@@ -41,11 +43,11 @@ func BenchmarkContainer_Contains(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_ = c.Contains(di.InterfaceAType)
+		_ = c.Contains(InterfaceAType)
 	}
 }
 
-func BenchmarkContainer_Contains_WithKey(b *testing.B) {
+func Benchmark_Container_Contains_WithKey(b *testing.B) {
 	c, err := di.NewContainer(
 		di.WithService(&testtypes.StructA{}),
 		di.WithService(&testtypes.StructA{}, di.WithKey("b")),
@@ -55,11 +57,11 @@ func BenchmarkContainer_Contains_WithKey(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_ = c.Contains(di.InterfaceAType, di.WithKey("b"))
+		_ = c.Contains(InterfaceAType, di.WithKey("b"))
 	}
 }
 
-func BenchmarkContainer_Resolve_OneValueService(b *testing.B) {
+func Benchmark_Container_Resolve_OneValueService(b *testing.B) {
 	c, err := di.NewContainer(
 		di.WithService(&testtypes.StructA{}),
 	)
@@ -74,7 +76,7 @@ func BenchmarkContainer_Resolve_OneValueService(b *testing.B) {
 	}
 }
 
-func BenchmarkContainer_Resolve_OneValueStruct(b *testing.B) {
+func Benchmark_Container_Resolve_OneValueStruct(b *testing.B) {
 	c, err := di.NewContainer(
 		di.WithService(testtypes.StructA{}),
 	)
@@ -89,7 +91,7 @@ func BenchmarkContainer_Resolve_OneValueStruct(b *testing.B) {
 	}
 }
 
-func BenchmarkContainer_Resolve_OneFunc_Singleton(b *testing.B) {
+func Benchmark_Container_Resolve_OneFunc_Singleton(b *testing.B) {
 	c, err := di.NewContainer(
 		di.WithService(testtypes.NewInterfaceA, di.Singleton),
 	)
@@ -104,7 +106,7 @@ func BenchmarkContainer_Resolve_OneFunc_Singleton(b *testing.B) {
 	}
 }
 
-func BenchmarkContainer_Resolve_Scopes(b *testing.B) {
+func Benchmark_Container_Resolve_Scopes(b *testing.B) {
 	var newParent = func(b *testing.B) *di.Container {
 		parent, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA, di.Singleton),
@@ -191,7 +193,7 @@ func BenchmarkContainer_Resolve_Scopes(b *testing.B) {
 	})
 }
 
-func BenchmarkContainer_Resolve_OneFunc_Transient(b *testing.B) {
+func Benchmark_Container_Resolve_OneFunc_Transient(b *testing.B) {
 	c, err := di.NewContainer(
 		di.WithService(testtypes.NewInterfaceA, di.Transient),
 	)
@@ -206,7 +208,7 @@ func BenchmarkContainer_Resolve_OneFunc_Transient(b *testing.B) {
 	}
 }
 
-func BenchmarkContainer_Resolve_TwoFunc_Transient(b *testing.B) {
+func Benchmark_Container_Resolve_TwoFunc_Transient(b *testing.B) {
 	c, err := di.NewContainer(
 		di.WithService(testtypes.NewInterfaceA, di.Transient),
 		di.WithService(testtypes.NewInterfaceB, di.Transient),

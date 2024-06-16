@@ -11,68 +11,106 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestScope(t *testing.T) {
-	c, err := di.NewContainer()
-	require.NoError(t, err)
+func Test_Scope(t *testing.T) {
+	t.Parallel()
 
-	ctx := dicontext.WithScope(context.Background(), c)
-	scope := dicontext.Scope(ctx)
+	t.Run("with scope", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
 
-	assert.Same(t, c, scope)
-}
+		ctx := dicontext.WithScope(context.Background(), c)
+		scope := dicontext.Scope(ctx)
 
-func TestScope_NoScope(t *testing.T) {
-	ctx := context.Background()
-	scope := dicontext.Scope(ctx)
-	assert.Nil(t, scope)
-}
+		assert.Same(t, c, scope)
+	})
 
-func TestResolve(t *testing.T) {
-	c, err := di.NewContainer(
-		di.WithService(testtypes.NewInterfaceA),
-	)
-	require.NoError(t, err)
-
-	ctx := dicontext.WithScope(context.Background(), c)
-
-	got, err := dicontext.Resolve[testtypes.InterfaceA](ctx)
-	assert.Equal(t, &testtypes.StructA{}, got)
-	assert.NoError(t, err)
-}
-
-func TestResolve_NoScope(t *testing.T) {
-	ctx := context.Background()
-
-	got, err := dicontext.Resolve[testtypes.InterfaceA](ctx)
-	assert.Nil(t, got)
-	assert.EqualError(t, err,
-		"resolve testtypes.InterfaceA from context: scope not found on context")
-}
-
-func TestMustResolve(t *testing.T) {
-	c, err := di.NewContainer(
-		di.WithService(testtypes.NewInterfaceA),
-	)
-	require.NoError(t, err)
-
-	ctx := dicontext.WithScope(context.Background(), c)
-
-	got := dicontext.MustResolve[testtypes.InterfaceA](ctx)
-	assert.Equal(t, &testtypes.StructA{}, got)
-}
-
-func TestMustResolve_NoScope(t *testing.T) {
-	ctx := context.Background()
-
-	assert.PanicsWithError(t, "resolve testtypes.InterfaceA from context: scope not found on context", func() {
-		_ = dicontext.MustResolve[testtypes.InterfaceA](ctx)
+	t.Run("no scope", func(t *testing.T) {
+		ctx := context.Background()
+		scope := dicontext.Scope(ctx)
+		assert.Nil(t, scope)
 	})
 }
 
-func TestMustResolve_Error(t *testing.T) {
-	ctx := context.Background()
+func Test_Resolve(t *testing.T) {
+	t.Parallel()
 
-	assert.PanicsWithError(t, "resolve testtypes.InterfaceA from context: scope not found on context", func() {
-		_ = dicontext.MustResolve[testtypes.InterfaceA](ctx)
+	t.Run("resolve", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		ctx := dicontext.WithScope(context.Background(), c)
+
+		got, err := dicontext.Resolve[testtypes.InterfaceA](ctx)
+		assert.Equal(t, &testtypes.StructA{}, got)
+		assert.NoError(t, err)
+	})
+
+	t.Run("resolve with key", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA, di.WithKey("key")),
+			di.WithService(func() testtypes.InterfaceA {
+				panic("should not be called")
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := dicontext.WithScope(context.Background(), c)
+
+		got, err := dicontext.Resolve[testtypes.InterfaceA](ctx, di.WithKey("key"))
+		assert.Equal(t, &testtypes.StructA{}, got)
+		assert.NoError(t, err)
+	})
+
+	t.Run("resolve error", func(t *testing.T) {
+		ctx := context.Background()
+
+		got, err := dicontext.Resolve[testtypes.InterfaceA](ctx)
+		assert.Nil(t, got)
+		assert.EqualError(t, err,
+			"resolve testtypes.InterfaceA from context: scope not found on context")
+	})
+
+	t.Run("no scope", func(t *testing.T) {
+		ctx := context.Background()
+
+		got, err := dicontext.Resolve[testtypes.InterfaceA](ctx)
+		assert.Nil(t, got)
+		assert.EqualError(t, err,
+			"resolve testtypes.InterfaceA from context: scope not found on context")
+	})
+}
+
+func Test_MustResolve(t *testing.T) {
+	t.Parallel()
+
+	t.Run("resolve", func(t *testing.T) {
+
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		ctx := dicontext.WithScope(context.Background(), c)
+
+		got := dicontext.MustResolve[testtypes.InterfaceA](ctx)
+		assert.Equal(t, &testtypes.StructA{}, got)
+	})
+
+	t.Run("no scope", func(t *testing.T) {
+		ctx := context.Background()
+
+		assert.PanicsWithError(t, "resolve testtypes.InterfaceA from context: scope not found on context", func() {
+			_ = dicontext.MustResolve[testtypes.InterfaceA](ctx)
+		})
+	})
+
+	t.Run("resolve error", func(t *testing.T) {
+		ctx := context.Background()
+
+		assert.PanicsWithError(t, "resolve testtypes.InterfaceA from context: scope not found on context", func() {
+			_ = dicontext.MustResolve[testtypes.InterfaceA](ctx)
+		})
 	})
 }

@@ -97,8 +97,8 @@ func (o closeFuncOption[T]) applyService(s service) error {
 	svcType := s.Type()
 
 	if !svcType.AssignableTo(optType) {
-		return errors.Errorf("with close func %s: service type %s is not assignable",
-			optType, svcType)
+		return errors.Errorf("with close func: service type %s is not assignable to %s",
+			svcType, optType)
 	}
 
 	s.setCloserFactory(func(val any) Closer {

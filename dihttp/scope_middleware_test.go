@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRequestScopeMiddleware(t *testing.T) {
+func Test_RequestScopeMiddleware(t *testing.T) {
 	c, err := di.NewContainer(
 		di.WithService(testtypes.NewInterfaceA),
 		di.WithService(func(a testtypes.InterfaceA, r *http.Request) testtypes.InterfaceB {
