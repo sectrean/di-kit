@@ -63,14 +63,24 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "new container: with service di.Lifetime: unexpected RegisterOption as funcOrValue")
 	})
 
-	t.Run("alias not assignable", func(t *testing.T) {
+	t.Run("func alias not assignable", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA, di.As[*testtypes.StructA]()),
 		)
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "new container: with service func() testtypes.InterfaceA: service type testtypes.InterfaceA is not assignable to alias type *testtypes.StructA")
+		assert.EqualError(t, err, "new container: with service func() testtypes.InterfaceA: as *testtypes.StructA: type testtypes.InterfaceA not assignable to *testtypes.StructA")
+	})
+
+	t.Run("value alias not assignable", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(&testtypes.StructA{}, di.As[testtypes.InterfaceB]()),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with service *testtypes.StructA: as testtypes.InterfaceB: type *testtypes.StructA not assignable to testtypes.InterfaceB")
 	})
 
 	t.Run("with keyed not found", func(t *testing.T) {
@@ -119,6 +129,17 @@ func Test_NewContainer(t *testing.T) {
 		assert.Nil(t, c)
 		assert.EqualError(t, err,
 			"new container: with service func() (testtypes.InterfaceA, testtypes.InterfaceB): function must return T or (T, error)")
+	})
+
+	t.Run("multiple errors", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService([]testtypes.InterfaceA{}),
+			di.WithService(testtypes.NewInterfaceA, di.As[testtypes.InterfaceB]()),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with service []testtypes.InterfaceA: unsupported kind slice\nwith service func() testtypes.InterfaceA: as testtypes.InterfaceB: type testtypes.InterfaceA not assignable to testtypes.InterfaceB")
 	})
 }
 

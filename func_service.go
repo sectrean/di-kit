@@ -30,6 +30,10 @@ func newFuncService(fn any, opts ...RegisterOption) (*funcService, error) {
 		return nil, errors.New("function must return T or (T, error)")
 	}
 
+	// TODO: Validate service type
+	// Don't allow slices, context.Context, di.Scope, etc.
+	// What other types should we disallow?
+
 	// Get the dependencies
 	var deps []serviceKey
 	if fnType.NumIn() > 0 {
@@ -76,7 +80,7 @@ func (s *funcService) Aliases() []reflect.Type {
 
 func (s *funcService) AddAlias(alias reflect.Type) error {
 	if !s.t.AssignableTo(alias) {
-		return errors.Errorf("service type %s is not assignable to alias type %s", s.t, alias)
+		return errors.Errorf("type %s not assignable to %s", s.t, alias)
 	}
 
 	s.aliases = append(s.aliases, alias)

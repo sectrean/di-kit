@@ -38,7 +38,7 @@ func (s *valueService) Aliases() []reflect.Type {
 
 func (s *valueService) AddAlias(alias reflect.Type) error {
 	if !s.t.AssignableTo(alias) {
-		return errors.Errorf("service type %s is not assignable to alias type %s", s.t, alias)
+		return errors.Errorf("type %s not assignable to %s", s.t, alias)
 	}
 
 	s.aliases = append(s.aliases, alias)
