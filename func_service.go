@@ -27,7 +27,7 @@ func newFuncService(fn any, opts ...RegisterOption) (*funcService, error) {
 	} else if fnType.NumOut() == 2 && fnType.Out(1) == errorType {
 		t = fnType.Out(0)
 	} else {
-		return nil, errors.New("function must return T or (T, error)")
+		return nil, errors.New("function must return Service or (Service, error)")
 	}
 
 	// TODO: Validate service type

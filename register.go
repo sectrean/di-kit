@@ -89,9 +89,25 @@ func (o registerOption) applyService(s service) error {
 	return o(s)
 }
 
-// As registers an alias for a service. Use when calling [WithService].
-func As[T any]() RegisterOption {
+// As registers the service as type Service when calling [WithService].
+// This is useful when you want to register a service an interface.
+//
+// This option will return an error if the service type is not assignable to type Service.
+//
+// Example:
+//
+//	c, err := di.NewContainer(
+//		di.WithService(service.NewService,	// returns *service.Service
+//			di.As[service.Interface](),	// register as interface
+//			di.As[*service.Service](),	// also register as actual type
+//		),
+//		// ...
+//	)
+func As[Service any]() RegisterOption {
 	return registerOption(func(s service) error {
-		return s.AddAlias(reflect.TypeFor[T]())
+		aliasType := reflect.TypeFor[Service]()
+
+		err := s.AddAlias(aliasType)
+		return errors.Wrapf(err, "as %s", aliasType)
 	})
 }

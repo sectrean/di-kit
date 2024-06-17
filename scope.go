@@ -46,26 +46,26 @@ type Scope interface {
 	Resolve(ctx context.Context, t reflect.Type, opts ...ServiceOption) (any, error)
 }
 
-// Resolve a service of the given type from the [Scope].
+// Resolve a service of type Service from the [Scope].
 //
 // See [Scope.Resolve] for more information.
-func Resolve[T any](ctx context.Context, s Scope, opts ...ServiceOption) (T, error) {
-	var val T
-	anyVal, err := s.Resolve(ctx, reflect.TypeFor[T](), opts...)
+func Resolve[Service any](ctx context.Context, s Scope, opts ...ServiceOption) (Service, error) {
+	var val Service
+	anyVal, err := s.Resolve(ctx, reflect.TypeFor[Service](), opts...)
 	if anyVal != nil {
-		val = anyVal.(T)
+		val = anyVal.(Service)
 	}
 
 	return val, err
 }
 
-// MustResolve resolves a service of the given type from the [Scope].
+// MustResolve resolves a service of type Service from the [Scope].
 //
 // See [Scope.Resolve] for more information.
 //
 // This will panic if the service cannot be resolved.
-func MustResolve[T any](ctx context.Context, s Scope, opts ...ServiceOption) T {
-	val, err := Resolve[T](ctx, s, opts...)
+func MustResolve[Service any](ctx context.Context, s Scope, opts ...ServiceOption) Service {
+	val, err := Resolve[Service](ctx, s, opts...)
 	if err != nil {
 		panic(err)
 	}

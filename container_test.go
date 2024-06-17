@@ -128,7 +128,7 @@ func Test_NewContainer(t *testing.T) {
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err,
-			"new container: with service func() (testtypes.InterfaceA, testtypes.InterfaceB): function must return T or (T, error)")
+			"new container: with service func() (testtypes.InterfaceA, testtypes.InterfaceB): function must return Service or (Service, error)")
 	})
 
 	t.Run("multiple errors", func(t *testing.T) {

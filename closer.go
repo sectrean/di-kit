@@ -83,17 +83,17 @@ type closerFactory func(val any) Closer
 //
 // See Closer for more information.
 //
-// This option will return an error if the service type is not assignable to T.
-func WithCloseFunc[T any](f func(context.Context, T) error) RegisterOption {
-	return closeFuncOption[T]{f}
+// This option will return an error if the service type is not assignable to Service.
+func WithCloseFunc[Service any](f func(context.Context, Service) error) RegisterOption {
+	return closeFuncOption[Service]{f}
 }
 
-type closeFuncOption[T any] struct {
-	f func(context.Context, T) error
+type closeFuncOption[Service any] struct {
+	f func(context.Context, Service) error
 }
 
-func (o closeFuncOption[T]) applyService(s service) error {
-	optType := reflect.TypeFor[T]()
+func (o closeFuncOption[Service]) applyService(s service) error {
+	optType := reflect.TypeFor[Service]()
 	svcType := s.Type()
 
 	if !svcType.AssignableTo(optType) {
@@ -103,7 +103,7 @@ func (o closeFuncOption[T]) applyService(s service) error {
 
 	s.setCloserFactory(func(val any) Closer {
 		return closeFunc(func(ctx context.Context) error {
-			return o.f(ctx, val.(T))
+			return o.f(ctx, val.(Service))
 		})
 	})
 	return nil

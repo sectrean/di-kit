@@ -100,7 +100,7 @@ Value services are not closed by default since they are not created by the Conta
 
 ### Aliases
 
-Use the `di.As[T]()` option to register a service as the specified type.
+Use the `di.As[Service]()` option to register a service as the specified type.
 This can be used to register a service as as an interface. The alias type must be assignable to the service type.
 
 ```go
@@ -117,7 +117,7 @@ c, err := di.NewContainer(
 
 Use `di.WithKey()` when registering a service to differentiate between different services of the same type.
 
-Use `di.WithKeyed[T]()` when registering a dependent service to specify the key for a dependency.
+Use `di.WithKeyed[Dependency]()` when registering a dependent service to specify the key for a dependency.
 
 ```go
 c, err := di.NewContainer(
@@ -241,8 +241,8 @@ handler = scopeMiddleware(handler)
 
 - slice-of-one pseudo-service? `ServiceB` depends on `[]ServiceA`, but only 1 `ServiceA` service is registered.
 - Track child scopes to make sure all child scopes have been closed.
-- Add support for "decorator" functions `func(T [, deps...]) T`
-- Get around dependency cycles by injecting `di.Lazy[T any]`
+- Add support for "decorator" functions `func(Service [, deps...]) Service`
+- Get around dependency cycles by injecting `di.Lazy[Service any]`
 - Optional dependencies?
 - Implement additional Container options:
 	- Validate services: make sure all types are resolvable, with no cycles.

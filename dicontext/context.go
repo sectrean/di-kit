@@ -23,11 +23,11 @@ func Scope(ctx context.Context) di.Scope {
 	return nil
 }
 
-// Resolve resolves a service of the given type from the [di.Scope] stored on the
+// Resolve a service of type Service from the [di.Scope] stored on the
 // [context.Context].
-func Resolve[T any](ctx context.Context, opts ...di.ServiceOption) (T, error) {
-	var t = reflect.TypeFor[T]()
-	var val T
+func Resolve[Service any](ctx context.Context, opts ...di.ServiceOption) (Service, error) {
+	var t = reflect.TypeFor[Service]()
+	var val Service
 
 	s := Scope(ctx)
 	if s == nil {
@@ -36,7 +36,7 @@ func Resolve[T any](ctx context.Context, opts ...di.ServiceOption) (T, error) {
 
 	anyVal, err := s.Resolve(ctx, t, opts...)
 	if anyVal != nil {
-		val = anyVal.(T)
+		val = anyVal.(Service)
 	}
 
 	return val, errors.Wrap(err, "resolve from context")
@@ -44,8 +44,8 @@ func Resolve[T any](ctx context.Context, opts ...di.ServiceOption) (T, error) {
 
 // MustResolve resolves a service of the given type from the [di.Scope] stored on the
 // [context.Context].
-func MustResolve[T any](ctx context.Context, opts ...di.ServiceOption) T {
-	val, err := Resolve[T](ctx, opts...)
+func MustResolve[Service any](ctx context.Context, opts ...di.ServiceOption) Service {
+	val, err := Resolve[Service](ctx, opts...)
 	if err != nil {
 		panic(err)
 	}

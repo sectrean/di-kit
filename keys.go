@@ -18,7 +18,7 @@ func WithKey(key any) ServiceKeyOption {
 	return keyOption{key}
 }
 
-// WithKeyed is used to specify a key for a dependency when calling
+// WithKeyed is used to specify a key for a service dependency when calling
 // [WithService] or [Invoke].
 //
 // This option can be used multiple times to specify keys for function service dependencies.
@@ -35,9 +35,11 @@ func WithKey(key any) ServiceKeyOption {
 //			di.WithKeyed[*db.DB](db.Replica),
 //		),
 //	)
-func WithKeyed[T any](key any) DependencyKeyOption {
+//
+// This option will return an error if the Service does not have a dependency of type Dependency.
+func WithKeyed[Dependency any](key any) DependencyKeyOption {
 	return depKeyOption{
-		t:   reflect.TypeFor[T](),
+		t:   reflect.TypeFor[Dependency](),
 		key: key,
 	}
 }
