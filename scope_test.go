@@ -42,7 +42,7 @@ func Test_MustResolve(t *testing.T) {
 
 		ctx := context.Background()
 		assert.PanicsWithError(t,
-			"resolve testtypes.InterfaceA: type not registered",
+			"resolve testtypes.InterfaceA: service not registered",
 			func() {
 				di.MustResolve[testtypes.InterfaceA](ctx, c)
 			},

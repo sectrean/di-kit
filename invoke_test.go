@@ -65,7 +65,7 @@ func Test_Invoke(t *testing.T) {
 		err = di.Invoke(ctx, c, func(testtypes.InterfaceA) {})
 		LogError(t, err)
 
-		assert.EqualError(t, err, "invoke func(testtypes.InterfaceA): resolve testtypes.InterfaceA: type not registered")
+		assert.EqualError(t, err, "invoke func(testtypes.InterfaceA): resolve testtypes.InterfaceA: service not registered")
 	})
 
 	t.Run("with context", func(t *testing.T) {

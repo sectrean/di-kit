@@ -200,7 +200,7 @@ func Test_Container_Contains(t *testing.T) {
 		assert.True(t, has)
 	})
 
-	t.Run("type not registered", func(t *testing.T) {
+	t.Run("service not registered", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 
@@ -321,7 +321,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.ErrorIs(t, err, context.DeadlineExceeded)
 	})
 
-	t.Run("type not registered", func(t *testing.T) {
+	t.Run("service not registered", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 
@@ -330,8 +330,8 @@ func Test_Container_Resolve(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, got)
-		assert.EqualError(t, err, "resolve testtypes.InterfaceA: type not registered")
-		assert.ErrorIs(t, err, di.ErrTypeNotRegistered)
+		assert.EqualError(t, err, "resolve testtypes.InterfaceA: service not registered")
+		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
 	t.Run("dependency not registered", func(t *testing.T) {
@@ -345,8 +345,8 @@ func Test_Container_Resolve(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, got)
-		assert.EqualError(t, err, "resolve testtypes.InterfaceB: dependency testtypes.InterfaceA: type not registered")
-		assert.ErrorIs(t, err, di.ErrTypeNotRegistered)
+		assert.EqualError(t, err, "resolve testtypes.InterfaceB: dependency testtypes.InterfaceA: service not registered")
+		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
 	t.Run("dependency cycle", func(t *testing.T) {
@@ -552,7 +552,7 @@ func Test_Container_Resolve(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, got)
-		assert.ErrorIs(t, err, di.ErrTypeNotRegistered)
+		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
 	t.Run("aliases same instance", func(t *testing.T) {
@@ -637,8 +637,8 @@ func Test_Container_Resolve(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, got)
-		assert.EqualError(t, err, "resolve testtypes.InterfaceA (Key other): type not registered")
-		assert.ErrorIs(t, err, di.ErrTypeNotRegistered)
+		assert.EqualError(t, err, "resolve testtypes.InterfaceA (Key other): service not registered")
+		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
 	t.Run("with keyed", func(t *testing.T) {

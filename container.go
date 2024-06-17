@@ -207,7 +207,7 @@ func (c *Container) resolve(
 	// Look up the service
 	svc, registered := c.services[key]
 	if !registered {
-		return nil, ErrTypeNotRegistered
+		return nil, ErrServiceNotRegistered
 	}
 
 	// For scoped services, use the current container.
@@ -330,8 +330,8 @@ func (c *Container) Close(ctx context.Context) error {
 }
 
 var (
-	// ErrTypeNotRegistered is returned when a type is not registered.
-	ErrTypeNotRegistered = errors.New("type not registered")
+	// ErrServiceNotRegistered is returned when a service is not registered.
+	ErrServiceNotRegistered = errors.New("service not registered")
 
 	// ErrDependencyCycle is returned when a dependency cycle is detected.
 	ErrDependencyCycle = errors.New("dependency cycle detected")
