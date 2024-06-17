@@ -15,8 +15,6 @@ import (
 )
 
 func Test_NewContainer(t *testing.T) {
-	t.Parallel()
-
 	t.Run("no options", func(t *testing.T) {
 		c, err := di.NewContainer()
 		assert.NotNil(t, c)
@@ -91,8 +89,6 @@ func Test_NewContainer(t *testing.T) {
 }
 
 func Test_Container_NewScope(t *testing.T) {
-	t.Parallel()
-
 	t.Run("no new services", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
@@ -162,8 +158,6 @@ func Test_Container_NewScope(t *testing.T) {
 }
 
 func Test_Container_Contains(t *testing.T) {
-	t.Parallel()
-
 	t.Run("type registered", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
@@ -218,8 +212,6 @@ func Test_Container_Contains(t *testing.T) {
 }
 
 func Test_Container_Resolve(t *testing.T) {
-	t.Parallel()
-
 	t.Run("value service", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA()),
@@ -723,8 +715,6 @@ func Test_Container_Resolve(t *testing.T) {
 }
 
 func Test_Container_Close(t *testing.T) {
-	t.Parallel()
-
 	t.Run("already closed", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)

@@ -11,8 +11,6 @@ import (
 )
 
 func Test_MustResolve(t *testing.T) {
-	t.Parallel()
-
 	t.Run("resolve", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),

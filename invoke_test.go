@@ -12,8 +12,6 @@ import (
 )
 
 func Test_Invoke(t *testing.T) {
-	t.Parallel()
-
 	t.Run("not func", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)

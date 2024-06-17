@@ -12,8 +12,6 @@ import (
 )
 
 func Test_Scope(t *testing.T) {
-	t.Parallel()
-
 	t.Run("with scope", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
@@ -32,8 +30,6 @@ func Test_Scope(t *testing.T) {
 }
 
 func Test_Resolve(t *testing.T) {
-	t.Parallel()
-
 	t.Run("resolve", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
@@ -83,8 +79,6 @@ func Test_Resolve(t *testing.T) {
 }
 
 func Test_MustResolve(t *testing.T) {
-	t.Parallel()
-
 	t.Run("resolve", func(t *testing.T) {
 
 		c, err := di.NewContainer(
