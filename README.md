@@ -239,9 +239,8 @@ handler = scopeMiddleware(handler)
 
 ## TODO
 
-- slice-of-one pseudo-service? `ServiceB` depends on `[]ServiceA`, but only 1 `ServiceA` service is registered.
-- Track child scopes to make sure all child scopes have been closed.
 - Add support for "decorator" functions `func(Service [, deps...]) Service`
+- Track child scopes to make sure all child scopes have been closed.
 - Get around dependency cycles by injecting `di.Lazy[Service any]`
 - Optional dependencies?
 - Implement additional Container options:

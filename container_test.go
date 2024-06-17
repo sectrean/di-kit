@@ -558,7 +558,26 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("variadic dependency", func(t *testing.T) {
+	t.Run("slice service of one", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func([]testtypes.InterfaceA) testtypes.InterfaceB {
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		aa, err := di.Resolve[[]testtypes.InterfaceA](ctx, c)
+		assert.Equal(t, []testtypes.InterfaceA{&testtypes.StructA{}}, aa)
+		assert.NoError(t, err)
+
+		b, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+		assert.NotNil(t, b)
+		assert.NoError(t, err)
+	})
+
+	t.Run("slice variadic arg", func(t *testing.T) {
 		want := []testtypes.InterfaceA{
 			&testtypes.StructA{},
 			&testtypes.StructA{},

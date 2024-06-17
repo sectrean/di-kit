@@ -67,7 +67,7 @@ func (s *sliceService) GetValue(deps []reflect.Value) (any, error) {
 	return slice.Interface(), nil
 }
 
-func (s *sliceService) AddNewItem() serviceKey {
+func (s *sliceService) NextItemKey() serviceKey {
 	index := len(s.deps)
 	key := serviceKey{
 		Type: s.t,

@@ -78,30 +78,14 @@ func (c *Container) register(s service) {
 }
 
 func (c *Container) registerType(t reflect.Type, s service) {
+	// TODO: If we have a type registered with and without a key,
+	// do we need to prioritize the one without a key?
+
+	// The last service registered for a type will win
 	key := serviceKey{Type: t}
+	c.services[key] = s
 
-	// Use a slice service if the type is already registered
-	if existing, ok := c.services[key]; ok {
-		sliceKey := serviceKey{
-			Type: reflect.SliceOf(t),
-		}
-
-		var sliceSvc *sliceService
-		if sliceSvc, ok = c.services[sliceKey].(*sliceService); !ok {
-			// Create a new slice service and register it
-			sliceSvc = newSliceService(t)
-			c.services[sliceKey] = sliceSvc
-
-			// Add the existing service to the slice service
-			// and register a key with a unique key
-			c.services[sliceSvc.AddNewItem()] = existing
-		}
-
-		// Add the new item to slice service and register it
-		c.services[sliceSvc.AddNewItem()] = s
-	}
-
-	// Register the service with a key
+	// Register the service with a key if it has one
 	if s.Key() != nil {
 		keyWithKey := serviceKey{
 			Type: t,
@@ -110,8 +94,16 @@ func (c *Container) registerType(t reflect.Type, s service) {
 		c.services[keyWithKey] = s
 	}
 
-	// The last service registered for a type will win
-	c.services[key] = s
+	// Add the service to a slice service
+	sliceKey := serviceKey{Type: reflect.SliceOf(t)}
+	sliceSvc, ok := c.services[sliceKey].(*sliceService)
+	if !ok {
+		sliceSvc = newSliceService(t)
+		c.services[sliceKey] = sliceSvc
+	}
+
+	itemKey := sliceSvc.NextItemKey()
+	c.services[itemKey] = s
 }
 
 // NewScope creates a new Container with a child scope.
