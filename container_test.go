@@ -355,6 +355,32 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
+	t.Run("di.Scope not registered", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[di.Scope](ctx, c)
+		LogError(t, err)
+
+		assert.Nil(t, got)
+		assert.EqualError(t, err, "resolve di.Scope: service not registered")
+		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
+	})
+
+	t.Run("context.Context not registered", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[context.Context](ctx, c)
+		LogError(t, err)
+
+		assert.Nil(t, got)
+		assert.EqualError(t, err, "resolve context.Context: service not registered")
+		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
+	})
+
 	t.Run("dependency not registered", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceB),
