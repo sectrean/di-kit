@@ -25,6 +25,10 @@ func Scope(ctx context.Context) di.Scope {
 
 // Resolve a service of type Service from the [di.Scope] stored on the
 // [context.Context].
+//
+// This will return an error if there is no [di.Scope] on the context, or the service cannot be resolved.
+//
+// See [di.Scope.Resolve] for more information.
 func Resolve[Service any](ctx context.Context, opts ...di.ServiceOption) (Service, error) {
 	var t = reflect.TypeFor[Service]()
 	var val Service
@@ -42,8 +46,12 @@ func Resolve[Service any](ctx context.Context, opts ...di.ServiceOption) (Servic
 	return val, errors.Wrap(err, "resolve from context")
 }
 
-// MustResolve resolves a service of the given type from the [di.Scope] stored on the
+// MustResolve resolves a service of type Service from the [di.Scope] stored on the
 // [context.Context].
+//
+// This will panic if there is no [di.Scope] on the context, or the service cannot be resolved.
+//
+// See [di.Scope.Resolve] for more information.
 func MustResolve[Service any](ctx context.Context, opts ...di.ServiceOption) Service {
 	val, err := Resolve[Service](ctx, opts...)
 	if err != nil {

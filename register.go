@@ -90,7 +90,7 @@ func (o registerOption) applyService(s service) error {
 }
 
 // As registers the service as type Service when calling [WithService].
-// This is useful when you want to register a service an interface.
+// This is useful when you want to register a service as an interface that it implements.
 //
 // This option will return an error if the service type is not assignable to type Service.
 //
