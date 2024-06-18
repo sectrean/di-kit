@@ -71,7 +71,7 @@ func (c *Container) register(s service) {
 	// We don't need to take locks here because this is only called when creating a new Container
 	if vs, ok := s.(*valueService); ok {
 		c.resolved[s] = valueResult{vs.val}
-		if closer := s.GetCloser(vs.val); closer != nil {
+		if closer := s.AsCloser(vs.val); closer != nil {
 			c.closers = append(c.closers, closer)
 		}
 	}
@@ -284,10 +284,10 @@ func (c *Container) resolve(
 	}
 
 	// Create the service
-	val, err = svc.GetValue(deps)
+	val, err = svc.New(deps)
 
 	// Add Closer for the service
-	if closer := svc.GetCloser(val); closer != nil {
+	if closer := svc.AsCloser(val); closer != nil {
 		scope.closersMu.Lock()
 		scope.closers = append(scope.closers, closer)
 		scope.closersMu.Unlock()

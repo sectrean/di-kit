@@ -33,7 +33,7 @@ func (s *sliceService) Aliases() []reflect.Type {
 	return nil
 }
 
-func (s *sliceService) AddAlias(alias reflect.Type) error {
+func (s *sliceService) addAlias(alias reflect.Type) error {
 	panic("not supported")
 }
 
@@ -49,7 +49,7 @@ func (s *sliceService) Dependencies() []serviceKey {
 	return s.deps
 }
 
-func (s *sliceService) GetCloser(val any) Closer {
+func (s *sliceService) AsCloser(val any) Closer {
 	// Closers for the individual services will be added to the container
 	// as they are resolved.
 	return nil
@@ -59,7 +59,7 @@ func (s *sliceService) setCloserFactory(closerFactory) {
 	panic("not supported")
 }
 
-func (s *sliceService) GetValue(deps []reflect.Value) (any, error) {
+func (s *sliceService) New(deps []reflect.Value) (any, error) {
 	sliceType := reflect.SliceOf(s.t)
 	slice := reflect.MakeSlice(sliceType, 0, len(deps))
 	slice = reflect.Append(slice, deps...)

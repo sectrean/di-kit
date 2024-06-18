@@ -36,7 +36,7 @@ func (s *valueService) Aliases() []reflect.Type {
 	return s.aliases
 }
 
-func (s *valueService) AddAlias(alias reflect.Type) error {
+func (s *valueService) addAlias(alias reflect.Type) error {
 	if !s.t.AssignableTo(alias) {
 		return errors.Errorf("type %s not assignable to %s", s.t, alias)
 	}
@@ -69,7 +69,7 @@ func (*valueService) Dependencies() []serviceKey {
 	return nil
 }
 
-func (s *valueService) GetCloser(val any) Closer {
+func (s *valueService) AsCloser(val any) Closer {
 	// The container is not responsible for closing this value by default.
 	// But if a closer factory is provided, use it.
 	if val != nil && s.closerFactory != nil {
@@ -83,7 +83,7 @@ func (s *valueService) setCloserFactory(cf closerFactory) {
 	s.closerFactory = cf
 }
 
-func (s *valueService) GetValue(deps []reflect.Value) (any, error) {
+func (s *valueService) New(deps []reflect.Value) (any, error) {
 	return s.val, nil
 }
 

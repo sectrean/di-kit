@@ -97,12 +97,7 @@ func (o depKeyOption) applyInvokeConfig(c *invokeConfig) error {
 }
 
 func (o depKeyOption) applyService(s service) error {
-	// This option only applies to function services
-	if fs, ok := s.(*funcService); ok {
-		return o.applyDeps(fs.deps)
-	}
-
-	return nil
+	return o.applyDeps(s.Dependencies())
 }
 
 var _ DependencyKeyOption = depKeyOption{}

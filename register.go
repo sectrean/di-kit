@@ -80,7 +80,7 @@ func WithService(funcOrValue any, opts ...RegisterOption) ContainerOption {
 
 // RegisterOption is used to configure registration for a service when calling [WithService].
 type RegisterOption interface {
-	applyService(s service) error
+	applyService(service) error
 }
 
 type registerOption func(service) error
@@ -107,7 +107,7 @@ func As[Service any]() RegisterOption {
 	return registerOption(func(s service) error {
 		aliasType := reflect.TypeFor[Service]()
 
-		err := s.AddAlias(aliasType)
+		err := s.addAlias(aliasType)
 		return errors.Wrapf(err, "as %s", aliasType)
 	})
 }

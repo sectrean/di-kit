@@ -78,7 +78,7 @@ func (s *funcService) Aliases() []reflect.Type {
 	return s.aliases
 }
 
-func (s *funcService) AddAlias(alias reflect.Type) error {
+func (s *funcService) addAlias(alias reflect.Type) error {
 	if !s.t.AssignableTo(alias) {
 		return errors.Errorf("type %s not assignable to %s", s.t, alias)
 	}
@@ -99,7 +99,7 @@ func (s *funcService) Dependencies() []serviceKey {
 	return s.deps
 }
 
-func (s *funcService) GetValue(deps []reflect.Value) (any, error) {
+func (s *funcService) New(deps []reflect.Value) (any, error) {
 	var out []reflect.Value
 
 	// Call the function
@@ -120,7 +120,7 @@ func (s *funcService) GetValue(deps []reflect.Value) (any, error) {
 	return val, err
 }
 
-func (s *funcService) GetCloser(val any) Closer {
+func (s *funcService) AsCloser(val any) Closer {
 	if val == nil {
 		return nil
 	}

@@ -9,24 +9,27 @@ import (
 type service interface {
 	// Type returns the type of the service.
 	Type() reflect.Type
+
 	// Lifetime returns the lifetime of the service.
 	Lifetime() Lifetime
+	setLifetime(Lifetime)
+
 	// Aliases returns the types that this service can be resolved as.
 	Aliases() []reflect.Type
-	// AddAlias adds an alias for the service.
-	// The alias must be assignable to the service type.
-	AddAlias(alias reflect.Type) error
+	addAlias(reflect.Type) error
+
 	// Key returns the key of the service.
 	Key() any
+	setKey(any)
+
 	// Dependencies returns the types of the services that this service depends on.
 	Dependencies() []serviceKey
-	// GetValue uses the dependencies to get an instance of the service.
-	GetValue(deps []reflect.Value) (any, error)
-	// GetCloser returns a Closer that will close the service.
-	GetCloser(val any) Closer
 
-	setLifetime(Lifetime)
-	setKey(any)
+	// New uses the dependencies to create a new instance of the service.
+	New(deps []reflect.Value) (any, error)
+
+	// AsCloser returns a Closer for the service.
+	AsCloser(val any) Closer
 	setCloserFactory(closerFactory)
 }
 
