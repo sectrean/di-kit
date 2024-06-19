@@ -2,6 +2,7 @@ package di
 
 import (
 	"context"
+	"maps"
 	"reflect"
 	"sync"
 
@@ -63,12 +64,11 @@ func (o containerOption) applyContainer(c *Container) error {
 }
 
 func (c *Container) register(s service) {
-	if c.parent != nil && len(c.parent.services) == len(c.services) {
-		// Copy the parent's services map because we don't want to modify it
-		c.services = make(map[serviceKey]service, len(c.parent.services))
-		for k, v := range c.parent.services {
-			c.services[k] = v
-		}
+	// Child containers point to the same services map as the parent container initially.
+	// If we're registering new services in the child container,
+	// we need to clone the parent map first.
+	if c.parent != nil && reflect.DeepEqual(c.parent.services, c.services) {
+		c.services = maps.Clone(c.parent.services)
 	}
 
 	if len(s.Aliases()) == 0 {
