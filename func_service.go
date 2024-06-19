@@ -16,7 +16,7 @@ type funcService struct {
 	closerFactory func(any) Closer
 }
 
-func newFuncService(fn any, opts ...RegisterOption) (*funcService, error) {
+func newFuncService(fn any, opts ...ServiceOption) (*funcService, error) {
 	fnType := reflect.TypeOf(fn)
 	fnVal := reflect.ValueOf(fn)
 

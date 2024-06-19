@@ -8,6 +8,24 @@ import (
 	"github.com/johnrutherford/di-kit/internal/errors"
 )
 
+// Container is a dependency injection container.
+// It is used to resolve services by first resolving their dependencies.
+type Container struct {
+	parent   *Container
+	services map[serviceKey]service
+
+	resolvedMu sync.Mutex
+	resolved   map[service]resolvedService
+
+	closersMu sync.Mutex
+	closers   []Closer
+
+	closedMu sync.RWMutex
+	closed   bool
+}
+
+var _ Scope = (*Container)(nil)
+
 // NewContainer creates a new Container with the provided options.
 //
 // Available options:
@@ -32,23 +50,17 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 	return c, nil
 }
 
-// Container is a dependency injection container.
-// It is used to resolve services by first resolving their dependencies.
-type Container struct {
-	parent   *Container
-	services map[serviceKey]service
-
-	resolvedMu sync.Mutex
-	resolved   map[service]resolvedService
-
-	closersMu sync.Mutex
-	closers   []Closer
-
-	closedMu sync.RWMutex
-	closed   bool
+// ContainerOption is used to configure a new [Container] when calling [NewContainer]
+// or [Container.NewScope].
+type ContainerOption interface {
+	applyContainer(*Container) error
 }
 
-var _ Scope = (*Container)(nil)
+type containerOption func(*Container) error
+
+func (o containerOption) applyContainer(c *Container) error {
+	return o(c)
+}
 
 func (c *Container) register(s service) {
 	if c.parent != nil && len(c.parent.services) == len(c.services) {
@@ -146,7 +158,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 //
 // Available options:
 //   - [WithKey] specifies a key associated with the service.
-func (c *Container) Contains(t reflect.Type, opts ...ServiceOption) bool {
+func (c *Container) Contains(t reflect.Type, opts ...ResolveOption) bool {
 	key := serviceKey{Type: t}
 	for _, opt := range opts {
 		key = opt.applyServiceKey(key)
@@ -167,6 +179,15 @@ func (c *Container) root() *Container {
 	return c.parent.root()
 }
 
+// ResolveOption can be used when calling [Resolve], [MustResolve],
+// [Container.Resolve], or [Container.Contains].
+//
+// Available options:
+//   - [WithKey]
+type ResolveOption interface {
+	applyServiceKey(serviceKey) serviceKey
+}
+
 // Resolve a service of the given [reflect.Type].
 //
 // The type must be registered with the Container.
@@ -174,7 +195,7 @@ func (c *Container) root() *Container {
 //
 // Available options:
 //   - [WithKey] specifies a key associated with the service.
-func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...ServiceOption) (any, error) {
+func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...ResolveOption) (any, error) {
 	c.closedMu.RLock()
 	defer c.closedMu.RUnlock()
 

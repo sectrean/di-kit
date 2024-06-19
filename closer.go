@@ -44,8 +44,8 @@ type Closer interface {
 // This is the default behavior for function services.
 //
 // See Closer for more information.
-func WithClose() RegisterOption {
-	return registerOption(func(s service) error {
+func WithClose() ServiceOption {
+	return serviceOption(func(s service) error {
 		s.setCloserFactory(getCloser)
 		return nil
 	})
@@ -61,8 +61,8 @@ func WithClose() RegisterOption {
 // This is the default behavior for value services.
 //
 // See Closer for more information.
-func IgnoreClose() RegisterOption {
-	return registerOption(func(s service) error {
+func IgnoreClose() ServiceOption {
+	return serviceOption(func(s service) error {
 		s.setCloserFactory(nil)
 		return nil
 	})
@@ -84,7 +84,7 @@ type closerFactory func(val any) Closer
 // See Closer for more information.
 //
 // This option will return an error if the service type is not assignable to Service.
-func WithCloseFunc[Service any](f func(context.Context, Service) error) RegisterOption {
+func WithCloseFunc[Service any](f func(context.Context, Service) error) ServiceOption {
 	return closeFuncOption[Service]{f}
 }
 

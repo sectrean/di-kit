@@ -47,13 +47,13 @@ func WithKeyed[Dependency any](key any) DependencyKeyOption {
 // ServiceKeyOption is used to specify the key associated with a service when calling [WithService],
 // [Resolve], [Container.Resolve], or [Container.Contains].
 type ServiceKeyOption interface {
-	RegisterOption
 	ServiceOption
+	ResolveOption
 }
 
 // DependencyKeyOption is used to specify a key for a dependency when calling [WithService] or [Invoke].
 type DependencyKeyOption interface {
-	RegisterOption
+	ServiceOption
 	InvokeOption
 }
 

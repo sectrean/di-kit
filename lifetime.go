@@ -37,7 +37,7 @@ func (l Lifetime) applyService(s service) error {
 	return nil
 }
 
-var _ RegisterOption = Singleton
+var _ ServiceOption = Singleton
 
 func (l Lifetime) String() string {
 	switch l {

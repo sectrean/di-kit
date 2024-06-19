@@ -37,19 +37,19 @@ type Scope interface {
 	//
 	// Available options:
 	// 	- [WithKey] specifies the key associated with the service.
-	Contains(t reflect.Type, opts ...ServiceOption) bool
+	Contains(t reflect.Type, opts ...ResolveOption) bool
 
 	// Resolve returns a service of the given type from the Scope.
 	//
 	// Available options:
 	// 	- [WithKey] specifies the key associated with the service.
-	Resolve(ctx context.Context, t reflect.Type, opts ...ServiceOption) (any, error)
+	Resolve(ctx context.Context, t reflect.Type, opts ...ResolveOption) (any, error)
 }
 
 // Resolve a service of type Service from the [Scope].
 //
 // See [Scope.Resolve] for more information.
-func Resolve[Service any](ctx context.Context, s Scope, opts ...ServiceOption) (Service, error) {
+func Resolve[Service any](ctx context.Context, s Scope, opts ...ResolveOption) (Service, error) {
 	var val Service
 	anyVal, err := s.Resolve(ctx, reflect.TypeFor[Service](), opts...)
 	if anyVal != nil {
@@ -64,7 +64,7 @@ func Resolve[Service any](ctx context.Context, s Scope, opts ...ServiceOption) (
 // See [Scope.Resolve] for more information.
 //
 // This will panic if the service cannot be resolved.
-func MustResolve[Service any](ctx context.Context, s Scope, opts ...ServiceOption) Service {
+func MustResolve[Service any](ctx context.Context, s Scope, opts ...ResolveOption) Service {
 	val, err := Resolve[Service](ctx, s, opts...)
 	if err != nil {
 		panic(err)
@@ -93,14 +93,14 @@ func (s *injectedScope) setReady() {
 	s.ready = true
 }
 
-func (s *injectedScope) Contains(t reflect.Type, opts ...ServiceOption) bool {
+func (s *injectedScope) Contains(t reflect.Type, opts ...ResolveOption) bool {
 	return s.scope.Contains(t, opts...)
 }
 
 func (s *injectedScope) Resolve(
 	ctx context.Context,
 	t reflect.Type,
-	opts ...ServiceOption,
+	opts ...ResolveOption,
 ) (any, error) {
 	// Resolve cannot be called until the constructor function has returned.
 	// Otherwise a deadlock is possible.
