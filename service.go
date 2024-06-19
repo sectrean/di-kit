@@ -47,7 +47,7 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 	// WithService(NewService) // This works as a func
 	// WithService(NewService()) // This works as a value
 
-	return containerOption(func(c *Container) error {
+	return newContainerOption(orderService, func(c *Container) error {
 		if funcOrValue == nil {
 			return errors.Errorf("with service: funcOrValue is nil")
 		}
@@ -77,6 +77,25 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 		c.register(svc)
 		return nil
 	})
+}
+
+func validateServiceType(t reflect.Type) error {
+	switch t {
+	// Any other types we should disallow?
+	case contextType,
+		scopeType,
+		errorType:
+		return errors.Errorf("invalid service type %s", t)
+	}
+
+	switch t.Kind() {
+	case reflect.Interface,
+		reflect.Ptr,
+		reflect.Struct:
+		return nil
+	}
+
+	return errors.Errorf("invalid service type %s", t)
 }
 
 // ServiceOption is used to configure service registration calling [WithService].

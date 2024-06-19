@@ -1,9 +1,11 @@
 package di
 
 import (
+	"cmp"
 	"context"
 	"maps"
 	"reflect"
+	"slices"
 	"sync"
 
 	"github.com/johnrutherford/di-kit/internal/errors"
@@ -12,8 +14,10 @@ import (
 // Container is a dependency injection container.
 // It is used to resolve services by first resolving their dependencies.
 type Container struct {
-	parent   *Container
-	services map[serviceKey]service
+	parent *Container
+
+	services   map[serviceKey]service
+	decorators map[serviceKey][]*decorator
 
 	resolvedMu sync.Mutex
 	resolved   map[service]resolvedService
@@ -37,6 +41,10 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 		resolved: make(map[service]resolvedService),
 	}
 
+	slices.SortStableFunc(opts, func(a, b ContainerOption) int {
+		return cmp.Compare(a.order(), b.order())
+	})
+
 	// Apply options
 	var errs errors.MultiError
 	for _, opt := range opts {
@@ -49,18 +57,6 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 	}
 
 	return c, nil
-}
-
-// ContainerOption is used to configure a new [Container] when calling [NewContainer]
-// or [Container.NewScope].
-type ContainerOption interface {
-	applyContainer(*Container) error
-}
-
-type containerOption func(*Container) error
-
-func (o containerOption) applyContainer(c *Container) error {
-	return o(c)
 }
 
 func (c *Container) register(s service) {
@@ -116,6 +112,23 @@ func (c *Container) registerType(t reflect.Type, s service) {
 
 	itemKey := sliceSvc.NextItemKey()
 	c.services[itemKey] = s
+}
+
+func (c *Container) registerDecorator(d *decorator) {
+	// Create this map lazily since decorators aren't always used
+	if c.decorators == nil {
+		c.decorators = make(map[serviceKey][]*decorator)
+	}
+
+	decorators, exists := c.decorators[d.ServiceKey()]
+	if !exists {
+		c.decorators[d.ServiceKey()] = []*decorator{d}
+		return
+	}
+
+	// Append the decorator
+	decorators = append(decorators, d)
+	c.decorators[d.ServiceKey()] = decorators
 }
 
 // NewScope creates a new Container with a child scope.
@@ -306,6 +319,44 @@ func (c *Container) resolve(
 
 	// Create the service
 	val, err = svc.New(deps)
+	if err != nil {
+		return val, err
+	}
+
+	// Apply decorators
+	if decorators, exists := c.decorators[key]; exists {
+		for _, d := range decorators {
+			// Resolve dependencies for the decorator
+			deps := make([]reflect.Value, len(d.deps))
+			for i, depKey := range d.deps {
+				var depVal any
+				var depErr error
+
+				// TODO: Support di.Scope as a decorator dependency?
+				switch {
+				case depKey == key:
+					// Inject the service being decorated
+					depVal = val
+
+				case depKey.Type == contextType:
+					// Pass along the context
+					depVal = ctx
+
+				default:
+					// Recursive call
+					depVal, depErr = scope.resolve(ctx, depKey, visitor)
+				}
+
+				deps[i] = reflect.ValueOf(depVal)
+				if depErr != nil {
+					return nil, errors.Wrapf(depErr, "decorator %s: dependency %s", d, depKey)
+				}
+			}
+
+			// Apply the decorator
+			val = d.Decorate(deps)
+		}
+	}
 
 	// Add Closer for the service
 	if closer := svc.AsCloser(val); closer != nil {
@@ -314,7 +365,7 @@ func (c *Container) resolve(
 		scope.closersMu.Unlock()
 	}
 
-	return val, err
+	return val, nil
 }
 
 // Close the Container and resolved services.

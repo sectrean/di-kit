@@ -825,6 +825,27 @@ func Test_Container_Resolve(t *testing.T) {
 		a := factory.BuildA(ctx, "arg")
 		assert.NotNil(t, a)
 	})
+
+	t.Run("with decorator", func(t *testing.T) {
+		a := &testtypes.StructA{}
+		called := false
+
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithDecorator(func(a testtypes.InterfaceA) testtypes.InterfaceA {
+				called = true
+				return a
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+		assert.Same(t, a, got)
+		assert.NoError(t, err)
+
+		assert.Equal(t, true, called)
+	})
 }
 
 func Test_Container_Close(t *testing.T) {

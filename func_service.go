@@ -30,9 +30,9 @@ func newFuncService(fn any, opts ...ServiceOption) (*funcService, error) {
 		return nil, errors.New("function must return Service or (Service, error)")
 	}
 
-	// TODO: Validate service type
-	// Don't allow slices, context.Context, di.Scope, etc.
-	// What other types should we disallow?
+	if err := validateServiceType(t); err != nil {
+		return nil, err
+	}
 
 	// Get the dependencies
 	var deps []serviceKey

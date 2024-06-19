@@ -18,6 +18,10 @@ func newValueService(val any, opts ...ServiceOption) (*valueService, error) {
 	t := reflect.TypeOf(val)
 	v := reflect.ValueOf(val)
 
+	if err := validateServiceType(t); err != nil {
+		return nil, err
+	}
+
 	svc := &valueService{
 		t:   t,
 		val: v.Interface(),
