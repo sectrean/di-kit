@@ -37,11 +37,11 @@ func (s *sliceService) addAlias(alias reflect.Type) error {
 	panic("not supported")
 }
 
-func (s *sliceService) Key() any {
+func (s *sliceService) Tag() any {
 	return nil
 }
 
-func (s *sliceService) setKey(any) {
+func (s *sliceService) setTag(any) {
 	panic("not supported")
 }
 
@@ -71,7 +71,7 @@ func (s *sliceService) NextItemKey() serviceKey {
 	index := len(s.deps)
 	key := serviceKey{
 		Type: s.t,
-		Key:  sliceItemKey(index),
+		Tag:  sliceItemTag(index),
 	}
 
 	s.deps = append(s.deps, key)
@@ -79,4 +79,4 @@ func (s *sliceService) NextItemKey() serviceKey {
 	return key
 }
 
-type sliceItemKey int
+type sliceItemTag int

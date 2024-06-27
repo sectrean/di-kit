@@ -113,33 +113,33 @@ c, err := di.NewContainer(
 )
 ```
 
-### Keyed Services
+### Tagged Services
 
-Use `di.WithKey()` when registering a service to differentiate between different services of the same type.
+Use `di.WithTag()` when registering a service to differentiate between different services of the same type.
 
-Use `di.WithKeyed[Dependency]()` when registering a dependent service to specify the key for a dependency.
+Use `di.WithTagged[Dependency]()` when registering a dependent service to specify a tag for a dependency.
 
 ```go
 c, err := di.NewContainer(
 	di.WithService(db.NewPrimaryDB, // NewPrimaryDB(context.Context) (*db.DB, error)
-		di.WithKey(db.Primary),
+		di.WithTag(db.Primary),
 	),
 	di.WithService(db.NewReplicaDB, // NewReplicaDB(context.Context) (*db.DB, error)
-		di.WithKey(db.Replica),
+		di.WithTag(db.Replica),
 	),
 	di.WithService(storage.NewReadWriteStore, // NewReadWriteStore(*db.DB) storage.*ReadWriteStore
-		di.WithKeyed[*db.DB](db.Primary),
+		di.WithTagged[*db.DB](db.Primary),
 	),
 	di.WithService(storage.NewReadOnlyStore, // NewReadOnlyStore(*db.DB) storage.*ReadOnlyStore
-		di.WithKeyed[*db.DB](db.Replica),
+		di.WithTagged[*db.DB](db.Replica),
 	),
 )
 ```
 
-Use `di.WithKey()` to specify a key when resolving a service directly from a container.
+Use `di.WithTag()` to specify a tag when resolving a service directly from a container.
 
 ```go
-primary, err := di.Resolve[*db.DB](ctx, c, di.WithKey(db.Primary)) 
+primary, err := di.Resolve[*db.DB](ctx, c, di.WithTag(db.Primary)) 
 ```
 
 ### Slice Services

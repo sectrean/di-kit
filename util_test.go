@@ -2,18 +2,10 @@ package di_test
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
 	"github.com/johnrutherford/di-kit"
 	"github.com/johnrutherford/di-kit/internal/testtypes"
-)
-
-var (
-	InterfaceAType = reflect.TypeFor[testtypes.InterfaceA]()
-	InterfaceBType = reflect.TypeFor[testtypes.InterfaceB]()
-	InterfaceCType = reflect.TypeFor[testtypes.InterfaceC]()
-	InterfaceDType = reflect.TypeFor[testtypes.InterfaceD]()
 )
 
 // LogError is a test helper function to log an error message if it is not nil.

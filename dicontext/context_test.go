@@ -43,9 +43,9 @@ func Test_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("resolve with key", func(t *testing.T) {
+	t.Run("resolve with tag", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA, di.WithKey("key")),
+			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),
 			di.WithService(func() testtypes.InterfaceA {
 				panic("should not be called")
 			}),
@@ -54,7 +54,7 @@ func Test_Resolve(t *testing.T) {
 
 		ctx := dicontext.WithScope(context.Background(), c)
 
-		got, err := dicontext.Resolve[testtypes.InterfaceA](ctx, di.WithKey("key"))
+		got, err := dicontext.Resolve[testtypes.InterfaceA](ctx, di.WithTag("tag"))
 		assert.Equal(t, &testtypes.StructA{}, got)
 		assert.NoError(t, err)
 	})

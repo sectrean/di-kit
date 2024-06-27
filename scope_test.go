@@ -22,9 +22,9 @@ func Test_MustResolve(t *testing.T) {
 		assert.Equal(t, &testtypes.StructA{}, got)
 	})
 
-	t.Run("resolve with key", func(t *testing.T) {
+	t.Run("resolve with tag", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA, di.WithKey("key")),
+			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),
 			di.WithService(func() testtypes.InterfaceA {
 				panic("should not be called")
 			}),
@@ -32,7 +32,7 @@ func Test_MustResolve(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		got := di.MustResolve[testtypes.InterfaceA](ctx, c, di.WithKey("key"))
+		got := di.MustResolve[testtypes.InterfaceA](ctx, c, di.WithTag("tag"))
 		assert.Equal(t, &testtypes.StructA{}, got)
 	})
 

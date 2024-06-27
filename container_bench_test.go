@@ -2,6 +2,7 @@ package di_test
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/johnrutherford/di-kit"
@@ -43,21 +44,21 @@ func Benchmark_Container_Contains(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_ = c.Contains(InterfaceAType)
+		_ = c.Contains(reflect.TypeFor[testtypes.InterfaceA]())
 	}
 }
 
-func Benchmark_Container_Contains_WithKey(b *testing.B) {
+func Benchmark_Container_Contains_WithTag(b *testing.B) {
 	c, err := di.NewContainer(
 		di.WithService(&testtypes.StructA{}),
-		di.WithService(&testtypes.StructA{}, di.WithKey("b")),
+		di.WithService(&testtypes.StructA{}, di.WithTag("b")),
 	)
 	require.NoError(b, err)
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_ = c.Contains(InterfaceAType, di.WithKey("b"))
+		_ = c.Contains(reflect.TypeFor[testtypes.InterfaceA](), di.WithTag("b"))
 	}
 }
 

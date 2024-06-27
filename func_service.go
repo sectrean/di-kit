@@ -11,7 +11,7 @@ type funcService struct {
 	aliases       []reflect.Type
 	fn            reflect.Value
 	lifetime      Lifetime
-	key           any
+	tag           any
 	deps          []serviceKey
 	closerFactory func(any) Closer
 }
@@ -87,12 +87,12 @@ func (s *funcService) addAlias(alias reflect.Type) error {
 	return nil
 }
 
-func (s *funcService) Key() any {
-	return s.key
+func (s *funcService) Tag() any {
+	return s.tag
 }
 
-func (s *funcService) setKey(key any) {
-	s.key = key
+func (s *funcService) setTag(tag any) {
+	s.tag = tag
 }
 
 func (s *funcService) Dependencies() []serviceKey {

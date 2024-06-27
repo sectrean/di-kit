@@ -36,13 +36,13 @@ type Scope interface {
 	// Contains returns whether the Scope can resolve a service of the given type.
 	//
 	// Available options:
-	// 	- [WithKey] specifies the key associated with the service.
+	// 	- [WithTag] specifies the tag associated with the service.
 	Contains(t reflect.Type, opts ...ResolveOption) bool
 
 	// Resolve returns a service of the given type from the Scope.
 	//
 	// Available options:
-	// 	- [WithKey] specifies the key associated with the service.
+	// 	- [WithTag] specifies the tag associated with the service.
 	Resolve(ctx context.Context, t reflect.Type, opts ...ResolveOption) (any, error)
 }
 
@@ -82,6 +82,8 @@ func newInjectedScope(s Scope, key serviceKey) (*injectedScope, func()) {
 }
 
 // injectedScope wraps a Container to be injected as a Scope dependency.
+//
+// This also makes it so Close cannot be called on the injected Container.
 type injectedScope struct {
 	scope Scope
 	// key is the service the Scope is getting injected into

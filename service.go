@@ -28,8 +28,8 @@ import (
 // Available options:
 //   - [Lifetime] is used to specify how services are created when resolved.
 //   - [As] registers an alias for a service.
-//   - [WithKey] specifies a key differentiate between services of the same type.
-//   - [WithKeyed] specifies a key for a service dependency.
+//   - [WithTag] specifies a tag differentiate between services of the same type.
+//   - [WithTagged] specifies a tag for a service dependency.
 //   - [WithCloseFunc] specifies a function to be called when the service is closed.
 //   - [IgnoreClose] specifies that the service should not be closed by the Container.
 //     Function services are closed by default if they implement [Closer] or a compatible function signature.
@@ -120,10 +120,9 @@ type service interface {
 	Aliases() []reflect.Type
 	addAlias(reflect.Type) error
 
-	// TODO: Rename Key to Tag?
-	// Key returns the key of the service.
-	Key() any
-	setKey(any)
+	// Tag returns the tag of the service.
+	Tag() any
+	setTag(any)
 
 	// Dependencies returns the types of the services that this service depends on.
 	Dependencies() []serviceKey
@@ -138,14 +137,14 @@ type service interface {
 
 type serviceKey struct {
 	Type reflect.Type
-	Key  any
+	Tag  any
 }
 
 func (k serviceKey) String() string {
-	if k.Key == nil {
+	if k.Tag == nil {
 		return k.Type.String()
 	}
-	return fmt.Sprintf("%s (Key %v)", k.Type, k.Key)
+	return fmt.Sprintf("%s (Tag %v)", k.Type, k.Tag)
 }
 
 type resolvedService interface {
