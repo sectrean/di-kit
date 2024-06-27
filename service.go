@@ -53,21 +53,17 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 		}
 
 		if _, ok := funcOrValue.(ServiceOption); ok {
-			return errors.Errorf("with service %T: unexpected RegisterOption as funcOrValue", funcOrValue)
+			return errors.Errorf("with service %T: unexpected ServiceOption as funcOrValue", funcOrValue)
 		}
 
 		t := reflect.TypeOf(funcOrValue)
 
 		var svc service
 		var err error
-
-		switch t.Kind() {
-		case reflect.Func:
+		if t.Kind() == reflect.Func {
 			svc, err = newFuncService(funcOrValue, opts...)
-		case reflect.Interface, reflect.Ptr, reflect.Struct:
+		} else {
 			svc, err = newValueService(funcOrValue, opts...)
-		default:
-			err = errors.Errorf("unsupported kind %v", t.Kind())
 		}
 
 		if err != nil {
@@ -81,11 +77,11 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 
 func validateServiceType(t reflect.Type) error {
 	switch t {
-	// Any other types we should disallow?
+	// These are the only special types used by the Container.
 	case contextType,
 		scopeType,
 		errorType:
-		return errors.Errorf("invalid service type %s", t)
+		return errors.New("invalid service type")
 	}
 
 	switch t.Kind() {
@@ -95,7 +91,7 @@ func validateServiceType(t reflect.Type) error {
 		return nil
 	}
 
-	return errors.Errorf("invalid service type %s", t)
+	return errors.New("invalid service type")
 }
 
 // ServiceOption is used to configure service registration calling [WithService].
@@ -111,6 +107,8 @@ func (o serviceOption) applyService(s service) error {
 
 // service provides information about a service and how to resolve it.
 type service interface {
+	// TODO: Add Key() serviceKey
+
 	// Type returns the type of the service.
 	Type() reflect.Type
 
@@ -122,6 +120,7 @@ type service interface {
 	Aliases() []reflect.Type
 	addAlias(reflect.Type) error
 
+	// TODO: Rename Key to Tag?
 	// Key returns the key of the service.
 	Key() any
 	setKey(any)

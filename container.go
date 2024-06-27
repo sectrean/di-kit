@@ -41,6 +41,7 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 		resolved: make(map[service]resolvedService),
 	}
 
+	// Sort options by precedence
 	slices.SortStableFunc(opts, func(a, b ContainerOption) int {
 		return cmp.Compare(a.order(), b.order())
 	})
@@ -238,9 +239,9 @@ func (c *Container) resolve(
 
 	// For scoped services, use the current container.
 	// For singleton services, use the root container.
+	// TODO: We actually need to use the scope that the service was registered with
 	scope := c
 	if svc.Lifetime() == Singleton {
-		// TODO: We actually need to use the scope that the service was registered with
 		scope = c.root()
 	}
 
@@ -295,6 +296,8 @@ func (c *Container) resolve(
 				// We wrap the scope to prevent Resolve from being called on it
 				// until we finish resolving this service. Otherwise it could
 				// cause a deadlock.
+				//
+				// TODO: There may still be a way to deadlock. Write some tests around this.
 				var ready func()
 				depVal, ready = newInjectedScope(scope, key)
 				defer ready()
@@ -304,11 +307,11 @@ func (c *Container) resolve(
 				depVal, depErr = scope.resolve(ctx, depKey, visitor)
 			}
 
-			deps[i] = reflect.ValueOf(depVal)
 			if depErr != nil {
 				// Stop at the first error
 				return nil, errors.Wrapf(depErr, "dependency %s", depKey)
 			}
+			deps[i] = safeVal(depKey.Type, depVal)
 		}
 	}
 
@@ -347,10 +350,10 @@ func (c *Container) resolve(
 					depVal, depErr = scope.resolve(ctx, depKey, visitor)
 				}
 
-				deps[i] = reflect.ValueOf(depVal)
 				if depErr != nil {
 					return nil, errors.Wrapf(depErr, "decorator %s: dependency %s", d, depKey)
 				}
+				deps[i] = safeVal(depKey.Type, depVal)
 			}
 
 			// Apply the decorator
