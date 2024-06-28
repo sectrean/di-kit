@@ -192,6 +192,26 @@ defer func() {
 }
 ```
 
+### Decorators
+
+It's often useful to "wrap" or "decorate" a *service* to add some functionality.
+
+Use `di.WithDecorator()` when creating a `Container` to register a decorator function.
+A decorator function must accept and return a *service*. It may also accept other arguments which will be resolved from the container.
+
+```go
+c, err := di.NewContainer(
+	di.WithService(logger), // var logger *slog.Logger
+	di.WithService(service.NewService), // NewService() service.Interface
+	di.WithDecorator(service.NewLoggedService), // NewLoggedService(service.Interface, *slog.Logger) service.Interface
+)
+// ...
+
+svc, err := di.Resolve[service.Interface](ctx, c)
+```
+
+If you register multiple decorators for a service, they will be applied in the order they are registered. Value services cannot be decorated.
+
 ## `dicontext`
 
 This package allows you to add a container scope to a `context.Context`.
@@ -239,14 +259,13 @@ handler = scopeMiddleware(handler)
 
 ## TODO
 
-- Add support for "decorator" functions `func(Service [, deps...]) Service`
-- Track child scopes to make sure all child scopes have been closed.
 - Get around dependency cycles by injecting `di.Lazy[Service any]`
-- Optional dependencies?
+- Track child scopes to make sure all child scopes have been closed. 
+	What do we do in this case? Close the child container(s)? Return an error? 
 - Implement additional Container options:
 	- Validate services: make sure all types are resolvable, with no cycles.
 		(Will need to exclude scoped services in the root container since they may have dependencies registered in child scopes.) 
-		
+
 - Support for `Shutdown` functions like `Closer`?
 - Enable error stacktraces optionally?
 - Logging with `slog`?

@@ -70,15 +70,14 @@ func newDecorator(fn any, opts []DecoratorOption) (*decorator, error) {
 		return nil, errors.Errorf("function must have a Service argument")
 	}
 
-	// TODO: Implement support for keys
-	svcKey := serviceKey{
+	key := serviceKey{
 		Type: t,
 	}
 
 	d := &decorator{
-		svcKey: svcKey,
-		deps:   deps,
-		fn:     reflect.ValueOf(fn),
+		key:  key,
+		deps: deps,
+		fn:   reflect.ValueOf(fn),
 	}
 
 	var errs errors.MultiError
@@ -95,13 +94,26 @@ func newDecorator(fn any, opts []DecoratorOption) (*decorator, error) {
 }
 
 type decorator struct {
-	svcKey serviceKey
-	fn     reflect.Value
-	deps   []serviceKey
+	key  serviceKey
+	fn   reflect.Value
+	deps []serviceKey
 }
 
-func (d *decorator) ServiceKey() serviceKey {
-	return d.svcKey
+func (d *decorator) Key() serviceKey {
+	return d.key
+}
+
+func (d *decorator) setTag(tag any) error {
+	d.key.Tag = tag
+
+	for i, dep := range d.deps {
+		if dep.Type == d.key.Type && dep.Tag == nil {
+			d.deps[i].Tag = tag
+			return nil
+		}
+	}
+
+	return errors.New("with tag: argument not found")
 }
 
 func (d *decorator) Decorate(deps []reflect.Value) any {

@@ -49,12 +49,14 @@ func WithTagged[Dependency any](tag any) DependencyTagOption {
 type ServiceTagOption interface {
 	ServiceOption
 	ResolveOption
+	DecoratorOption
 }
 
 // DependencyTagOption is used to specify a tag for a dependency when calling [WithService] or [Invoke].
 type DependencyTagOption interface {
 	ServiceOption
 	InvokeOption
+	DecoratorOption
 }
 
 type tagOption struct {
@@ -73,6 +75,10 @@ func (o tagOption) applyServiceKey(key serviceKey) serviceKey {
 	}
 }
 
+func (o tagOption) applyDecorator(d *decorator) error {
+	return d.setTag(o.tag)
+}
+
 var _ ServiceTagOption = tagOption{}
 
 type depTagOption struct {
@@ -80,6 +86,10 @@ type depTagOption struct {
 	tag any
 }
 
+// applyDeps assigns the tag to the first dependency of the right type that does not already have a tag.
+// If no dependency is found, an error is returned.
+//
+// The slice is modified in place.
 func (o depTagOption) applyDeps(deps []serviceKey) error {
 	for i := 0; i < len(deps); i++ {
 		// Find a dependency with the right type
@@ -92,12 +102,16 @@ func (o depTagOption) applyDeps(deps []serviceKey) error {
 	return errors.Errorf("with tagged %s: argument not found", o.t)
 }
 
-func (o depTagOption) applyInvokeConfig(c *invokeConfig) error {
-	return o.applyDeps(c.deps)
-}
-
 func (o depTagOption) applyService(s service) error {
 	return o.applyDeps(s.Dependencies())
+}
+
+func (o depTagOption) applyDecorator(d *decorator) error {
+	return o.applyDeps(d.deps)
+}
+
+func (o depTagOption) applyInvokeConfig(c *invokeConfig) error {
+	return o.applyDeps(c.deps)
 }
 
 var _ DependencyTagOption = depTagOption{}

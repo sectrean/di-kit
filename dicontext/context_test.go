@@ -47,7 +47,8 @@ func Test_Resolve(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),
 			di.WithService(func() testtypes.InterfaceA {
-				panic("should not be called")
+				assert.Fail(t, "should not be called")
+				return nil
 			}),
 		)
 		require.NoError(t, err)

@@ -7,11 +7,10 @@ import (
 )
 
 type funcService struct {
-	t             reflect.Type
+	key           serviceKey
 	aliases       []reflect.Type
 	fn            reflect.Value
 	lifetime      Lifetime
-	tag           any
 	deps          []serviceKey
 	closerFactory func(any) Closer
 }
@@ -46,7 +45,7 @@ func newFuncService(fn any, opts ...ServiceOption) (*funcService, error) {
 	}
 
 	funcSvc := &funcService{
-		t:             t,
+		key:           serviceKey{Type: t},
 		deps:          deps,
 		fn:            fnVal,
 		closerFactory: getCloser,
@@ -62,8 +61,12 @@ func newFuncService(fn any, opts ...ServiceOption) (*funcService, error) {
 	return funcSvc, errs.Join()
 }
 
+func (s *funcService) Key() serviceKey {
+	return s.key
+}
+
 func (s *funcService) Type() reflect.Type {
-	return s.t
+	return s.key.Type
 }
 
 func (s *funcService) Lifetime() Lifetime {
@@ -79,8 +82,8 @@ func (s *funcService) Aliases() []reflect.Type {
 }
 
 func (s *funcService) addAlias(alias reflect.Type) error {
-	if !s.t.AssignableTo(alias) {
-		return errors.Errorf("type %s not assignable to %s", s.t, alias)
+	if !s.key.Type.AssignableTo(alias) {
+		return errors.Errorf("type %s not assignable to %s", s.key.Type, alias)
 	}
 
 	s.aliases = append(s.aliases, alias)
@@ -88,11 +91,11 @@ func (s *funcService) addAlias(alias reflect.Type) error {
 }
 
 func (s *funcService) Tag() any {
-	return s.tag
+	return s.key.Tag
 }
 
 func (s *funcService) setTag(tag any) {
-	s.tag = tag
+	s.key.Tag = tag
 }
 
 func (s *funcService) Dependencies() []serviceKey {

@@ -18,6 +18,9 @@ import (
 // The function must return a service, or the service and an error.
 // The service will be registered as the return type of the function (struct, pointer, or interface).
 //
+// If the function returns an error, this error will be returned when the service is resolved, either directly or as a dependency.
+// If the function returns nil for the service, it will not be treated as an error.
+//
 // If the resolved service implements [Closer], or a compatible Close method signature,
 // it will be closed when the Container is closed.
 //
@@ -70,8 +73,8 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 			return errors.Wrapf(err, "with service %T", funcOrValue)
 		}
 
-		c.register(svc)
-		return nil
+		err = c.register(svc)
+		return errors.Wrapf(err, "with service %T", funcOrValue)
 	})
 }
 
@@ -107,7 +110,8 @@ func (o serviceOption) applyService(s service) error {
 
 // service provides information about a service and how to resolve it.
 type service interface {
-	// TODO: Add Key() serviceKey
+	// Key returns the key of the service.
+	Key() serviceKey
 
 	// Type returns the type of the service.
 	Type() reflect.Type

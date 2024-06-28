@@ -17,6 +17,12 @@ type sliceService struct {
 
 var _ service = &sliceService{}
 
+func (s *sliceService) Key() serviceKey {
+	return serviceKey{
+		Type: s.t,
+	}
+}
+
 func (s *sliceService) Type() reflect.Type {
 	return s.t
 }
