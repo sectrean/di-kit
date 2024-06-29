@@ -56,8 +56,8 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 		switch {
 		case dep.Type == contextType:
 			depVal = ctx
-		case dep.Key != nil:
-			depVal, depErr = s.Resolve(ctx, dep.Type, WithKey(dep.Key))
+		case dep.Tag != nil:
+			depVal, depErr = s.Resolve(ctx, dep.Type, WithTag(dep.Tag))
 		default:
 			depVal, depErr = s.Resolve(ctx, dep.Type)
 		}

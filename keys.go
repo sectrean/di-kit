@@ -6,19 +6,19 @@ import (
 	"github.com/johnrutherford/di-kit/internal/errors"
 )
 
-// WithKey is used to specify the key associated with a service.
+// WithTag is used to specify the tag associated with a service.
 //
-// WithKey can be used with:
+// WithTag can be used with:
 //   - [WithService]
 //   - [Resolve]
 //   - [MustResolve]
 //   - [Container.Resolve]
 //   - [Container.Contains]
-func WithKey(key any) ServiceKeyOption {
-	return keyOption{key}
+func WithTag(tag any) ServiceTagOption {
+	return tagOption{tag: tag}
 }
 
-// WithKeyed is used to specify a key for a service dependency when calling
+// WithTagged is used to specify a tag for a service dependency when calling
 // [WithService] or [Invoke].
 //
 // This option can be used multiple times to specify keys for function service dependencies.
@@ -26,78 +26,92 @@ func WithKey(key any) ServiceKeyOption {
 // Example:
 //
 //	c, err := di.NewContainer(
-//		di.WithService(db.NewPrimaryDB, di.WithKey(db.Primary)),
-//		di.WithService(db.NewReplicaDB, di.WithKey(db.Replica)),
+//		di.WithService(db.NewPrimaryDB, di.WithTag(db.Primary)),
+//		di.WithService(db.NewReplicaDB, di.WithTag(db.Replica)),
 //		di.WithService(storage.NewReadWriteStore,
-//			di.WithKeyed[*db.DB](db.Primary),
+//			di.WithTagged[*db.DB](db.Primary),
 //		),
 //		di.WithService(storage.NewReadOnlyStore,
-//			di.WithKeyed[*db.DB](db.Replica),
+//			di.WithTagged[*db.DB](db.Replica),
 //		),
 //	)
 //
 // This option will return an error if the Service does not have a dependency of type Dependency.
-func WithKeyed[Dependency any](key any) DependencyKeyOption {
-	return depKeyOption{
+func WithTagged[Dependency any](tag any) DependencyTagOption {
+	return depTagOption{
 		t:   reflect.TypeFor[Dependency](),
-		key: key,
+		tag: tag,
 	}
 }
 
-// ServiceKeyOption is used to specify the key associated with a service when calling [WithService],
+// ServiceTagOption is used to specify the tag associated with a service when calling [WithService],
 // [Resolve], [Container.Resolve], or [Container.Contains].
-type ServiceKeyOption interface {
+type ServiceTagOption interface {
 	ServiceOption
 	ResolveOption
+	DecoratorOption
 }
 
-// DependencyKeyOption is used to specify a key for a dependency when calling [WithService] or [Invoke].
-type DependencyKeyOption interface {
+// DependencyTagOption is used to specify a tag for a dependency when calling [WithService] or [Invoke].
+type DependencyTagOption interface {
 	ServiceOption
 	InvokeOption
+	DecoratorOption
 }
 
-type keyOption struct {
-	key any
+type tagOption struct {
+	tag any
 }
 
-func (o keyOption) applyService(s service) error {
-	s.setKey(o.key)
+func (o tagOption) applyService(s service) error {
+	s.setTag(o.tag)
 	return nil
 }
 
-func (o keyOption) applyServiceKey(key serviceKey) serviceKey {
+func (o tagOption) applyServiceKey(key serviceKey) serviceKey {
 	return serviceKey{
 		Type: key.Type,
-		Key:  o.key,
+		Tag:  o.tag,
 	}
 }
 
-var _ ServiceKeyOption = keyOption{}
-
-type depKeyOption struct {
-	t   reflect.Type
-	key any
+func (o tagOption) applyDecorator(d *decorator) error {
+	return d.setTag(o.tag)
 }
 
-func (o depKeyOption) applyDeps(deps []serviceKey) error {
+var _ ServiceTagOption = tagOption{}
+
+type depTagOption struct {
+	t   reflect.Type
+	tag any
+}
+
+// applyDeps assigns the tag to the first dependency of the right type that does not already have a tag.
+// If no dependency is found, an error is returned.
+//
+// The slice is modified in place.
+func (o depTagOption) applyDeps(deps []serviceKey) error {
 	for i := 0; i < len(deps); i++ {
 		// Find a dependency with the right type
-		// Skip past any that have already been assigned a key
-		if deps[i].Type == o.t && deps[i].Key == nil {
-			deps[i].Key = o.key
+		// Skip past any that have already been assigned a tag
+		if deps[i].Type == o.t && deps[i].Tag == nil {
+			deps[i].Tag = o.tag
 			return nil
 		}
 	}
-	return errors.Errorf("with keyed %s: argument not found", o.t)
+	return errors.Errorf("with tagged %s: argument not found", o.t)
 }
 
-func (o depKeyOption) applyInvokeConfig(c *invokeConfig) error {
-	return o.applyDeps(c.deps)
-}
-
-func (o depKeyOption) applyService(s service) error {
+func (o depTagOption) applyService(s service) error {
 	return o.applyDeps(s.Dependencies())
 }
 
-var _ DependencyKeyOption = depKeyOption{}
+func (o depTagOption) applyDecorator(d *decorator) error {
+	return o.applyDeps(d.deps)
+}
+
+func (o depTagOption) applyInvokeConfig(c *invokeConfig) error {
+	return o.applyDeps(c.deps)
+}
+
+var _ DependencyTagOption = depTagOption{}

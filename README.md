@@ -113,33 +113,33 @@ c, err := di.NewContainer(
 )
 ```
 
-### Keyed Services
+### Tagged Services
 
-Use `di.WithKey()` when registering a service to differentiate between different services of the same type.
+Use `di.WithTag()` when registering a service to differentiate between different services of the same type.
 
-Use `di.WithKeyed[Dependency]()` when registering a dependent service to specify the key for a dependency.
+Use `di.WithTagged[Dependency]()` when registering a dependent service to specify a tag for a dependency.
 
 ```go
 c, err := di.NewContainer(
 	di.WithService(db.NewPrimaryDB, // NewPrimaryDB(context.Context) (*db.DB, error)
-		di.WithKey(db.Primary),
+		di.WithTag(db.Primary),
 	),
 	di.WithService(db.NewReplicaDB, // NewReplicaDB(context.Context) (*db.DB, error)
-		di.WithKey(db.Replica),
+		di.WithTag(db.Replica),
 	),
 	di.WithService(storage.NewReadWriteStore, // NewReadWriteStore(*db.DB) storage.*ReadWriteStore
-		di.WithKeyed[*db.DB](db.Primary),
+		di.WithTagged[*db.DB](db.Primary),
 	),
 	di.WithService(storage.NewReadOnlyStore, // NewReadOnlyStore(*db.DB) storage.*ReadOnlyStore
-		di.WithKeyed[*db.DB](db.Replica),
+		di.WithTagged[*db.DB](db.Replica),
 	),
 )
 ```
 
-Use `di.WithKey()` to specify a key when resolving a service directly from a container.
+Use `di.WithTag()` to specify a tag when resolving a service directly from a container.
 
 ```go
-primary, err := di.Resolve[*db.DB](ctx, c, di.WithKey(db.Primary)) 
+primary, err := di.Resolve[*db.DB](ctx, c, di.WithTag(db.Primary)) 
 ```
 
 ### Slice Services
@@ -192,6 +192,26 @@ defer func() {
 }
 ```
 
+### Decorators
+
+It's often useful to "wrap" or "decorate" a *service* to add some functionality.
+
+Use `di.WithDecorator()` when creating a `Container` to register a decorator function.
+A decorator function must accept and return a *service*. It may also accept other arguments which will be resolved from the container.
+
+```go
+c, err := di.NewContainer(
+	di.WithService(logger), // var logger *slog.Logger
+	di.WithService(service.NewService), // NewService() service.Interface
+	di.WithDecorator(service.NewLoggedService), // NewLoggedService(service.Interface, *slog.Logger) service.Interface
+)
+// ...
+
+svc, err := di.Resolve[service.Interface](ctx, c)
+```
+
+If you register multiple decorators for a service, they will be applied in the order they are registered. Value services cannot be decorated.
+
 ## `dicontext`
 
 This package allows you to add a container scope to a `context.Context`.
@@ -239,14 +259,13 @@ handler = scopeMiddleware(handler)
 
 ## TODO
 
-- Add support for "decorator" functions `func(Service [, deps...]) Service`
-- Track child scopes to make sure all child scopes have been closed.
 - Get around dependency cycles by injecting `di.Lazy[Service any]`
-- Optional dependencies?
+- Track child scopes to make sure all child scopes have been closed. 
+	What do we do in this case? Close the child container(s)? Return an error? 
 - Implement additional Container options:
 	- Validate services: make sure all types are resolvable, with no cycles.
 		(Will need to exclude scoped services in the root container since they may have dependencies registered in child scopes.) 
-		
+
 - Support for `Shutdown` functions like `Closer`?
 - Enable error stacktraces optionally?
 - Logging with `slog`?

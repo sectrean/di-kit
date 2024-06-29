@@ -32,14 +32,14 @@ func Test_NewContainer(t *testing.T) {
 		assert.True(t, has)
 	})
 
-	t.Run("with unsupported service kind", func(t *testing.T) {
+	t.Run("with invalid service kind", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(1234),
 		)
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "new container: with service int: unsupported kind int")
+		assert.EqualError(t, err, "new container: with service int: invalid service type")
 	})
 
 	t.Run("with nil value", func(t *testing.T) {
@@ -55,12 +55,12 @@ func Test_NewContainer(t *testing.T) {
 
 	t.Run("only options", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(di.Singleton, di.WithKey("key")),
+			di.WithService(di.Singleton, di.WithTag("tag")),
 		)
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "new container: with service di.Lifetime: unexpected RegisterOption as funcOrValue")
+		assert.EqualError(t, err, "new container: with service di.Lifetime: unexpected ServiceOption as funcOrValue")
 	})
 
 	t.Run("func alias not assignable", func(t *testing.T) {
@@ -83,29 +83,29 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "new container: with service *testtypes.StructA: as testtypes.InterfaceB: type *testtypes.StructA not assignable to testtypes.InterfaceB")
 	})
 
-	t.Run("with keyed not found", func(t *testing.T) {
+	t.Run("with tagged not found", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA,
-				di.WithKeyed[testtypes.InterfaceB]("key"),
+				di.WithTagged[testtypes.InterfaceB]("tag"),
 			),
 		)
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "new container: with service func() testtypes.InterfaceA: with keyed testtypes.InterfaceB: argument not found")
+		assert.EqualError(t, err, "new container: with service func() testtypes.InterfaceA: with tagged testtypes.InterfaceB: argument not found")
 	})
 
-	t.Run("value with keyed", func(t *testing.T) {
+	t.Run("value with tagged", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA,
 				// This option will be ignored.
-				di.WithKeyed[testtypes.InterfaceB]("key"),
+				di.WithTagged[testtypes.InterfaceB]("tag"),
 			),
 		)
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "new container: with service func() testtypes.InterfaceA: with keyed testtypes.InterfaceB: argument not found")
+		assert.EqualError(t, err, "new container: with service func() testtypes.InterfaceA: with tagged testtypes.InterfaceB: argument not found")
 	})
 
 	t.Run("with close func not assingable", func(t *testing.T) {
@@ -131,6 +131,26 @@ func Test_NewContainer(t *testing.T) {
 			"new container: with service func() (testtypes.InterfaceA, testtypes.InterfaceB): function must return Service or (Service, error)")
 	})
 
+	t.Run("register error", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func() error { return stderrors.New("test error") }),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with service func() error: invalid service type")
+	})
+
+	t.Run("register context.Context", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(context.Background),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with service func() context.Context: invalid service type")
+	})
+
 	t.Run("multiple errors", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService([]testtypes.InterfaceA{}),
@@ -139,7 +159,28 @@ func Test_NewContainer(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "new container: with service []testtypes.InterfaceA: unsupported kind slice\nwith service func() testtypes.InterfaceA: as testtypes.InterfaceB: type testtypes.InterfaceA not assignable to testtypes.InterfaceB")
+		assert.EqualError(t, err, "new container: with service []testtypes.InterfaceA: invalid service type\nwith service func() testtypes.InterfaceA: as testtypes.InterfaceB: type testtypes.InterfaceA not assignable to testtypes.InterfaceB")
+	})
+
+	t.Run("with nil decorator", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithDecorator(nil),
+		)
+		LogError(t, err)
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with decorator: decorateFunc is nil")
+	})
+
+	t.Run("with decorator function with no service argument", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithDecorator(func() testtypes.InterfaceA { return nil }),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with decorator func() testtypes.InterfaceA: function must have a Service argument")
 	})
 }
 
@@ -190,7 +231,7 @@ func Test_Container_NewScope(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, scope)
-		assert.EqualError(t, err, "new scope: with service di.Lifetime: unexpected RegisterOption as funcOrValue")
+		assert.EqualError(t, err, "new scope: with service di.Lifetime: unexpected ServiceOption as funcOrValue")
 	})
 
 	t.Run("parent closed", func(t *testing.T) {
@@ -229,19 +270,19 @@ func Test_Container_Contains(t *testing.T) {
 		assert.False(t, has)
 	})
 
-	t.Run("with key", func(t *testing.T) {
+	t.Run("with tag", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA, di.WithKey("key")),
+			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),
 		)
 		require.NoError(t, err)
 
-		has := c.Contains(reflect.TypeFor[testtypes.InterfaceA](), di.WithKey("key"))
+		has := c.Contains(reflect.TypeFor[testtypes.InterfaceA](), di.WithTag("tag"))
 		assert.True(t, has)
 
 		has = c.Contains(reflect.TypeFor[testtypes.InterfaceA]())
 		assert.True(t, has)
 
-		has = c.Contains(reflect.TypeFor[testtypes.InterfaceA](), di.WithKey("other"))
+		has = c.Contains(reflect.TypeFor[testtypes.InterfaceA](), di.WithTag("other"))
 		assert.False(t, has)
 	})
 
@@ -275,6 +316,20 @@ func Test_Container_Resolve(t *testing.T) {
 		got, err := di.Resolve[*testtypes.StructA](ctx, c)
 
 		assert.Equal(t, &testtypes.StructA{}, got)
+		assert.NoError(t, err)
+	})
+
+	t.Run("constructor func returns nil", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA {
+				return nil
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+		assert.Nil(t, got)
 		assert.NoError(t, err)
 	})
 
@@ -642,14 +697,14 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Same(t, a1, a2)
 	})
 
-	t.Run("func with key", func(t *testing.T) {
+	t.Run("func with tag", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA, di.WithKey("key")),
+			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),
 		)
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		a1, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithKey("key"))
+		a1, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag("tag"))
 		assert.NotNil(t, a1)
 		assert.NoError(t, err)
 
@@ -659,31 +714,31 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Same(t, a1, a2)
 	})
 
-	t.Run("value with key", func(t *testing.T) {
+	t.Run("value with tag", func(t *testing.T) {
 		a := &testtypes.StructA{}
 
 		c, err := di.NewContainer(
-			di.WithService(a, di.WithKey("key")),
+			di.WithService(a, di.WithTag("tag")),
 		)
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		got, err := di.Resolve[*testtypes.StructA](ctx, c, di.WithKey("key"))
+		got, err := di.Resolve[*testtypes.StructA](ctx, c, di.WithTag("tag"))
 		assert.Same(t, a, got)
 		assert.NoError(t, err)
 	})
 
-	t.Run("alias with key", func(t *testing.T) {
+	t.Run("alias with tag", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewStructAPtr,
 				di.As[testtypes.InterfaceA](),
-				di.WithKey("key"),
+				di.WithTag("tag"),
 			),
 		)
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		got, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithKey("key"))
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag("tag"))
 		assert.NotNil(t, got)
 		assert.NoError(t, err)
 
@@ -692,32 +747,33 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("with key not registered", func(t *testing.T) {
+	t.Run("with tag not registered", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA, di.WithKey("key")),
+			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),
 		)
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		got, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithKey("other"))
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag("other"))
 		LogError(t, err)
 
 		assert.Nil(t, got)
-		assert.EqualError(t, err, "resolve testtypes.InterfaceA (Key other): service not registered")
+		assert.EqualError(t, err, "resolve testtypes.InterfaceA (Tag other): service not registered")
 		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
-	t.Run("with keyed", func(t *testing.T) {
+	t.Run("with tagged", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA,
-				di.WithKey("A1"),
+				di.WithTag("A1"),
 			),
 			di.WithService(func() (testtypes.InterfaceA, error) {
-				return nil, stderrors.New("should not be called")
+				assert.Fail(t, "should not be called")
+				return nil, nil
 			}),
 			di.WithService(func(a testtypes.InterfaceA) testtypes.InterfaceB {
 				return &testtypes.StructB{}
-			}, di.WithKeyed[testtypes.InterfaceA]("A1")),
+			}, di.WithTagged[testtypes.InterfaceA]("A1")),
 		)
 		require.NoError(t, err)
 
@@ -728,21 +784,21 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("with keyed multiple", func(t *testing.T) {
+	t.Run("with tagged multiple", func(t *testing.T) {
 		a1 := &testtypes.StructA{}
 		a2 := &testtypes.StructA{}
 
 		c, err := di.NewContainer(
-			di.WithService(func() testtypes.InterfaceA { return a1 }, di.WithKey("1")),
-			di.WithService(func() testtypes.InterfaceA { return a2 }, di.WithKey("2")),
+			di.WithService(func() testtypes.InterfaceA { return a1 }, di.WithTag("1")),
+			di.WithService(func() testtypes.InterfaceA { return a2 }, di.WithTag("2")),
 			di.WithService(
 				func(aa2 testtypes.InterfaceA, aa1 testtypes.InterfaceA) testtypes.InterfaceB {
 					assert.Same(t, a1, aa1)
 					assert.Same(t, a2, aa2)
 					return &testtypes.StructB{}
 				},
-				di.WithKeyed[testtypes.InterfaceA]("2"),
-				di.WithKeyed[testtypes.InterfaceA]("1"),
+				di.WithTagged[testtypes.InterfaceA]("2"),
+				di.WithTagged[testtypes.InterfaceA]("1"),
 			),
 		)
 		require.NoError(t, err)
@@ -776,8 +832,27 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.EqualError(t, err, "resolve testtypes.InterfaceB: dependency testtypes.InterfaceA: constructor error")
 	})
 
+	t.Run("dependency nil", func(t *testing.T) {
+		calls := 0
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA { return nil }),
+			di.WithService(func(a testtypes.InterfaceA) testtypes.InterfaceB {
+				calls++
+				assert.Nil(t, a)
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		b, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+		assert.NotNil(t, b)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, calls)
+	})
+
 	t.Run("context dependency", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), "key", "value")
+		ctx := context.WithValue(context.Background(), "tag", "value")
 
 		c, err := di.NewContainer(
 			di.WithService(func(ctxDep context.Context) testtypes.InterfaceA {
@@ -825,6 +900,218 @@ func Test_Container_Resolve(t *testing.T) {
 		a := factory.BuildA(ctx, "arg")
 		assert.NotNil(t, a)
 	})
+
+	t.Run("with decorator", func(t *testing.T) {
+		a := &testtypes.StructA{}
+		calls := 0
+
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithDecorator(func(a testtypes.InterfaceA) testtypes.InterfaceA {
+				calls++
+				return a
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+
+		assert.Same(t, a, got)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("value service cannot be decorated", func(t *testing.T) {
+		a := &testtypes.StructA{}
+
+		c, err := di.NewContainer(
+			di.WithService(a, di.As[testtypes.InterfaceA]()),
+			di.WithDecorator(func(testtypes.InterfaceA) testtypes.InterfaceA {
+				assert.Fail(t, "decorator should not be called")
+				return nil
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+		assert.Same(t, a, got)
+		assert.NoError(t, err)
+	})
+
+	t.Run("multiple decorators", func(t *testing.T) {
+		a1 := &testtypes.StructA{}
+		a2 := &testtypes.StructA{}
+		a3 := &testtypes.StructA{}
+		calls1 := 0
+		calls2 := 0
+
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA { return a1 }),
+			di.WithDecorator(func(a testtypes.InterfaceA) testtypes.InterfaceA {
+				assert.Same(t, a1, a)
+				calls1++
+				return a2
+			}),
+			di.WithDecorator(func(a testtypes.InterfaceA) testtypes.InterfaceA {
+				assert.Same(t, a2, a)
+				calls2++
+				return a3
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+
+		assert.Same(t, a3, got)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, calls1)
+		assert.Equal(t, 1, calls2)
+	})
+
+	t.Run("decorator with context", func(t *testing.T) {
+		calls := 0
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithDecorator(func(ctx context.Context, a testtypes.InterfaceA) testtypes.InterfaceA {
+				assert.NotNil(t, ctx)
+				calls++
+				return a
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+		assert.NotNil(t, got)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("decorator with dependency", func(t *testing.T) {
+		calls := 0
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(testtypes.NewInterfaceB),
+			di.WithDecorator(func(b testtypes.InterfaceB, a testtypes.InterfaceA) testtypes.InterfaceB {
+				assert.NotNil(t, a)
+				calls++
+				return b
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+
+		assert.NotNil(t, got)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("decorator with error", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func() (testtypes.InterfaceA, error) {
+				return nil, stderrors.New("constructor error")
+			}),
+			di.WithService(func() testtypes.InterfaceB {
+				return &testtypes.StructB{}
+			}),
+			di.WithDecorator(func(testtypes.InterfaceB, testtypes.InterfaceA) testtypes.InterfaceB {
+				assert.Fail(t, "decorator should not be called")
+				return nil
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+		LogError(t, err)
+
+		assert.Nil(t, got)
+		assert.EqualError(t, err, "resolve testtypes.InterfaceB: decorator func(testtypes.InterfaceB, testtypes.InterfaceA) testtypes.InterfaceB: dependency testtypes.InterfaceA: constructor error")
+	})
+
+	t.Run("decorator function dependency returns nil", func(t *testing.T) {
+		calls := 0
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA { return nil }),
+			di.WithService(func() testtypes.InterfaceB { return &testtypes.StructB{} }),
+			di.WithDecorator(func(b testtypes.InterfaceB, a testtypes.InterfaceA) testtypes.InterfaceB {
+				assert.Nil(t, a)
+				calls++
+				return b
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+
+		assert.Equal(t, &testtypes.StructB{}, got)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("decorator with tag", func(t *testing.T) {
+		const tag = "decorate me"
+
+		a := &testtypes.StructA{}
+		calls := 0
+
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func() testtypes.InterfaceA { return a },
+				di.As[testtypes.InterfaceA](),
+				di.WithTag(tag),
+			),
+			di.WithDecorator(func(aa testtypes.InterfaceA) testtypes.InterfaceA {
+				assert.Same(t, a, aa)
+				calls++
+				return nil
+			}, di.WithTag(tag)),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag(tag))
+
+		assert.Nil(t, got)
+		assert.NotSame(t, a, got)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("decorator with tagged", func(t *testing.T) {
+		const tag = "decorate me"
+
+		a := &testtypes.StructA{}
+		calls := 0
+
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA { return nil }),
+			di.WithService(func() testtypes.InterfaceA { return a },
+				di.WithTag(tag),
+			),
+			di.WithService(testtypes.NewInterfaceB),
+			di.WithDecorator(func(aa testtypes.InterfaceA, b testtypes.InterfaceB) testtypes.InterfaceB {
+				assert.Same(t, a, aa)
+				assert.NotNil(t, b)
+				calls++
+				return b
+			}, di.WithTagged[testtypes.InterfaceA](tag)),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+
+		assert.NotNil(t, got)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, calls)
+	})
 }
 
 func Test_Container_Close(t *testing.T) {
@@ -844,7 +1131,7 @@ func Test_Container_Close(t *testing.T) {
 	})
 
 	t.Run("all close funcs", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), "key", "value")
+		ctx := context.WithValue(context.Background(), "tag", "value")
 
 		aMock := mocks.NewInterfaceAMock(t)
 		aMock.EXPECT().

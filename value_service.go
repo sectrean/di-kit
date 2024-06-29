@@ -7,9 +7,8 @@ import (
 )
 
 type valueService struct {
-	t             reflect.Type
+	key           serviceKey
 	aliases       []reflect.Type
-	key           any
 	val           any
 	closerFactory func(any) Closer
 }
@@ -18,8 +17,12 @@ func newValueService(val any, opts ...ServiceOption) (*valueService, error) {
 	t := reflect.TypeOf(val)
 	v := reflect.ValueOf(val)
 
+	if err := validateServiceType(t); err != nil {
+		return nil, err
+	}
+
 	svc := &valueService{
-		t:   t,
+		key: serviceKey{Type: t},
 		val: v.Interface(),
 	}
 
@@ -37,16 +40,20 @@ func (s *valueService) Aliases() []reflect.Type {
 }
 
 func (s *valueService) addAlias(alias reflect.Type) error {
-	if !s.t.AssignableTo(alias) {
-		return errors.Errorf("type %s not assignable to %s", s.t, alias)
+	if !s.key.Type.AssignableTo(alias) {
+		return errors.Errorf("type %s not assignable to %s", s.key.Type, alias)
 	}
 
 	s.aliases = append(s.aliases, alias)
 	return nil
 }
 
+func (s *valueService) Key() serviceKey {
+	return s.key
+}
+
 func (s *valueService) Type() reflect.Type {
-	return s.t
+	return s.key.Type
 }
 
 func (s *valueService) Lifetime() Lifetime {
@@ -57,12 +64,12 @@ func (s *valueService) setLifetime(Lifetime) {
 	// Values are always singletons.
 }
 
-func (s *valueService) Key() any {
-	return s.key
+func (s *valueService) Tag() any {
+	return s.key.Tag
 }
 
-func (s *valueService) setKey(key any) {
-	s.key = key
+func (s *valueService) setTag(tag any) {
+	s.key.Tag = tag
 }
 
 func (*valueService) Dependencies() []serviceKey {

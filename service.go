@@ -18,6 +18,9 @@ import (
 // The function must return a service, or the service and an error.
 // The service will be registered as the return type of the function (struct, pointer, or interface).
 //
+// If the function returns an error, this error will be returned when the service is resolved, either directly or as a dependency.
+// If the function returns nil for the service, it will not be treated as an error.
+//
 // If the resolved service implements [Closer], or a compatible Close method signature,
 // it will be closed when the Container is closed.
 //
@@ -28,8 +31,8 @@ import (
 // Available options:
 //   - [Lifetime] is used to specify how services are created when resolved.
 //   - [As] registers an alias for a service.
-//   - [WithKey] specifies a key differentiate between services of the same type.
-//   - [WithKeyed] specifies a key for a service dependency.
+//   - [WithTag] specifies a tag differentiate between services of the same type.
+//   - [WithTagged] specifies a tag for a service dependency.
 //   - [WithCloseFunc] specifies a function to be called when the service is closed.
 //   - [IgnoreClose] specifies that the service should not be closed by the Container.
 //     Function services are closed by default if they implement [Closer] or a compatible function signature.
@@ -47,36 +50,51 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 	// WithService(NewService) // This works as a func
 	// WithService(NewService()) // This works as a value
 
-	return containerOption(func(c *Container) error {
+	return newContainerOption(orderService, func(c *Container) error {
 		if funcOrValue == nil {
 			return errors.Errorf("with service: funcOrValue is nil")
 		}
 
 		if _, ok := funcOrValue.(ServiceOption); ok {
-			return errors.Errorf("with service %T: unexpected RegisterOption as funcOrValue", funcOrValue)
+			return errors.Errorf("with service %T: unexpected ServiceOption as funcOrValue", funcOrValue)
 		}
 
 		t := reflect.TypeOf(funcOrValue)
 
 		var svc service
 		var err error
-
-		switch t.Kind() {
-		case reflect.Func:
+		if t.Kind() == reflect.Func {
 			svc, err = newFuncService(funcOrValue, opts...)
-		case reflect.Interface, reflect.Ptr, reflect.Struct:
+		} else {
 			svc, err = newValueService(funcOrValue, opts...)
-		default:
-			err = errors.Errorf("unsupported kind %v", t.Kind())
 		}
 
 		if err != nil {
 			return errors.Wrapf(err, "with service %T", funcOrValue)
 		}
 
-		c.register(svc)
-		return nil
+		err = c.register(svc)
+		return errors.Wrapf(err, "with service %T", funcOrValue)
 	})
+}
+
+func validateServiceType(t reflect.Type) error {
+	switch t {
+	// These are the only special types used by the Container.
+	case contextType,
+		scopeType,
+		errorType:
+		return errors.New("invalid service type")
+	}
+
+	switch t.Kind() {
+	case reflect.Interface,
+		reflect.Ptr,
+		reflect.Struct:
+		return nil
+	}
+
+	return errors.New("invalid service type")
 }
 
 // ServiceOption is used to configure service registration calling [WithService].
@@ -92,6 +110,9 @@ func (o serviceOption) applyService(s service) error {
 
 // service provides information about a service and how to resolve it.
 type service interface {
+	// Key returns the key of the service.
+	Key() serviceKey
+
 	// Type returns the type of the service.
 	Type() reflect.Type
 
@@ -103,9 +124,9 @@ type service interface {
 	Aliases() []reflect.Type
 	addAlias(reflect.Type) error
 
-	// Key returns the key of the service.
-	Key() any
-	setKey(any)
+	// Tag returns the tag of the service.
+	Tag() any
+	setTag(any)
 
 	// Dependencies returns the types of the services that this service depends on.
 	Dependencies() []serviceKey
@@ -120,14 +141,14 @@ type service interface {
 
 type serviceKey struct {
 	Type reflect.Type
-	Key  any
+	Tag  any
 }
 
 func (k serviceKey) String() string {
-	if k.Key == nil {
+	if k.Tag == nil {
 		return k.Type.String()
 	}
-	return fmt.Sprintf("%s (Key %v)", k.Type, k.Key)
+	return fmt.Sprintf("%s (Tag %v)", k.Type, k.Tag)
 }
 
 type resolvedService interface {

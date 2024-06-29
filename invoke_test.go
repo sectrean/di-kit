@@ -74,7 +74,7 @@ func Test_Invoke(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		ctx := context.WithValue(context.Background(), "key", "value")
+		ctx := context.WithValue(context.Background(), "tag", "value")
 		err = di.Invoke(ctx, c, func(ctx2 context.Context, a testtypes.InterfaceA) {
 			assert.Equal(t, ctx, ctx2)
 			assert.NotNil(t, a)
@@ -98,13 +98,13 @@ func Test_Invoke(t *testing.T) {
 		assert.EqualError(t, err, "invoke func(context.Context, testtypes.InterfaceA): context canceled")
 	})
 
-	t.Run("with keyed", func(t *testing.T) {
+	t.Run("with tagged", func(t *testing.T) {
 		a := &testtypes.StructA{}
 
 		c, err := di.NewContainer(
 			di.WithService(a,
 				di.As[testtypes.InterfaceA](),
-				di.WithKey("key"),
+				di.WithTag("tag"),
 			),
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -112,7 +112,7 @@ func Test_Invoke(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		a2, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithKey("key"))
+		a2, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag("tag"))
 		assert.Same(t, a, a2)
 		assert.NoError(t, err)
 
@@ -120,12 +120,12 @@ func Test_Invoke(t *testing.T) {
 			func(aa testtypes.InterfaceA) {
 				assert.Same(t, a, aa)
 			},
-			di.WithKeyed[testtypes.InterfaceA]("key"),
+			di.WithTagged[testtypes.InterfaceA]("tag"),
 		)
 		assert.NoError(t, err)
 	})
 
-	t.Run("with keyed dep not found", func(t *testing.T) {
+	t.Run("with tagged dep not found", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -134,10 +134,10 @@ func Test_Invoke(t *testing.T) {
 		ctx := context.Background()
 		err = di.Invoke(ctx, c,
 			func(testtypes.InterfaceA) {},
-			di.WithKeyed[testtypes.InterfaceB]("key"),
+			di.WithTagged[testtypes.InterfaceB]("tag"),
 		)
 		LogError(t, err)
 
-		assert.EqualError(t, err, "invoke func(testtypes.InterfaceA): with keyed testtypes.InterfaceB: argument not found")
+		assert.EqualError(t, err, "invoke func(testtypes.InterfaceA): with tagged testtypes.InterfaceB: argument not found")
 	})
 }
