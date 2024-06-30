@@ -74,9 +74,9 @@ func Test_Invoke(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		ctx := context.WithValue(context.Background(), "tag", "value")
+		ctx := ContextWithTestValue(context.Background(), "value")
 		err = di.Invoke(ctx, c, func(ctx2 context.Context, a testtypes.InterfaceA) {
-			assert.Equal(t, ctx, ctx2)
+			assert.Same(t, ctx, ctx2)
 			assert.NotNil(t, a)
 		})
 		assert.NoError(t, err)
