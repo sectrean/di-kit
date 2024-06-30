@@ -169,19 +169,24 @@ type servicePromise struct {
 	done chan struct{}
 }
 
-func newServicePromise() *servicePromise {
-	return &servicePromise{
+func newServicePromise() (*servicePromise, func(any, error)) {
+	p := &servicePromise{
 		done: make(chan struct{}),
 	}
+
+	return p, p.resolve
 }
 
-func (p *servicePromise) setResult(val any, err error) {
+func (p *servicePromise) resolve(val any, err error) {
 	p.val = val
 	p.err = err
+
 	close(p.done)
 }
 
 func (p *servicePromise) Result() (any, error) {
+	// Block until val and err have been set
 	<-p.done
+
 	return p.val, p.err
 }

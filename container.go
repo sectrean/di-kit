@@ -206,16 +206,16 @@ type ResolveOption interface {
 // Available options:
 //   - [WithTag] specifies a key associated with the service.
 func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...ResolveOption) (any, error) {
+	key := serviceKey{Type: t}
+	for _, opt := range opts {
+		key = opt.applyServiceKey(key)
+	}
+
 	c.closedMu.RLock()
 	defer c.closedMu.RUnlock()
 
 	if c.closed {
-		return nil, errors.Wrapf(ErrContainerClosed, "resolve %s", t)
-	}
-
-	key := serviceKey{Type: t}
-	for _, opt := range opts {
-		key = opt.applyServiceKey(key)
+		return nil, errors.Wrapf(ErrContainerClosed, "resolve %s", key)
 	}
 
 	val, err := c.resolve(ctx, key, make(resolveVisitor))
@@ -257,9 +257,9 @@ func (c *Container) resolve(
 		res, exists := scope.resolved[svc]
 		if !exists {
 			// Create a promise that will be resolved when this function returns
-			promise := newServicePromise()
+			promise, resolvePromise := newServicePromise()
 			defer func() {
-				promise.setResult(val, err)
+				resolvePromise(val, err)
 			}()
 
 			res = promise
