@@ -852,7 +852,7 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("context dependency", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), "tag", "value")
+		ctx := ContextWithTestValue(context.Background(), "value")
 
 		c, err := di.NewContainer(
 			di.WithService(func(ctxDep context.Context) testtypes.InterfaceA {
@@ -1131,7 +1131,7 @@ func Test_Container_Close(t *testing.T) {
 	})
 
 	t.Run("all close funcs", func(t *testing.T) {
-		ctx := context.WithValue(context.Background(), "tag", "value")
+		ctx := ContextWithTestValue(context.Background(), "value")
 
 		aMock := mocks.NewInterfaceAMock(t)
 		aMock.EXPECT().

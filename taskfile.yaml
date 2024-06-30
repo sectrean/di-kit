@@ -20,3 +20,7 @@ tasks:
   mocks:
     cmds:
       - mockery
+
+  lint:
+    cmds:
+      - golangci-lint run -v

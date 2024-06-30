@@ -20,6 +20,13 @@ func LogError(t *testing.T, err error) {
 	t.Logf("error message:\n%v", err)
 }
 
+type ctxKey struct{}
+
+// ContextWithTestValue returns a context with the provided value
+func ContextWithTestValue(ctx context.Context, val any) context.Context {
+	return context.WithValue(ctx, ctxKey{}, val)
+}
+
 type Factory struct {
 	scope di.Scope
 }

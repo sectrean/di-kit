@@ -22,8 +22,8 @@ func WithDecorator(decorateFunc any, opts ...DecoratorOption) ContainerOption {
 			return errors.Wrapf(err, "with decorator %T", decorateFunc)
 		}
 
-		c.registerDecorator(d)
-		return nil
+		err = c.registerDecorator(d)
+		return errors.Wrapf(err, "with decorator %T", decorateFunc)
 	})
 }
 
