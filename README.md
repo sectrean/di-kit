@@ -22,8 +22,8 @@ c, err := di.NewContainer(
 )
 // ...
 
-// 3. Close the Container and services when you're done.
 defer func() {
+	// 3. Close the Container and services when you're done.
 	err := c.Close(ctx)
 	// ...
 }()

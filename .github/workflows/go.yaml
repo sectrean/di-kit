@@ -34,7 +34,6 @@ jobs:
       - name: Test
         run: task test
 
-
   golangci:
     name: lint
     runs-on: ubuntu-latest
