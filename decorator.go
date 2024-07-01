@@ -103,7 +103,7 @@ func (d *decorator) Key() serviceKey {
 	return d.key
 }
 
-func (d *decorator) setTag(tag any) error {
+func (d *decorator) SetTag(tag any) error {
 	d.key.Tag = tag
 
 	for i, dep := range d.deps {

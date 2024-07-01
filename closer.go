@@ -45,8 +45,8 @@ type Closer interface {
 //
 // See Closer for more information.
 func WithClose() ServiceOption {
-	return serviceOption(func(s service) error {
-		s.setCloserFactory(getCloser)
+	return serviceOption(func(sr serviceRegistration) error {
+		sr.SetCloserFactory(getCloser)
 		return nil
 	})
 }
@@ -62,8 +62,8 @@ func WithClose() ServiceOption {
 //
 // See Closer for more information.
 func IgnoreClose() ServiceOption {
-	return serviceOption(func(s service) error {
-		s.setCloserFactory(nil)
+	return serviceOption(func(sr serviceRegistration) error {
+		sr.SetCloserFactory(nil)
 		return nil
 	})
 }
@@ -92,16 +92,13 @@ type closeFuncOption[Service any] struct {
 	f func(context.Context, Service) error
 }
 
-func (o closeFuncOption[Service]) applyService(s service) error {
-	optType := reflect.TypeFor[Service]()
-	svcType := s.Type()
-
-	if !svcType.AssignableTo(optType) {
+func (o closeFuncOption[Service]) applyService(sr serviceRegistration) error {
+	if !sr.Type().AssignableTo(reflect.TypeFor[Service]()) {
 		return errors.Errorf("with close func: service type %s is not assignable to %s",
-			svcType, optType)
+			sr.Type(), reflect.TypeFor[Service]())
 	}
 
-	s.setCloserFactory(func(val any) Closer {
+	sr.SetCloserFactory(func(val any) Closer {
 		return closeFunc(func(ctx context.Context) error {
 			return o.f(ctx, val.(Service))
 		})

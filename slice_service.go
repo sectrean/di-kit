@@ -23,32 +23,8 @@ func (s *sliceService) Key() serviceKey {
 	}
 }
 
-func (s *sliceService) Type() reflect.Type {
-	return s.t
-}
-
 func (s *sliceService) Lifetime() Lifetime {
 	return Transient
-}
-
-func (s *sliceService) setLifetime(l Lifetime) {
-	panic("not supported")
-}
-
-func (s *sliceService) Aliases() []reflect.Type {
-	return nil
-}
-
-func (s *sliceService) addAlias(alias reflect.Type) error {
-	panic("not supported")
-}
-
-func (s *sliceService) Tag() any {
-	return nil
-}
-
-func (s *sliceService) setTag(any) {
-	panic("not supported")
 }
 
 func (s *sliceService) Dependencies() []serviceKey {
@@ -59,10 +35,6 @@ func (s *sliceService) AsCloser(val any) Closer {
 	// Closers for the individual services will be added to the container
 	// as they are resolved.
 	return nil
-}
-
-func (s *sliceService) setCloserFactory(closerFactory) {
-	panic("not supported")
 }
 
 func (s *sliceService) New(deps []reflect.Value) (any, error) {

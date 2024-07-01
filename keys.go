@@ -63,8 +63,8 @@ type tagOption struct {
 	tag any
 }
 
-func (o tagOption) applyService(s service) error {
-	s.setTag(o.tag)
+func (o tagOption) applyService(sr serviceRegistration) error {
+	sr.SetTag(o.tag)
 	return nil
 }
 
@@ -76,7 +76,7 @@ func (o tagOption) applyServiceKey(key serviceKey) serviceKey {
 }
 
 func (o tagOption) applyDecorator(d *decorator) error {
-	return d.setTag(o.tag)
+	return d.SetTag(o.tag)
 }
 
 var _ ServiceTagOption = tagOption{}
@@ -102,8 +102,8 @@ func (o depTagOption) applyDeps(deps []serviceKey) error {
 	return errors.Errorf("with tagged %s: argument not found", o.t)
 }
 
-func (o depTagOption) applyService(s service) error {
-	return o.applyDeps(s.Dependencies())
+func (o depTagOption) applyService(sr serviceRegistration) error {
+	return o.applyDeps(sr.Dependencies())
 }
 
 func (o depTagOption) applyDecorator(d *decorator) error {

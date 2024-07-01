@@ -32,8 +32,8 @@ const (
 	Scoped Lifetime = iota
 )
 
-func (l Lifetime) applyService(s service) error {
-	s.setLifetime(l)
+func (l Lifetime) applyService(sr serviceRegistration) error {
+	sr.SetLifetime(l)
 	return nil
 }
 

@@ -61,19 +61,19 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 
 		t := reflect.TypeOf(funcOrValue)
 
-		var svc service
+		var sr serviceRegistration
 		var err error
 		if t.Kind() == reflect.Func {
-			svc, err = newFuncService(funcOrValue, opts...)
+			sr, err = newFuncService(funcOrValue, opts...)
 		} else {
-			svc, err = newValueService(funcOrValue, opts...)
+			sr, err = newValueService(funcOrValue, opts...)
 		}
 
 		if err != nil {
 			return errors.Wrapf(err, "with service %T", funcOrValue)
 		}
 
-		c.register(svc)
+		c.register(sr)
 		return nil
 	})
 }
@@ -99,13 +99,13 @@ func validateServiceType(t reflect.Type) error {
 
 // ServiceOption is used to configure service registration calling [WithService].
 type ServiceOption interface {
-	applyService(service) error
+	applyService(serviceRegistration) error
 }
 
-type serviceOption func(service) error
+type serviceOption func(serviceRegistration) error
 
-func (o serviceOption) applyService(s service) error {
-	return o(s)
+func (o serviceOption) applyService(sr serviceRegistration) error {
+	return o(sr)
 }
 
 // service provides information about a service and how to resolve it.
@@ -113,20 +113,8 @@ type service interface {
 	// Key returns the key of the service.
 	Key() serviceKey
 
-	// Type returns the type of the service.
-	Type() reflect.Type
-
 	// Lifetime returns the lifetime of the service.
 	Lifetime() Lifetime
-	setLifetime(Lifetime)
-
-	// Aliases returns the types that this service can be resolved as.
-	Aliases() []reflect.Type
-	addAlias(reflect.Type) error
-
-	// Tag returns the tag of the service.
-	Tag() any
-	setTag(any)
 
 	// Dependencies returns the types of the services that this service depends on.
 	Dependencies() []serviceKey
@@ -136,7 +124,27 @@ type service interface {
 
 	// AsCloser returns a Closer for the service.
 	AsCloser(val any) Closer
-	setCloserFactory(closerFactory)
+}
+
+type serviceRegistration interface {
+	service
+
+	// Type returns the type of the service.
+	Type() reflect.Type
+
+	// Tag returns the tag of the service.
+	Tag() any
+	SetTag(any)
+
+	// Lifetime returns the lifetime of the service.
+	Lifetime() Lifetime
+	SetLifetime(Lifetime)
+
+	// Aliases returns the types that this service can be resolved as.
+	Aliases() []reflect.Type
+	AddAlias(reflect.Type) error
+
+	SetCloserFactory(closerFactory)
 }
 
 type serviceKey struct {

@@ -60,7 +60,7 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 	return c, nil
 }
 
-func (c *Container) register(s service) {
+func (c *Container) register(sr serviceRegistration) {
 	// Child containers point to the same services map as the parent container initially.
 	// If we're registering new services in the child container,
 	// we need to clone the parent map first.
@@ -68,40 +68,40 @@ func (c *Container) register(s service) {
 		c.services = maps.Clone(c.parent.services)
 	}
 
-	if len(s.Aliases()) == 0 {
-		c.registerType(s.Type(), s)
+	if len(sr.Aliases()) == 0 {
+		c.registerType(sr.Type(), sr)
 	} else {
-		for _, alias := range s.Aliases() {
-			c.registerType(alias, s)
+		for _, alias := range sr.Aliases() {
+			c.registerType(alias, sr)
 		}
 	}
 
 	// Pre-resolve value services and add closer
 	// We don't need to take locks here because this is only called when creating a new Container
-	if vs, ok := s.(*valueService); ok {
-		c.resolved[s.Key()] = valueResult{vs.val}
+	if vs, ok := sr.(*valueService); ok {
+		c.resolved[sr.Key()] = valueResult{vs.val}
 
-		if closer := s.AsCloser(vs.val); closer != nil {
+		if closer := sr.AsCloser(vs.val); closer != nil {
 			c.closers = append(c.closers, closer)
 		}
 	}
 }
 
-func (c *Container) registerType(t reflect.Type, s service) {
+func (c *Container) registerType(t reflect.Type, sr serviceRegistration) {
 	// TODO: If we have a type registered with and without a tag,
 	// do we need to prioritize the one without a tag?
 
 	// The last service registered for a type will win
 	key := serviceKey{Type: t}
-	c.services[key] = s
+	c.services[key] = sr
 
 	// Register the service with a tag if it has one
-	if s.Tag() != nil {
+	if sr.Tag() != nil {
 		keyWithTag := serviceKey{
 			Type: t,
-			Tag:  s.Tag(),
+			Tag:  sr.Tag(),
 		}
-		c.services[keyWithTag] = s
+		c.services[keyWithTag] = sr
 	}
 
 	// Add the service to a slice service
@@ -113,7 +113,7 @@ func (c *Container) registerType(t reflect.Type, s service) {
 	}
 
 	itemKey := sliceSvc.NextItemKey()
-	c.services[itemKey] = s
+	c.services[itemKey] = sr
 }
 
 func (c *Container) registerDecorator(d *decorator) {
@@ -234,6 +234,12 @@ func (c *Container) resolve(
 		return nil, ErrServiceNotRegistered
 	}
 
+	// Throw an error if we've already visited this service
+	if visited := visitor.Enter(key); visited {
+		return nil, ErrDependencyCycle
+	}
+	defer visitor.Leave(key)
+
 	// For scoped services, use the current container.
 	// For singleton services, use the root container.
 	// TODO: We actually need to use the scope that the service was registered with
@@ -241,12 +247,6 @@ func (c *Container) resolve(
 	if svc.Lifetime() == Singleton {
 		scope = c.root()
 	}
-
-	// Throw an error if we've already visited this service
-	if visited := visitor.Enter(key); visited {
-		return nil, ErrDependencyCycle
-	}
-	defer visitor.Leave(key)
 
 	// For Singleton or Scoped services, we store a promise for each service.
 	// The first request for a service will create the promise and then

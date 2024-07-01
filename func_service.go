@@ -77,7 +77,7 @@ func (s *funcService) Lifetime() Lifetime {
 	return s.lifetime
 }
 
-func (s *funcService) setLifetime(l Lifetime) {
+func (s *funcService) SetLifetime(l Lifetime) {
 	s.lifetime = l
 }
 
@@ -85,7 +85,7 @@ func (s *funcService) Aliases() []reflect.Type {
 	return s.aliases
 }
 
-func (s *funcService) addAlias(alias reflect.Type) error {
+func (s *funcService) AddAlias(alias reflect.Type) error {
 	if !s.key.Type.AssignableTo(alias) {
 		return errors.Errorf("type %s not assignable to %s", s.key.Type, alias)
 	}
@@ -98,7 +98,7 @@ func (s *funcService) Tag() any {
 	return s.key.Tag
 }
 
-func (s *funcService) setTag(tag any) {
+func (s *funcService) SetTag(tag any) {
 	s.key.Tag = tag
 }
 
@@ -139,8 +139,9 @@ func (s *funcService) AsCloser(val any) Closer {
 	return nil
 }
 
-func (s *funcService) setCloserFactory(cf closerFactory) {
+func (s *funcService) SetCloserFactory(cf closerFactory) {
 	s.closerFactory = cf
 }
 
 var _ service = &funcService{}
+var _ serviceRegistration = &funcService{}

@@ -21,10 +21,10 @@ import (
 //		// ...
 //	)
 func As[Service any]() ServiceOption {
-	return serviceOption(func(s service) error {
+	return serviceOption(func(sr serviceRegistration) error {
 		aliasType := reflect.TypeFor[Service]()
 
-		err := s.addAlias(aliasType)
+		err := sr.AddAlias(aliasType)
 		if err != nil {
 			return errors.Wrapf(err, "as %s", aliasType)
 		}

@@ -43,7 +43,7 @@ func (s *valueService) Aliases() []reflect.Type {
 	return s.aliases
 }
 
-func (s *valueService) addAlias(alias reflect.Type) error {
+func (s *valueService) AddAlias(alias reflect.Type) error {
 	if !s.key.Type.AssignableTo(alias) {
 		return errors.Errorf("type %s not assignable to %s", s.key.Type, alias)
 	}
@@ -64,7 +64,7 @@ func (s *valueService) Lifetime() Lifetime {
 	return Singleton
 }
 
-func (s *valueService) setLifetime(Lifetime) {
+func (s *valueService) SetLifetime(Lifetime) {
 	// Values are always singletons.
 }
 
@@ -72,7 +72,7 @@ func (s *valueService) Tag() any {
 	return s.key.Tag
 }
 
-func (s *valueService) setTag(tag any) {
+func (s *valueService) SetTag(tag any) {
 	s.key.Tag = tag
 }
 
@@ -90,7 +90,7 @@ func (s *valueService) AsCloser(val any) Closer {
 	return nil
 }
 
-func (s *valueService) setCloserFactory(cf closerFactory) {
+func (s *valueService) SetCloserFactory(cf closerFactory) {
 	s.closerFactory = cf
 }
 
@@ -99,3 +99,4 @@ func (s *valueService) New(deps []reflect.Value) (any, error) {
 }
 
 var _ service = &valueService{}
+var _ serviceRegistration = &valueService{}
