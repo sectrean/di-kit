@@ -20,7 +20,7 @@ type Container struct {
 	decorators map[serviceKey][]*decorator
 
 	resolvedMu sync.Mutex
-	resolved   map[service]resolvedService
+	resolved   map[serviceKey]resolvedService
 
 	closersMu sync.Mutex
 	closers   []Closer
@@ -38,7 +38,7 @@ var _ Scope = (*Container)(nil)
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		services: make(map[serviceKey]service),
-		resolved: make(map[service]resolvedService),
+		resolved: make(map[serviceKey]resolvedService),
 	}
 
 	// Sort options by precedence
@@ -79,7 +79,7 @@ func (c *Container) register(s service) {
 	// Pre-resolve value services and add closer
 	// We don't need to take locks here because this is only called when creating a new Container
 	if vs, ok := s.(*valueService); ok {
-		c.resolved[s] = valueResult{vs.val}
+		c.resolved[s.Key()] = valueResult{vs.val}
 		if closer := s.AsCloser(vs.val); closer != nil {
 			c.closers = append(c.closers, closer)
 		}
@@ -147,7 +147,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 	scope := &Container{
 		parent:   c,
 		services: c.services,
-		resolved: make(map[service]resolvedService),
+		resolved: make(map[serviceKey]resolvedService),
 	}
 
 	// Apply options
@@ -254,16 +254,16 @@ func (c *Container) resolve(
 	if svc.Lifetime() != Transient {
 		scope.resolvedMu.Lock()
 
-		res, exists := scope.resolved[svc]
+		res, exists := scope.resolved[svc.Key()]
 		if !exists {
 			// Create a promise that will be resolved when this function returns
 			promise, resolvePromise := newServicePromise()
+			scope.resolved[svc.Key()] = promise
+			res = promise
+
 			defer func() {
 				resolvePromise(val, err)
 			}()
-
-			res = promise
-			scope.resolved[svc] = promise
 		}
 
 		scope.resolvedMu.Unlock()
