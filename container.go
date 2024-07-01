@@ -60,7 +60,7 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 	return c, nil
 }
 
-func (c *Container) register(s service) error {
+func (c *Container) register(s service) {
 	// Child containers point to the same services map as the parent container initially.
 	// If we're registering new services in the child container,
 	// we need to clone the parent map first.
@@ -84,8 +84,6 @@ func (c *Container) register(s service) error {
 			c.closers = append(c.closers, closer)
 		}
 	}
-
-	return nil
 }
 
 func (c *Container) registerType(t reflect.Type, s service) {
@@ -117,7 +115,7 @@ func (c *Container) registerType(t reflect.Type, s service) {
 	c.services[itemKey] = s
 }
 
-func (c *Container) registerDecorator(d *decorator) error {
+func (c *Container) registerDecorator(d *decorator) {
 	// TODO: Validate that the service being decorated is registered?
 
 	// Create this map lazily since decorators aren't always used
@@ -128,8 +126,6 @@ func (c *Container) registerDecorator(d *decorator) error {
 	decorators := c.decorators[d.Key()]
 	decorators = append(decorators, d)
 	c.decorators[d.Key()] = decorators
-
-	return nil
 }
 
 // NewScope creates a new Container with a child scope.

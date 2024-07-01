@@ -8,8 +8,8 @@ import (
 
 type valueService struct {
 	key           serviceKey
-	aliases       []reflect.Type
 	val           any
+	aliases       []reflect.Type
 	closerFactory func(any) Closer
 }
 
@@ -32,7 +32,11 @@ func newValueService(val any, opts ...ServiceOption) (*valueService, error) {
 		errs = errs.Append(err)
 	}
 
-	return svc, errs.Join()
+	if len(errs) > 0 {
+		return nil, errs.Join()
+	}
+
+	return svc, nil
 }
 
 func (s *valueService) Aliases() []reflect.Type {

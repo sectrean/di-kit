@@ -8,10 +8,10 @@ import (
 
 type funcService struct {
 	key           serviceKey
-	aliases       []reflect.Type
 	fn            reflect.Value
-	lifetime      Lifetime
 	deps          []serviceKey
+	lifetime      Lifetime
+	aliases       []reflect.Type
 	closerFactory func(any) Closer
 }
 
@@ -44,21 +44,25 @@ func newFuncService(fn any, opts ...ServiceOption) (*funcService, error) {
 		}
 	}
 
-	funcSvc := &funcService{
+	svc := &funcService{
 		key:           serviceKey{Type: t},
-		deps:          deps,
 		fn:            fnVal,
+		deps:          deps,
 		closerFactory: getCloser,
 	}
 
 	// Apply options
 	var errs errors.MultiError
 	for _, opt := range opts {
-		err := opt.applyService(funcSvc)
+		err := opt.applyService(svc)
 		errs = errs.Append(err)
 	}
 
-	return funcSvc, errs.Join()
+	if len(errs) > 0 {
+		return nil, errs.Join()
+	}
+
+	return svc, nil
 }
 
 func (s *funcService) Key() serviceKey {

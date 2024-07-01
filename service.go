@@ -73,8 +73,8 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 			return errors.Wrapf(err, "with service %T", funcOrValue)
 		}
 
-		err = c.register(svc)
-		return errors.Wrapf(err, "with service %T", funcOrValue)
+		c.register(svc)
+		return nil
 	})
 }
 

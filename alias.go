@@ -25,6 +25,10 @@ func As[Service any]() ServiceOption {
 		aliasType := reflect.TypeFor[Service]()
 
 		err := s.addAlias(aliasType)
-		return errors.Wrapf(err, "as %s", aliasType)
+		if err != nil {
+			return errors.Wrapf(err, "as %s", aliasType)
+		}
+
+		return nil
 	})
 }
