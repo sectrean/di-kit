@@ -747,6 +747,29 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("mixed tags", func(t *testing.T) {
+		a1 := &testtypes.StructA{}
+		a2 := &testtypes.StructA{}
+
+		c, err := di.NewContainer(
+			di.WithService(a1, di.As[testtypes.InterfaceA]()),
+			di.WithService(a2, di.As[testtypes.InterfaceA](), di.WithTag(2)),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag(2))
+		assert.Same(t, a2, got)
+		assert.NoError(t, err)
+
+		// We get a2 here because it was registered last.
+		// Should we make it so that the service registered with
+		// no tag takes precedence?
+		got, err = di.Resolve[testtypes.InterfaceA](ctx, c)
+		assert.Same(t, a2, got)
+		assert.NoError(t, err)
+	})
+
 	t.Run("with tag not registered", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),

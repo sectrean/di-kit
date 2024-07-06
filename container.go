@@ -88,9 +88,6 @@ func (c *Container) register(sr serviceRegistration) {
 }
 
 func (c *Container) registerType(t reflect.Type, sr serviceRegistration) {
-	// TODO: If we have a type registered with and without a tag,
-	// do we need to prioritize the one without a tag?
-
 	// The last service registered for a type will win
 	key := serviceKey{Type: t}
 	c.services[key] = sr
