@@ -206,14 +206,14 @@ func Test_Container_NewScope(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		assert.True(t, c.Contains(reflect.TypeFor[testtypes.InterfaceA]()))
-		assert.False(t, c.Contains(reflect.TypeFor[testtypes.InterfaceB]()))
-
 		scope, err := c.NewScope(
 			di.WithService(testtypes.NewInterfaceB),
 		)
 		assert.NotNil(t, scope)
 		assert.NoError(t, err)
+
+		assert.True(t, c.Contains(reflect.TypeFor[testtypes.InterfaceA]()))
+		assert.False(t, c.Contains(reflect.TypeFor[testtypes.InterfaceB]()))
 
 		assert.True(t, scope.Contains(reflect.TypeFor[testtypes.InterfaceA]()))
 		assert.True(t, scope.Contains(reflect.TypeFor[testtypes.InterfaceB]()))

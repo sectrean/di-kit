@@ -64,7 +64,7 @@ func (c *Container) register(sr serviceRegistration) {
 	// Child containers point to the same services map as the parent container initially.
 	// If we're registering new services in the child container,
 	// we need to clone the parent map first.
-	if c.parent != nil && &c.parent.services == &c.services {
+	if c.parent != nil && reflect.DeepEqual(c.parent.services, c.services) {
 		c.services = maps.Clone(c.parent.services)
 	}
 
