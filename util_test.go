@@ -27,15 +27,20 @@ func ContextWithTestValue(ctx context.Context, val any) context.Context {
 	return context.WithValue(ctx, ctxKey{}, val)
 }
 
-type Factory struct {
-	scope di.Scope
+func NewTestFactory(scope di.Scope, fn factoryFunc) *TestFactory {
+	return &TestFactory{
+		scope: scope,
+		fn:    fn,
+	}
 }
 
-func (f *Factory) BuildA(ctx context.Context, _ string) testtypes.InterfaceA {
-	a, err := di.Resolve[testtypes.InterfaceA](ctx, f.scope)
-	if err != nil {
-		panic(err)
-	}
+type factoryFunc func(context.Context, di.Scope) testtypes.InterfaceA
 
-	return a
+type TestFactory struct {
+	scope di.Scope
+	fn    factoryFunc
+}
+
+func (f *TestFactory) Build(ctx context.Context) testtypes.InterfaceA {
+	return f.fn(ctx, f.scope)
 }

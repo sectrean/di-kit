@@ -339,6 +339,11 @@ func (c *Container) resolve(
 					// Pass along the context
 					depVal = ctx
 
+				// case depKey.Type == scopeType:
+				// 	var ready func()
+				// 	depVal, ready = newInjectedScope(scope, key)
+				// 	defer ready()
+
 				default:
 					// Recursive call
 					depVal, depErr = scope.resolve(ctx, depKey, visitor)

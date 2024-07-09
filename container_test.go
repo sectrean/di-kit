@@ -4,6 +4,7 @@ import (
 	"context"
 	stderrors "errors"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -893,9 +894,7 @@ func Test_Container_Resolve(t *testing.T) {
 	t.Run("scope dependency", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
-			di.WithService(func(scope di.Scope) *Factory {
-				ctx := context.Background()
-
+			di.WithService(func(ctx context.Context, scope di.Scope) *TestFactory {
 				// We cannot call Resolve on the scope here.
 				a, err := di.Resolve[testtypes.InterfaceA](ctx, scope)
 				LogError(t, err)
@@ -903,7 +902,7 @@ func Test_Container_Resolve(t *testing.T) {
 				assert.Nil(t, a)
 				assert.EqualError(t, err,
 					"resolve testtypes.InterfaceA: "+
-						"resolve not supported within constructor function for *di_test.Factory: "+
+						"resolve not supported within constructor function for *di_test.TestFactory: "+
 						"the di.Scope must be stored and used later")
 
 				// Contains can be called though
@@ -911,16 +910,21 @@ func Test_Container_Resolve(t *testing.T) {
 				assert.True(t, hasA)
 
 				// We have to store it and we can call Resolve later.
-				return &Factory{scope: scope}
+				return NewTestFactory(scope, func(ctx context.Context, s di.Scope) testtypes.InterfaceA {
+					a, err := di.Resolve[testtypes.InterfaceA](ctx, s)
+					assert.NotNil(t, a)
+					assert.NoError(t, err)
+					return a
+				})
 			}),
 		)
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		factory, err := di.Resolve[*Factory](ctx, c)
+		factory, err := di.Resolve[*TestFactory](ctx, c)
 		require.NoError(t, err)
 
-		a := factory.BuildA(ctx, "arg")
+		a := factory.Build(ctx)
 		assert.NotNil(t, a)
 	})
 
@@ -1134,6 +1138,132 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NotNil(t, got)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("concurrent", func(t *testing.T) {
+		// This should be run with the -race flag to check for race conditions
+
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(testtypes.NewInterfaceB),
+			di.WithService(testtypes.NewInterfaceC),
+			di.WithService(testtypes.NewInterfaceD),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		wg := &sync.WaitGroup{}
+		wg.Add(4)
+
+		go func() {
+			defer wg.Done()
+
+			a, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+			assert.NotNil(t, a)
+			assert.NoError(t, err)
+		}()
+		go func() {
+			defer wg.Done()
+
+			b, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+			assert.NotNil(t, b)
+			assert.NoError(t, err)
+		}()
+		go func() {
+			defer wg.Done()
+
+			c, err := di.Resolve[testtypes.InterfaceC](ctx, c)
+			assert.NotNil(t, c)
+			assert.NoError(t, err)
+		}()
+		go func() {
+			defer wg.Done()
+
+			d, err := di.Resolve[testtypes.InterfaceD](ctx, c)
+			assert.NotNil(t, d)
+			assert.NoError(t, err)
+		}()
+
+		wg.Wait()
+	})
+
+	t.Run("concurrent dependency cycle", func(t *testing.T) {
+		// TODO: Fix deadlock
+		t.Skip("deadlock")
+
+		c, err := di.NewContainer(
+			di.WithService(func(a testtypes.InterfaceA) testtypes.InterfaceB {
+				panic("should not get called")
+			}),
+			di.WithService(func(b testtypes.InterfaceB) testtypes.InterfaceA {
+				panic("should not get called")
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		wg := &sync.WaitGroup{}
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+			_, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+			LogError(t, err)
+			assert.EqualError(t, err, "resolve testtypes.InterfaceA: dependency testtypes.InterfaceB: service not registered")
+		}()
+
+		go func() {
+			defer wg.Done()
+			_, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+			LogError(t, err)
+			assert.EqualError(t, err, "resolve testtypes.InterfaceA: dependency testtypes.InterfaceB: service not registered")
+		}()
+
+		wg.Wait()
+	})
+
+	t.Run("concurrent dependency cycle workaround", func(t *testing.T) {
+		// TODO: Fix deadlock
+		t.Skip("deadlock")
+
+		c, err := di.NewContainer(
+			di.WithService(func(scope di.Scope) *TestFactory {
+				return NewTestFactory(scope, func(ctx context.Context, s di.Scope) testtypes.InterfaceA {
+					a, err := di.Resolve[testtypes.InterfaceA](ctx, s)
+					assert.NotNil(t, a)
+					assert.NoError(t, err)
+					return a
+				})
+			}),
+			di.WithService(func(ctx context.Context, f *TestFactory) testtypes.InterfaceA {
+				return f.Build(ctx)
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		wg := &sync.WaitGroup{}
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+
+			a, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+			assert.NotNil(t, a)
+			assert.NoError(t, err)
+		}()
+		go func() {
+			defer wg.Done()
+
+			f, err := di.Resolve[*TestFactory](ctx, c)
+			assert.NotNil(t, f)
+			assert.NoError(t, err)
+
+			a := f.Build(ctx)
+			assert.NotNil(t, a)
+		}()
+
+		wg.Wait()
 	})
 }
 
