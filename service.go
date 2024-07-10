@@ -122,8 +122,8 @@ type service interface {
 	// New uses the dependencies to create a new instance of the service.
 	New(deps []reflect.Value) (any, error)
 
-	// AsCloser returns a Closer for the service.
-	AsCloser(val any) Closer
+	// CloserFor returns a Closer for the service.
+	CloserFor(val any) Closer
 }
 
 type serviceRegistration interface {
@@ -159,42 +159,42 @@ func (k serviceKey) String() string {
 	return fmt.Sprintf("%s (Tag %v)", k.Type, k.Tag)
 }
 
-type resolvedService interface {
-	Result() (any, error)
-}
+// type resolvedService interface {
+// 	Result() (any, error)
+// }
 
-type valueResult struct {
-	val any
-}
+// type valueResult struct {
+// 	val any
+// }
 
-func (r valueResult) Result() (any, error) {
-	return r.val, nil
-}
+// func (r valueResult) Result() (any, error) {
+// 	return r.val, nil
+// }
 
-type servicePromise struct {
-	val  any
-	err  error
-	done chan struct{}
-}
+// type servicePromise struct {
+// 	val  any
+// 	err  error
+// 	done chan struct{}
+// }
 
-func newServicePromise() (*servicePromise, func(any, error)) {
-	p := &servicePromise{
-		done: make(chan struct{}),
-	}
+// func newServicePromise() (*servicePromise, func(any, error)) {
+// 	p := &servicePromise{
+// 		done: make(chan struct{}),
+// 	}
 
-	return p, p.resolve
-}
+// 	return p, p.resolve
+// }
 
-func (p *servicePromise) resolve(val any, err error) {
-	p.val = val
-	p.err = err
+// func (p *servicePromise) resolve(val any, err error) {
+// 	p.val = val
+// 	p.err = err
 
-	close(p.done)
-}
+// 	close(p.done)
+// }
 
-func (p *servicePromise) Result() (any, error) {
-	// Block until val and err have been set
-	<-p.done
+// func (p *servicePromise) Result() (any, error) {
+// 	// Block until val and err have been set
+// 	<-p.done
 
-	return p.val, p.err
-}
+// 	return p.val, p.err
+// }

@@ -82,6 +82,8 @@ func newInjectedScope(s Scope, key serviceKey) (*injectedScope, func()) {
 }
 
 // injectedScope wraps a Container to be injected as a Scope dependency.
+// This is used to prevent the Scope from being used until the constructor function has returned.
+// Otherwise a dependency cycle is possible.
 //
 // This also makes it so Close cannot be called on the injected Container.
 type injectedScope struct {

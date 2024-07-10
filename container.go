@@ -19,11 +19,9 @@ type Container struct {
 	services   map[serviceKey]service
 	decorators map[serviceKey][]*decorator
 
-	resolvedMu sync.Mutex
-	resolved   map[serviceKey]resolvedService
-
-	closersMu sync.Mutex
-	closers   []Closer
+	resolvedMu sync.RWMutex
+	resolved   map[serviceKey]resolveResult
+	closers    []Closer
 
 	closedMu sync.RWMutex
 	closed   bool
@@ -38,7 +36,7 @@ var _ Scope = (*Container)(nil)
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		services: make(map[serviceKey]service),
-		resolved: make(map[serviceKey]resolvedService),
+		resolved: make(map[serviceKey]resolveResult),
 	}
 
 	// Sort options by precedence
@@ -79,9 +77,9 @@ func (c *Container) register(sr serviceRegistration) {
 	// Pre-resolve value services and add closer
 	// We don't need to take locks here because this is only called when creating a new Container
 	if vs, ok := sr.(*valueService); ok {
-		c.resolved[sr.Key()] = valueResult{vs.val}
+		c.resolved[sr.Key()] = resolveResult{val: vs.val}
 
-		if closer := sr.AsCloser(vs.val); closer != nil {
+		if closer := sr.CloserFor(vs.val); closer != nil {
 			c.closers = append(c.closers, closer)
 		}
 	}
@@ -145,7 +143,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 	scope := &Container{
 		parent:   c,
 		services: c.services,
-		resolved: make(map[serviceKey]resolvedService),
+		resolved: make(map[serviceKey]resolveResult),
 	}
 
 	// Apply options
@@ -216,17 +214,18 @@ func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...Resolve
 		return nil, errors.Wrapf(ErrContainerClosed, "resolve %s", key)
 	}
 
-	val, err := c.resolve(ctx, key, make(resolveVisitor))
+	val, err := resolve(ctx, c, key, make(resolveVisitor))
 	return val, errors.Wrapf(err, "resolve %s", key)
 }
 
-func (c *Container) resolve(
+func resolve(
 	ctx context.Context,
+	scope *Container,
 	key serviceKey,
 	visitor resolveVisitor,
 ) (val any, err error) {
 	// Look up the service
-	svc, registered := c.services[key]
+	svc, registered := scope.services[key]
 	if !registered {
 		return nil, ErrServiceNotRegistered
 	}
@@ -237,39 +236,28 @@ func (c *Container) resolve(
 	}
 	defer visitor.Leave(key)
 
-	// For scoped services, use the current container.
-	// For singleton services, use the root container.
-	// TODO: We actually need to use the scope that the service was registered with
-	scope := c
-	if svc.Lifetime() == Singleton {
-		scope = c.root()
+	// Check context for errors before creating the service
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 
-	// For Singleton or Scoped services, we store a promise for each service.
-	// The first request for a service will create the promise and then
-	// continue to resolve the service and set the result.
-	// Subsequent requests will just wait on the promise.
+	// For scoped services, use the current scope.
+	// TODO: Should we make sure this is not the root container for scoped services?
+	if svc.Lifetime() == Singleton {
+		// For singleton services, use the root container.
+		// TODO: We actually need to use the scope that the service was registered with
+		scope = scope.root()
+	}
+
+	// For Singleton or Scoped services, we store the result.
+	// See if this service has already been resolved.
 	if svc.Lifetime() != Transient {
-		scope.resolvedMu.Lock()
-
+		scope.resolvedMu.RLock()
 		res, exists := scope.resolved[svc.Key()]
-		if !exists {
-			// Create a promise that will be resolved when this function returns
-			promise, resolvePromise := newServicePromise()
-			scope.resolved[svc.Key()] = promise
-			res = promise
-
-			defer func() {
-				resolvePromise(val, err)
-			}()
-		}
-
-		scope.resolvedMu.Unlock()
+		scope.resolvedMu.RUnlock()
 
 		if exists {
-			// This will block until the value and error are set
-			// by the first request to resolve this service.
-			return res.Result()
+			return res.val, res.err
 		}
 	}
 
@@ -287,18 +275,13 @@ func (c *Container) resolve(
 				depVal = ctx
 
 			case scopeType:
-				// We wrap the scope to prevent Resolve from being called on it
-				// until we finish resolving this service. Otherwise it could
-				// cause a deadlock.
-				//
-				// TODO: There may still be a way to deadlock. Write some tests around this.
 				var ready func()
 				depVal, ready = newInjectedScope(scope, key)
 				defer ready()
 
 			default:
 				// Recursive call
-				depVal, depErr = scope.resolve(ctx, depKey, visitor)
+				depVal, depErr = resolve(ctx, scope, depKey, visitor)
 			}
 
 			if depErr != nil {
@@ -309,62 +292,86 @@ func (c *Container) resolve(
 		}
 	}
 
-	// Check context for errors before creating the service
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
+	// Get decorator dependencies ready
+	// decorators will be applied after the service is created
+	var decoratorDeps [][]reflect.Value
+	decorators := scope.decorators[key]
+	if len(decorators) > 0 {
+		decoratorDeps = make([][]reflect.Value, len(decorators))
 
-	// Create the service
-	val, err = svc.New(deps)
-	if err != nil {
-		return val, err
-	}
+		for i, d := range decorators {
+			decoratorDeps[i] = make([]reflect.Value, len(d.deps))
 
-	// Apply decorators
-	if decorators, exists := c.decorators[key]; exists {
-		for _, d := range decorators {
-			// Resolve dependencies for the decorator
-			deps := make([]reflect.Value, len(d.deps))
-			for i, depKey := range d.deps {
+			for j, depKey := range d.deps {
 				var depVal any
 				var depErr error
 
-				// TODO: Support di.Scope as a decorator dependency?
 				switch {
 				case depKey == key:
-					// Inject the service being decorated
-					depVal = val
+					// We need to set this after the service is created
+					continue
 
 				case depKey.Type == contextType:
 					// Pass along the context
 					depVal = ctx
 
-				// case depKey.Type == scopeType:
-				// 	var ready func()
-				// 	depVal, ready = newInjectedScope(scope, key)
-				// 	defer ready()
+				case depKey.Type == scopeType:
+					var ready func()
+					depVal, ready = newInjectedScope(scope, key)
+					defer ready()
 
 				default:
 					// Recursive call
-					depVal, depErr = scope.resolve(ctx, depKey, visitor)
+					depVal, depErr = resolve(ctx, scope, depKey, visitor)
 				}
 
 				if depErr != nil {
 					return nil, errors.Wrapf(depErr, "decorator %s: dependency %s", d, depKey)
 				}
-				deps[i] = safeVal(depKey.Type, depVal)
+				decoratorDeps[i][j] = safeVal(depKey.Type, depVal)
 			}
-
-			// Apply the decorator
-			val = d.Decorate(deps)
 		}
 	}
 
+	if svc.Lifetime() != Transient {
+		// We need to lock before we create the service to make sure we don't create it twice
+		scope.resolvedMu.Lock()
+		defer scope.resolvedMu.Unlock()
+
+		// Check if another goroutine resolved the service since the last check
+		if res, exists := scope.resolved[svc.Key()]; exists {
+			return res.val, res.err
+		}
+
+		defer func() {
+			// Store the result
+			scope.resolved[svc.Key()] = resolveResult{val, err}
+		}()
+	}
+
+	// Create the service
+	val, err = svc.New(deps)
+
+	// Skip the rest if the service is nil or there was an error
+	if val == nil || err != nil {
+		return val, err
+	}
+
+	// Apply decorators
+	for i, d := range decorators {
+		for j, depKey := range d.deps {
+			if depKey == key {
+				// Inject the service being decorated
+				decoratorDeps[i][j] = reflect.ValueOf(val)
+			}
+		}
+
+		val = d.Decorate(decoratorDeps[i])
+	}
+
 	// Add Closer for the service
-	if closer := svc.AsCloser(val); closer != nil {
-		scope.closersMu.Lock()
+	if closer := svc.CloserFor(val); closer != nil {
 		scope.closers = append(scope.closers, closer)
-		scope.closersMu.Unlock()
 	}
 
 	return val, nil
@@ -411,6 +418,11 @@ var (
 	contextType = reflect.TypeFor[context.Context]()
 	scopeType   = reflect.TypeFor[Scope]()
 )
+
+type resolveResult struct {
+	val any
+	err error
+}
 
 type resolveVisitor map[serviceKey]struct{}
 

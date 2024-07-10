@@ -127,7 +127,7 @@ func (s *funcService) New(deps []reflect.Value) (any, error) {
 	return val, err
 }
 
-func (s *funcService) AsCloser(val any) Closer {
+func (s *funcService) CloserFor(val any) Closer {
 	if val == nil {
 		return nil
 	}

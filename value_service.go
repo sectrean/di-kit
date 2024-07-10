@@ -80,7 +80,7 @@ func (*valueService) Dependencies() []serviceKey {
 	return nil
 }
 
-func (s *valueService) AsCloser(val any) Closer {
+func (s *valueService) CloserFor(val any) Closer {
 	// The container is not responsible for closing this value by default.
 	// But if a closer factory is provided, use it.
 	if val != nil && s.closerFactory != nil {

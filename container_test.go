@@ -334,7 +334,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("func service no deps", func(t *testing.T) {
+	t.Run("func no deps", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -398,7 +398,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.ErrorIs(t, err, context.DeadlineExceeded)
 	})
 
-	t.Run("service not registered", func(t *testing.T) {
+	t.Run("not registered service", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 
@@ -411,7 +411,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
-	t.Run("di.Scope not registered", func(t *testing.T) {
+	t.Run("not registered di.Scope", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 
@@ -424,7 +424,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
-	t.Run("context.Context not registered", func(t *testing.T) {
+	t.Run("not registered context.Context", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 
@@ -468,7 +468,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.ErrorIs(t, err, di.ErrDependencyCycle)
 	})
 
-	t.Run("singleton lifetime", func(t *testing.T) {
+	t.Run("lifetime singleton", func(t *testing.T) {
 		calls := 0
 
 		c, err := di.NewContainer(
@@ -494,7 +494,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
-	t.Run("transient lifetime", func(t *testing.T) {
+	t.Run("lifetime transient", func(t *testing.T) {
 		calls := 0
 
 		c, err := di.NewContainer(
@@ -520,7 +520,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 2, calls)
 	})
 
-	t.Run("scoped lifetime", func(t *testing.T) {
+	t.Run("lifetime scoped", func(t *testing.T) {
 		calls := 0
 
 		c, err := di.NewContainer(
@@ -592,7 +592,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("slice dependency", func(t *testing.T) {
+	t.Run("slice service dependency", func(t *testing.T) {
 		want := []testtypes.InterfaceA{
 			&testtypes.StructA{},
 			&testtypes.StructA{},
@@ -633,7 +633,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("slice variadic arg", func(t *testing.T) {
+	t.Run("slice service variadic", func(t *testing.T) {
 		want := []testtypes.InterfaceA{
 			&testtypes.StructA{},
 			&testtypes.StructA{},
@@ -677,7 +677,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
-	t.Run("aliases same instance", func(t *testing.T) {
+	t.Run("alias same instance", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewStructAPtr,
 				di.As[testtypes.InterfaceA](),
@@ -698,7 +698,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Same(t, a1, a2)
 	})
 
-	t.Run("func with tag", func(t *testing.T) {
+	t.Run("tag with func", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),
 		)
@@ -715,7 +715,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Same(t, a1, a2)
 	})
 
-	t.Run("value with tag", func(t *testing.T) {
+	t.Run("tag with value", func(t *testing.T) {
 		a := &testtypes.StructA{}
 
 		c, err := di.NewContainer(
@@ -729,7 +729,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("alias with tag", func(t *testing.T) {
+	t.Run("tag with alias", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewStructAPtr,
 				di.As[testtypes.InterfaceA](),
@@ -748,7 +748,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("mixed tags", func(t *testing.T) {
+	t.Run("tags mixed", func(t *testing.T) {
 		a1 := &testtypes.StructA{}
 		a2 := &testtypes.StructA{}
 
@@ -771,7 +771,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("with tag not registered", func(t *testing.T) {
+	t.Run("tag not registered", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),
 		)
@@ -786,7 +786,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
-	t.Run("with tagged", func(t *testing.T) {
+	t.Run("tagged", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA,
 				di.WithTag("A1"),
@@ -808,7 +808,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("with tagged multiple", func(t *testing.T) {
+	t.Run("tagged multiple", func(t *testing.T) {
 		a1 := &testtypes.StructA{}
 		a2 := &testtypes.StructA{}
 
@@ -833,7 +833,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("constructor func error", func(t *testing.T) {
+	t.Run("func error", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func() (testtypes.InterfaceA, error) {
 				return nil, stderrors.New("constructor error")
@@ -875,7 +875,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
-	t.Run("context dependency", func(t *testing.T) {
+	t.Run("dependency context.Context", func(t *testing.T) {
 		ctx := ContextWithTestValue(context.Background(), "value")
 
 		c, err := di.NewContainer(
@@ -891,7 +891,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("scope dependency", func(t *testing.T) {
+	t.Run("dependency di.Scope", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 			di.WithService(func(ctx context.Context, scope di.Scope) *TestFactory {
@@ -928,7 +928,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NotNil(t, a)
 	})
 
-	t.Run("with decorator", func(t *testing.T) {
+	t.Run("decorator", func(t *testing.T) {
 		a := &testtypes.StructA{}
 		calls := 0
 
@@ -949,7 +949,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
-	t.Run("value service cannot be decorated", func(t *testing.T) {
+	t.Run("decorator value service", func(t *testing.T) {
 		a := &testtypes.StructA{}
 
 		c, err := di.NewContainer(
@@ -963,11 +963,11 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		assert.Same(t, a, got)
+		assert.Same(t, a, got, "value services cannot be decorated")
 		assert.NoError(t, err)
 	})
 
-	t.Run("multiple decorators", func(t *testing.T) {
+	t.Run("decorators multiple", func(t *testing.T) {
 		a1 := &testtypes.StructA{}
 		a2 := &testtypes.StructA{}
 		a3 := &testtypes.StructA{}
@@ -1187,10 +1187,72 @@ func Test_Container_Resolve(t *testing.T) {
 		wg.Wait()
 	})
 
-	t.Run("concurrent dependency cycle", func(t *testing.T) {
-		// TODO: Fix deadlock
-		t.Skip("deadlock")
+	t.Run("concurrent singleton", func(t *testing.T) {
+		// This should be run with the -race flag to check for race conditions
+		expected := &testtypes.StructA{}
+		calls := 0
 
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA {
+				calls++
+				return expected
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		wg := &sync.WaitGroup{}
+
+		for i := 0; i < 10; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+				assert.Same(t, expected, got)
+				assert.NoError(t, err)
+			}()
+		}
+
+		wg.Wait()
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("concurrent scoped", func(t *testing.T) {
+		// This should be run with the -race flag to check for race conditions
+		calls := 0
+
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func(a testtypes.InterfaceA) testtypes.InterfaceB {
+				calls++
+				return &testtypes.StructB{}
+			}, di.Scoped),
+		)
+		require.NoError(t, err)
+
+		scope, err := c.NewScope()
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		wg := &sync.WaitGroup{}
+
+		for i := 0; i < 10; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				got, err := di.Resolve[testtypes.InterfaceB](ctx, scope)
+				assert.NotNil(t, got)
+				assert.NoError(t, err)
+			}()
+		}
+
+		wg.Wait()
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("concurrent dependency cycle", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func(a testtypes.InterfaceA) testtypes.InterfaceB {
 				panic("should not get called")
@@ -1209,14 +1271,14 @@ func Test_Container_Resolve(t *testing.T) {
 			defer wg.Done()
 			_, err := di.Resolve[testtypes.InterfaceA](ctx, c)
 			LogError(t, err)
-			assert.EqualError(t, err, "resolve testtypes.InterfaceA: dependency testtypes.InterfaceB: service not registered")
+			assert.EqualError(t, err, "resolve testtypes.InterfaceA: dependency testtypes.InterfaceB: dependency testtypes.InterfaceA: dependency cycle detected")
 		}()
 
 		go func() {
 			defer wg.Done()
 			_, err := di.Resolve[testtypes.InterfaceB](ctx, c)
 			LogError(t, err)
-			assert.EqualError(t, err, "resolve testtypes.InterfaceA: dependency testtypes.InterfaceB: service not registered")
+			assert.EqualError(t, err, "resolve testtypes.InterfaceB: dependency testtypes.InterfaceA: dependency testtypes.InterfaceB: dependency cycle detected")
 		}()
 
 		wg.Wait()
