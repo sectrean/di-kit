@@ -3,9 +3,11 @@ package di_test
 import (
 	"context"
 	stderrors "errors"
+	"math/rand"
 	"reflect"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1220,10 +1222,14 @@ func Test_Container_Resolve(t *testing.T) {
 
 	t.Run("concurrent scoped", func(t *testing.T) {
 		// This should be run with the -race flag to check for race conditions
+		r := rand.Intn(10)
 		calls := 0
 
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func() testtypes.InterfaceA {
+				time.Sleep(time.Duration(r) * time.Microsecond)
+				return &testtypes.StructA{}
+			}, di.Transient),
 			di.WithService(func(a testtypes.InterfaceA) testtypes.InterfaceB {
 				calls++
 				return &testtypes.StructB{}
@@ -1237,7 +1243,7 @@ func Test_Container_Resolve(t *testing.T) {
 		ctx := context.Background()
 		wg := &sync.WaitGroup{}
 
-		for i := 0; i < 10; i++ {
+		for i := 0; i < 100; i++ {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()

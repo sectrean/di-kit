@@ -21,7 +21,9 @@ type Container struct {
 
 	resolvedMu sync.RWMutex
 	resolved   map[serviceKey]resolveResult
-	closers    []Closer
+
+	closersMu sync.Mutex
+	closers   []Closer
 
 	closedMu sync.RWMutex
 	closed   bool
@@ -230,13 +232,7 @@ func resolve(
 		return nil, ErrServiceNotRegistered
 	}
 
-	// Throw an error if we've already visited this service
-	if visited := visitor.Enter(key); visited {
-		return nil, ErrDependencyCycle
-	}
-	defer visitor.Leave(key)
-
-	// Check context for errors before creating the service
+	// Check context for errors
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
@@ -260,6 +256,12 @@ func resolve(
 			return res.val, res.err
 		}
 	}
+
+	// Throw an error if we've already visited this service
+	if visited := visitor.Enter(key); visited {
+		return nil, ErrDependencyCycle
+	}
+	defer visitor.Leave(key)
 
 	// Recursively resolve dependencies
 	var deps []reflect.Value
@@ -371,7 +373,9 @@ func resolve(
 
 	// Add Closer for the service
 	if closer := svc.CloserFor(val); closer != nil {
+		scope.closersMu.Lock()
 		scope.closers = append(scope.closers, closer)
+		scope.closersMu.Unlock()
 	}
 
 	return val, nil
