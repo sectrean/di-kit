@@ -7,13 +7,14 @@ import (
 )
 
 type valueService struct {
+	scope         *Container
 	key           serviceKey
 	val           any
 	aliases       []reflect.Type
 	closerFactory func(any) Closer
 }
 
-func newValueService(val any, opts ...ServiceOption) (*valueService, error) {
+func newValueService(scope *Container, val any, opts ...ServiceOption) (*valueService, error) {
 	t := reflect.TypeOf(val)
 	v := reflect.ValueOf(val)
 
@@ -22,8 +23,9 @@ func newValueService(val any, opts ...ServiceOption) (*valueService, error) {
 	}
 
 	svc := &valueService{
-		key: serviceKey{Type: t},
-		val: v.Interface(),
+		scope: scope,
+		key:   serviceKey{Type: t},
+		val:   v.Interface(),
 	}
 
 	var errs errors.MultiError
@@ -39,6 +41,18 @@ func newValueService(val any, opts ...ServiceOption) (*valueService, error) {
 	return svc, nil
 }
 
+func (s *valueService) Scope() *Container {
+	return s.scope
+}
+
+func (s *valueService) Key() serviceKey {
+	return s.key
+}
+
+func (s *valueService) Type() reflect.Type {
+	return s.key.Type
+}
+
 func (s *valueService) Aliases() []reflect.Type {
 	return s.aliases
 }
@@ -50,14 +64,6 @@ func (s *valueService) AddAlias(alias reflect.Type) error {
 
 	s.aliases = append(s.aliases, alias)
 	return nil
-}
-
-func (s *valueService) Key() serviceKey {
-	return s.key
-}
-
-func (s *valueService) Type() reflect.Type {
-	return s.key.Type
 }
 
 func (s *valueService) Lifetime() Lifetime {

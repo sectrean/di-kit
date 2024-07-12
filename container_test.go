@@ -558,6 +558,49 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 3, calls)
 	})
 
+	t.Run("lifetime scoped resolve from root", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(testtypes.NewInterfaceB, di.Scoped),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+		LogError(t, err)
+
+		assert.Nil(t, got)
+		assert.EqualError(t, err, "resolve testtypes.InterfaceB: scoped service must be resolved from a child scope")
+	})
+
+	t.Run("lifetime scoped multi level", func(t *testing.T) {
+		root, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		scope1, err := root.NewScope(
+			di.WithService(testtypes.NewInterfaceB, di.Scoped),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		b, err := di.Resolve[testtypes.InterfaceB](ctx, scope1)
+		LogError(t, err)
+
+		assert.Nil(t, b)
+		assert.EqualError(t, err, "resolve testtypes.InterfaceB: scoped service must be resolved from a child scope")
+
+		scope2, err := scope1.NewScope()
+		require.NoError(t, err)
+
+		b, err = di.Resolve[testtypes.InterfaceB](ctx, scope2)
+		assert.NotNil(t, b)
+		assert.NoError(t, err)
+	})
+
+	// TODO: Add tests with dependencies on scoped services, captive dependencies, etc.
+
 	t.Run("slice service", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
@@ -1040,6 +1083,29 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
+	t.Run("decorator with di.Scope dependency", func(t *testing.T) {
+		calls := 0
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithDecorator(func(a testtypes.InterfaceA, s di.Scope) testtypes.InterfaceA {
+				assert.NotNil(t, a)
+				require.NotNil(t, s)
+				assert.True(t, s.Contains(reflect.TypeFor[testtypes.InterfaceA]()))
+
+				calls++
+				return a
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+
+		assert.NotNil(t, got)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, calls)
+	})
+
 	t.Run("decorator with error", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func() (testtypes.InterfaceA, error) {
@@ -1142,9 +1208,9 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
-	t.Run("concurrent", func(t *testing.T) {
-		// This should be run with the -race flag to check for race conditions
+	// Concurrent tests should be run with the -race flag to check for race conditions
 
+	t.Run("concurrent", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 			di.WithService(testtypes.NewInterfaceB),
@@ -1190,7 +1256,6 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("concurrent singleton", func(t *testing.T) {
-		// This should be run with the -race flag to check for race conditions
 		expected := &testtypes.StructA{}
 		calls := 0
 
@@ -1221,7 +1286,6 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("concurrent scoped", func(t *testing.T) {
-		// This should be run with the -race flag to check for race conditions
 		r := rand.Intn(10)
 		calls := 0
 
@@ -1253,6 +1317,47 @@ func Test_Container_Resolve(t *testing.T) {
 				assert.NoError(t, err)
 			}()
 		}
+
+		wg.Wait()
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("concurrent singleton race", func(t *testing.T) {
+		wait := make(chan struct{})
+		calls := 0
+
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA {
+				close(wait)
+				return &testtypes.StructA{}
+			}),
+			di.WithService(func(testtypes.InterfaceA) testtypes.InterfaceB {
+				calls++
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		wg := &sync.WaitGroup{}
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+
+			_, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+			assert.NoError(t, err)
+		}()
+
+		go func() {
+			defer wg.Done()
+
+			// Wait until the first goroutine has started resolving
+			<-wait
+
+			_, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+			assert.NoError(t, err)
+		}()
 
 		wg.Wait()
 		assert.Equal(t, 1, calls)

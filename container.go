@@ -105,7 +105,7 @@ func (c *Container) registerType(t reflect.Type, sr serviceRegistration) {
 	sliceKey := serviceKey{Type: reflect.SliceOf(t)}
 	sliceSvc, ok := c.services[sliceKey].(*sliceService)
 	if !ok {
-		sliceSvc = newSliceService(t)
+		sliceSvc = newSliceService(c, t)
 		c.services[sliceKey] = sliceSvc
 	}
 
@@ -180,13 +180,6 @@ func (c *Container) contains(key serviceKey) bool {
 	return found
 }
 
-func (c *Container) root() *Container {
-	if c.parent == nil {
-		return c
-	}
-	return c.parent.root()
-}
-
 // ResolveOption can be used when calling [Resolve], [MustResolve],
 // [Container.Resolve], or [Container.Contains].
 //
@@ -237,12 +230,12 @@ func resolve(
 		return nil, ctx.Err()
 	}
 
-	// For scoped services, use the current scope.
-	// TODO: Should we make sure this is not the root container for scoped services?
+	// For singleton services, use the container the service is registered with.
+	// Otherwise, use the current scope.
 	if svc.Lifetime() == Singleton {
-		// For singleton services, use the root container.
-		// TODO: We actually need to use the scope that the service was registered with
-		scope = scope.root()
+		scope = svc.Scope()
+	} else if svc.Lifetime() == Scoped && scope == svc.Scope() {
+		return nil, errors.New("scoped service must be resolved from a child scope")
 	}
 
 	// For Singleton or Scoped services, we store the result.

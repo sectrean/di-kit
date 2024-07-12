@@ -4,23 +4,29 @@ import (
 	"reflect"
 )
 
-func newSliceService(t reflect.Type) *sliceService {
+func newSliceService(scope *Container, t reflect.Type) *sliceService {
 	return &sliceService{
-		t: t,
+		scope: scope,
+		key: serviceKey{
+			Type: reflect.SliceOf(t),
+		},
 	}
 }
 
 type sliceService struct {
-	t    reflect.Type
-	deps []serviceKey
+	scope *Container
+	key   serviceKey
+	deps  []serviceKey
 }
 
 var _ service = &sliceService{}
 
+func (s *sliceService) Scope() *Container {
+	return s.scope
+}
+
 func (s *sliceService) Key() serviceKey {
-	return serviceKey{
-		Type: s.t,
-	}
+	return s.key
 }
 
 func (s *sliceService) Lifetime() Lifetime {
@@ -40,8 +46,7 @@ func (s *sliceService) CloserFor(val any) Closer {
 }
 
 func (s *sliceService) New(deps []reflect.Value) (any, error) {
-	sliceType := reflect.SliceOf(s.t)
-	slice := reflect.MakeSlice(sliceType, 0, len(deps))
+	slice := reflect.MakeSlice(s.key.Type, 0, len(deps))
 	slice = reflect.Append(slice, deps...)
 
 	return slice.Interface(), nil
@@ -50,7 +55,7 @@ func (s *sliceService) New(deps []reflect.Value) (any, error) {
 func (s *sliceService) NextItemKey() serviceKey {
 	index := len(s.deps)
 	key := serviceKey{
-		Type: s.t,
+		Type: s.key.Type.Elem(),
 		Tag:  sliceItemTag(index),
 	}
 
