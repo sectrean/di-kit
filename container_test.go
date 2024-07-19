@@ -599,7 +599,8 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	// TODO: Add tests with dependencies on scoped services, captive dependencies, etc.
+	// TODO: Add tests with dependencies on scoped services,
+	// captive dependencies, slices with scopes, etc.
 
 	t.Run("slice service", func(t *testing.T) {
 		c, err := di.NewContainer(
@@ -1396,20 +1397,24 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("concurrent dependency cycle workaround", func(t *testing.T) {
-		// TODO: Fix deadlock
-		t.Skip("deadlock")
-
 		c, err := di.NewContainer(
-			di.WithService(func(scope di.Scope) *TestFactory {
-				return NewTestFactory(scope, func(ctx context.Context, s di.Scope) testtypes.InterfaceA {
-					a, err := di.Resolve[testtypes.InterfaceA](ctx, s)
-					assert.NotNil(t, a)
-					assert.NoError(t, err)
-					return a
-				})
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func(a testtypes.InterfaceA, c testtypes.InterfaceC) testtypes.InterfaceB {
+				assert.NotNil(t, a)
+				assert.NotNil(t, c)
+				return &testtypes.StructB{}
 			}),
-			di.WithService(func(ctx context.Context, f *TestFactory) testtypes.InterfaceA {
-				return f.Build(ctx)
+			di.WithService(func(scope di.Scope) testtypes.InterfaceC {
+				c := mocks.NewInterfaceCMock(t)
+
+				// The circular dependency can be resolved by using a scope
+				c.EXPECT().C().Run(func() {
+					b, err := di.Resolve[testtypes.InterfaceB](context.Background(), scope)
+					assert.NotNil(t, b)
+					assert.NoError(t, err)
+				})
+
+				return c
 			}),
 		)
 		require.NoError(t, err)
@@ -1421,19 +1426,19 @@ func Test_Container_Resolve(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			a, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-			assert.NotNil(t, a)
+			b, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+			assert.NotNil(t, b)
 			assert.NoError(t, err)
 		}()
+
 		go func() {
 			defer wg.Done()
 
-			f, err := di.Resolve[*TestFactory](ctx, c)
-			assert.NotNil(t, f)
+			c, err := di.Resolve[testtypes.InterfaceC](ctx, c)
+			assert.NotNil(t, c)
 			assert.NoError(t, err)
 
-			a := f.Build(ctx)
-			assert.NotNil(t, a)
+			c.C()
 		}()
 
 		wg.Wait()
