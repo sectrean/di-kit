@@ -172,10 +172,6 @@ func (c *Container) Contains(t reflect.Type, opts ...ResolveOption) bool {
 		key = opt.applyServiceKey(key)
 	}
 
-	return c.contains(key)
-}
-
-func (c *Container) contains(key serviceKey) bool {
 	_, found := c.services[key]
 	return found
 }
