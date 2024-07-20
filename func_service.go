@@ -24,7 +24,7 @@ func newFuncService(scope *Container, fn any, opts ...ServiceOption) (*funcServi
 	var t reflect.Type
 	if fnType.NumOut() == 1 {
 		t = fnType.Out(0)
-	} else if fnType.NumOut() == 2 && fnType.Out(1) == errorType {
+	} else if fnType.NumOut() == 2 && fnType.Out(1) == typeError {
 		t = fnType.Out(0)
 	} else {
 		return nil, errors.New("function must return Service or (Service, error)")

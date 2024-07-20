@@ -54,7 +54,7 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 		var depErr error
 
 		switch {
-		case dep.Type == contextType:
+		case dep.Type == typeContext:
 			depVal = ctx
 		case dep.Tag != nil:
 			depVal, depErr = s.Resolve(ctx, dep.Type, WithTag(dep.Tag))
@@ -73,7 +73,7 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 
 	// See if the function returns an error
 	for i := 0; i < fnType.NumOut(); i++ {
-		if fnType.Out(i) == errorType {
+		if fnType.Out(i) == typeError {
 			err, _ := out[i].Interface().(error)
 			return err
 		}

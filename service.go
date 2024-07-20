@@ -81,9 +81,9 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 func validateServiceType(t reflect.Type) error {
 	switch t {
 	// These are the only special types used by the Container.
-	case contextType,
-		scopeType,
-		errorType:
+	case typeContext,
+		typeScope,
+		typeError:
 		return errors.New("invalid service type")
 	}
 

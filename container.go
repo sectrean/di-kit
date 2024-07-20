@@ -261,11 +261,11 @@ func resolve(
 			var depErr error
 
 			switch depKey.Type {
-			case contextType:
+			case typeContext:
 				// Pass along the context
 				depVal = ctx
 
-			case scopeType:
+			case typeScope:
 				var ready func()
 				depVal, ready = newInjectedScope(scope, key)
 				defer ready()
@@ -302,11 +302,11 @@ func resolve(
 					// We need to set this after the service is created
 					continue
 
-				case depKey.Type == contextType:
+				case depKey.Type == typeContext:
 					// Pass along the context
 					depVal = ctx
 
-				case depKey.Type == scopeType:
+				case depKey.Type == typeScope:
 					var ready func()
 					depVal, ready = newInjectedScope(scope, key)
 					defer ready()
@@ -404,12 +404,13 @@ var (
 
 	// ErrContainerClosed is returned when the container is closed.
 	ErrContainerClosed = errors.New("container closed")
+)
 
-	// Common types
-
-	errorType   = reflect.TypeFor[error]()
-	contextType = reflect.TypeFor[context.Context]()
-	scopeType   = reflect.TypeFor[Scope]()
+// Common types
+var (
+	typeError   = reflect.TypeFor[error]()
+	typeContext = reflect.TypeFor[context.Context]()
+	typeScope   = reflect.TypeFor[Scope]()
 )
 
 type resolveResult struct {
