@@ -2,10 +2,29 @@ package di_test
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/johnrutherford/di-kit"
 	"github.com/johnrutherford/di-kit/internal/testtypes"
+)
+
+var (
+	TypeStructA    = reflect.TypeFor[testtypes.StructA]()
+	TypeStructAPtr = reflect.TypeFor[*testtypes.StructA]()
+	TypeInterfaceA = reflect.TypeFor[testtypes.InterfaceA]()
+
+	TypeStructB    = reflect.TypeFor[testtypes.StructB]()
+	TypeStructBPtr = reflect.TypeFor[*testtypes.StructB]()
+	TypeInterfaceB = reflect.TypeFor[testtypes.InterfaceB]()
+
+	TypeStructC    = reflect.TypeFor[testtypes.StructC]()
+	TypeStructCPtr = reflect.TypeFor[*testtypes.StructC]()
+	TypeInterfaceC = reflect.TypeFor[testtypes.InterfaceC]()
+
+	TypeStructD    = reflect.TypeFor[testtypes.StructD]()
+	TypeStructDPtr = reflect.TypeFor[*testtypes.StructD]()
+	TypeInterfaceD = reflect.TypeFor[testtypes.InterfaceD]()
 )
 
 // LogError is a test helper function to log an error message if it is not nil.

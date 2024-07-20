@@ -26,26 +26,30 @@ type InterfaceD interface {
 
 type StructA struct{}
 
-func (*StructA) A()                          {}
-func (*StructA) Close(context.Context) error { return nil }
+func (StructA) A()                          {}
+func (StructA) Close(context.Context) error { return nil }
 
 type StructB struct{}
 
-func (*StructB) B()                    {}
-func (*StructB) Close(context.Context) {}
+func (StructB) B()                    {}
+func (StructB) Close(context.Context) {}
 
 type StructC struct{}
 
-func (*StructC) C()           {}
-func (*StructC) Close() error { return nil }
+func (StructC) C()           {}
+func (StructC) Close() error { return nil }
 
 type StructD struct{}
 
-func (*StructD) D()     {}
-func (*StructD) Close() {}
+func (StructD) D()     {}
+func (StructD) Close() {}
 
 func NewInterfaceA() InterfaceA {
 	return &StructA{}
+}
+
+func NewInterfaceAStruct() InterfaceA {
+	return StructA{}
 }
 
 func NewStructAPtr() *StructA {
@@ -56,6 +60,10 @@ func NewInterfaceB(InterfaceA) InterfaceB {
 	return &StructB{}
 }
 
+func NewInterfaceBStruct(InterfaceA) InterfaceB {
+	return StructB{}
+}
+
 func NewStructBPtr(*StructA) *StructB {
 	return &StructB{}
 }
@@ -64,12 +72,20 @@ func NewInterfaceC(InterfaceA, InterfaceB) InterfaceC {
 	return &StructC{}
 }
 
+func NewInterfaceCStruct(InterfaceA, InterfaceB) InterfaceC {
+	return StructC{}
+}
+
 func NewStructCPtr(*StructA, *StructB) *StructC {
 	return &StructC{}
 }
 
 func NewInterfaceD(InterfaceA, InterfaceB, InterfaceC) InterfaceD {
 	return &StructD{}
+}
+
+func NewInterfaceDStruct(InterfaceA, InterfaceB, InterfaceC) InterfaceD {
+	return StructD{}
 }
 
 func NewStructDPtr(*StructA, *StructB, *StructC) *StructD {

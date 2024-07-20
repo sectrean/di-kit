@@ -2,7 +2,6 @@ package di_test
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
 	"github.com/johnrutherford/di-kit"
@@ -10,177 +9,214 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: Re-organize the benchmarks to use more sub-tests.
-
 func Benchmark_NewContainer(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_, _ = di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA),
-			di.WithService(testtypes.NewInterfaceB),
-		)
-	}
+	b.Run("func service one", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = di.NewContainer(
+				di.WithService(testtypes.NewInterfaceAStruct),
+			)
+		}
+	})
+
+	b.Run("func service two", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = di.NewContainer(
+				di.WithService(testtypes.NewInterfaceAStruct),
+				di.WithService(testtypes.NewInterfaceBStruct),
+			)
+		}
+	})
+
+	b.Run("value service one", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = di.NewContainer(
+				di.WithService(&testtypes.StructA{}),
+			)
+		}
+	})
 }
 
 func Benchmark_Container_NewScope(b *testing.B) {
-	root, err := di.NewContainer(
-		di.WithService(testtypes.NewInterfaceA),
-		di.WithService(testtypes.NewInterfaceB, di.Scoped),
-	)
-	require.NoError(b, err)
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		_, _ = root.NewScope()
-	}
-}
-
-func Benchmark_Container_Contains(b *testing.B) {
-	c, err := di.NewContainer(
-		di.WithService(&testtypes.StructA{}),
-	)
-	require.NoError(b, err)
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		_ = c.Contains(reflect.TypeFor[testtypes.InterfaceA]())
-	}
-}
-
-func Benchmark_Container_Contains_WithTag(b *testing.B) {
-	c, err := di.NewContainer(
-		di.WithService(&testtypes.StructA{}),
-		di.WithService(&testtypes.StructA{}, di.WithTag("b")),
-	)
-	require.NoError(b, err)
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		_ = c.Contains(reflect.TypeFor[testtypes.InterfaceA](), di.WithTag("b"))
-	}
-}
-
-func Benchmark_Container_Resolve_OneValueService(b *testing.B) {
-	c, err := di.NewContainer(
-		di.WithService(&testtypes.StructA{}),
-	)
-	require.NoError(b, err)
-
-	ctx := context.Background()
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		_, _ = di.Resolve[*testtypes.StructA](ctx, c)
-	}
-}
-
-func Benchmark_Container_Resolve_OneValueStruct(b *testing.B) {
-	c, err := di.NewContainer(
-		di.WithService(testtypes.StructA{}),
-	)
-	require.NoError(b, err)
-
-	ctx := context.Background()
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		_, _ = di.Resolve[testtypes.StructA](ctx, c)
-	}
-}
-
-func Benchmark_Container_Resolve_OneFunc_Singleton(b *testing.B) {
-	c, err := di.NewContainer(
-		di.WithService(testtypes.NewInterfaceA, di.Singleton),
-	)
-	require.NoError(b, err)
-
-	ctx := context.Background()
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		_, _ = di.Resolve[testtypes.InterfaceA](ctx, c)
-	}
-}
-
-func Benchmark_Container_Resolve_Scopes(b *testing.B) {
-	var newParent = func(b *testing.B) *di.Container {
-		parent, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA, di.Singleton),
-			di.WithService(testtypes.NewInterfaceB, di.Scoped),
+	b.Run("no new services", func(b *testing.B) {
+		root, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceAStruct),
+			di.WithService(testtypes.NewInterfaceBStruct, di.Scoped),
 		)
 		require.NoError(b, err)
-		return parent
-	}
 
-	var newChildScopes = func(b *testing.B, parent *di.Container) []*di.Container {
-		scopes := make([]*di.Container, b.N)
-		for i := 0; i < b.N; i++ {
-			scopes[i], _ = parent.NewScope()
-		}
-		return scopes
-	}
-
-	b.Run("create child scope", func(b *testing.B) {
-		parent := newParent(b)
-
-		for i := 0; i < b.N; i++ {
-			_, _ = parent.NewScope()
-		}
-	})
-
-	b.Run("resolve singleton", func(b *testing.B) {
-		ctx := context.Background()
-		parent := newParent(b)
-		scope, _ := parent.NewScope()
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			_, _ = di.Resolve[testtypes.InterfaceA](ctx, scope)
+			_, _ = root.NewScope()
 		}
 	})
 
-	b.Run("resolve singleton parallel", func(b *testing.B) {
+	b.Run("new value service", func(b *testing.B) {
+		root, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			_, _ = root.NewScope(
+				di.WithService(&testtypes.StructB{}),
+			)
+		}
+	})
+
+	b.Run("new func service", func(b *testing.B) {
+		root, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			_, _ = root.NewScope(
+				di.WithService(testtypes.NewInterfaceB),
+			)
+		}
+	})
+}
+
+func Benchmark_Container_Contains(b *testing.B) {
+	b.Run("func service", func(b *testing.B) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			_ = c.Contains(TypeInterfaceA)
+		}
+	})
+
+	b.Run("tagged func service", func(b *testing.B) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(testtypes.NewInterfaceA, di.WithTag("b")),
+		)
+		require.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			_ = c.Contains(TypeInterfaceA, di.WithTag("b"))
+		}
+	})
+
+	b.Run("value service", func(b *testing.B) {
+		c, err := di.NewContainer(
+			di.WithService(&testtypes.StructA{}),
+		)
+		require.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			_ = c.Contains(TypeStructAPtr)
+		}
+	})
+
+	b.Run("tagged value service", func(b *testing.B) {
+		c, err := di.NewContainer(
+			di.WithService(&testtypes.StructA{}),
+			di.WithService(&testtypes.StructA{}, di.WithTag("b")),
+		)
+		require.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			_ = c.Contains(TypeStructAPtr, di.WithTag("b"))
+		}
+	})
+}
+
+func Benchmark_Container_Resolve(b *testing.B) {
+	b.Run("value service", func(b *testing.B) {
+		ctx := context.Background()
+		c, err := di.NewContainer(
+			di.WithService(testtypes.StructA{}),
+		)
+		require.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			_, _ = c.Resolve(ctx, TypeStructA)
+		}
+	})
+
+	b.Run("singleton func", func(b *testing.B) {
+		ctx := context.Background()
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA, di.Singleton),
+		)
+		require.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			_, _ = c.Resolve(ctx, TypeInterfaceA)
+		}
+	})
+
+	b.Run("singleton from child scope", func(b *testing.B) {
 		ctx := context.Background()
 		parent := newParent(b)
 		scope, _ := parent.NewScope()
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			_, _ = scope.Resolve(ctx, TypeInterfaceA)
+		}
+	})
+
+	b.Run("singleton from child scope parallel", func(b *testing.B) {
+		ctx := context.Background()
+		parent := newParent(b)
+		scope, _ := parent.NewScope()
+
 		b.ResetTimer()
 
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				_, _ = di.Resolve[testtypes.InterfaceA](ctx, scope)
+				_, _ = scope.Resolve(ctx, TypeInterfaceA)
 			}
 		})
 	})
 
-	b.Run("resolve scoped first time", func(b *testing.B) {
+	b.Run("scoped func first call", func(b *testing.B) {
 		ctx := context.Background()
 		parent := newParent(b)
-		_, _ = di.Resolve[testtypes.InterfaceA](ctx, parent)
+		_, _ = parent.Resolve(ctx, TypeInterfaceA)
 		scopes := newChildScopes(b, parent)
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			_, _ = di.Resolve[testtypes.InterfaceB](ctx, scopes[i])
+			_, _ = scopes[i].Resolve(ctx, TypeInterfaceB)
 		}
 	})
 
-	b.Run("resolve scoped", func(b *testing.B) {
+	b.Run("scoped func", func(b *testing.B) {
 		ctx := context.Background()
 		parent := newParent(b)
 		scope, _ := parent.NewScope()
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			_, _ = di.Resolve[testtypes.InterfaceB](ctx, scope)
+			_, _ = scope.Resolve(ctx, TypeInterfaceA)
 		}
 	})
 
-	b.Run("resolve scoped parallel", func(b *testing.B) {
+	b.Run("scoped func parallel", func(b *testing.B) {
 		ctx := context.Background()
 		parent := newParent(b)
 		scope, _ := parent.NewScope()
@@ -188,39 +224,70 @@ func Benchmark_Container_Resolve_Scopes(b *testing.B) {
 
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				_, _ = di.Resolve[testtypes.InterfaceB](ctx, scope)
+				_, _ = scope.Resolve(ctx, TypeInterfaceB)
 			}
 		})
 	})
+
+	b.Run("transient func", func(b *testing.B) {
+		ctx := context.Background()
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceAStruct, di.Transient),
+		)
+		require.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			_, _ = c.Resolve(ctx, TypeInterfaceC)
+		}
+	})
+
+	b.Run("transient func parallel", func(b *testing.B) {
+		ctx := context.Background()
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceAStruct, di.Transient),
+		)
+		require.NoError(b, err)
+
+		b.ResetTimer()
+
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_, _ = c.Resolve(ctx, TypeInterfaceC)
+			}
+		})
+	})
+
+	b.Run("transient func with transient dep", func(b *testing.B) {
+		ctx := context.Background()
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceAStruct, di.Transient),
+			di.WithService(testtypes.NewInterfaceBStruct, di.Transient),
+		)
+		require.NoError(b, err)
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			_, _ = c.Resolve(ctx, TypeInterfaceB)
+		}
+	})
 }
 
-func Benchmark_Container_Resolve_OneFunc_Transient(b *testing.B) {
-	c, err := di.NewContainer(
-		di.WithService(testtypes.NewInterfaceA, di.Transient),
+func newParent(b *testing.B) *di.Container {
+	parent, err := di.NewContainer(
+		di.WithService(testtypes.NewInterfaceAStruct, di.Singleton),
+		di.WithService(testtypes.NewInterfaceBStruct, di.Scoped),
 	)
 	require.NoError(b, err)
-
-	ctx := context.Background()
-
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		_, _ = di.Resolve[testtypes.InterfaceA](ctx, c)
-	}
+	return parent
 }
 
-func Benchmark_Container_Resolve_TwoFunc_Transient(b *testing.B) {
-	c, err := di.NewContainer(
-		di.WithService(testtypes.NewInterfaceA, di.Transient),
-		di.WithService(testtypes.NewInterfaceB, di.Transient),
-	)
-	require.NoError(b, err)
-
-	ctx := context.Background()
-
-	b.ResetTimer()
-
+func newChildScopes(b *testing.B, parent *di.Container) []*di.Container {
+	scopes := make([]*di.Container, b.N)
 	for i := 0; i < b.N; i++ {
-		_, _ = di.Resolve[testtypes.InterfaceB](ctx, c)
+		scopes[i], _ = parent.NewScope()
 	}
+	return scopes
 }
