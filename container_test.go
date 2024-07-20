@@ -1145,6 +1145,25 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.EqualError(t, err, "resolve testtypes.InterfaceB: decorator func(testtypes.InterfaceB, testtypes.InterfaceA) testtypes.InterfaceB: dependency testtypes.InterfaceA: constructor error")
 	})
 
+	t.Run("decorator with nil service", func(t *testing.T) {
+		calls := 0
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA { return nil }),
+			di.WithDecorator(func(a testtypes.InterfaceA) testtypes.InterfaceA {
+				calls++
+				return &testtypes.StructA{}
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+
+		assert.NotNil(t, got)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, calls)
+	})
+
 	t.Run("decorator function dependency returns nil", func(t *testing.T) {
 		calls := 0
 		c, err := di.NewContainer(

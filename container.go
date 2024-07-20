@@ -347,8 +347,8 @@ func resolve(
 	// Create the service
 	val, err = svc.New(deps)
 
-	// Skip the rest if the service is nil or there was an error
-	if val == nil || err != nil {
+	// Skip the rest if there was an error
+	if err != nil {
 		return val, err
 	}
 
@@ -357,7 +357,7 @@ func resolve(
 		for j, depKey := range d.deps {
 			if depKey == key {
 				// Inject the service being decorated
-				decoratorDeps[i][j] = reflect.ValueOf(val)
+				decoratorDeps[i][j] = safeVal(key.Type, val)
 			}
 		}
 
