@@ -114,16 +114,16 @@ func (c *Container) registerType(t reflect.Type, sr serviceRegistration) {
 }
 
 func (c *Container) registerDecorator(d *decorator) {
-	// TODO: Validate that the service being decorated is registered?
+	// We don't validate that the service is registered,
+	// because it could get registered in a child scope.
+	// If the service is never registered, the decorators will just never be used.
 
 	// Create this map lazily since decorators aren't always used
 	if c.decorators == nil {
 		c.decorators = make(map[serviceKey][]*decorator)
 	}
 
-	decorators := c.decorators[d.Key()]
-	decorators = append(decorators, d)
-	c.decorators[d.Key()] = decorators
+	c.decorators[d.Key()] = append(c.decorators[d.Key()], d)
 }
 
 // NewScope creates a new Container with a child scope.
@@ -230,7 +230,7 @@ func resolve(
 		return nil, ctx.Err()
 	}
 
-	// For singleton services, use the container the service is registered with.
+	// For singleton services, use the scope the service is registered with.
 	// Otherwise, use the current scope.
 	if svc.Lifetime() == Singleton {
 		scope = svc.Scope()

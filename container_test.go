@@ -599,8 +599,23 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("lifetime scoped captive dependency", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA, di.Scoped),
+			di.WithService(testtypes.NewInterfaceB, di.Singleton),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		b, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+		LogError(t, err)
+
+		assert.Nil(t, b)
+		assert.EqualError(t, err, "resolve testtypes.InterfaceB: dependency testtypes.InterfaceA: scoped service must be resolved from a child scope")
+	})
+
 	// TODO: Add tests with dependencies on scoped services,
-	// captive dependencies, slices with scopes, etc.
+	// slices with scopes, etc.
 
 	t.Run("slice service", func(t *testing.T) {
 		c, err := di.NewContainer(
@@ -1209,6 +1224,9 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
+	// TODO: Add tests for decorators with child scopes
+	// - decorator on parent scope with scoped dependency.
+
 	// Concurrent tests should be run with the -race flag to check for race conditions
 
 	t.Run("concurrent", func(t *testing.T) {
@@ -1367,10 +1385,12 @@ func Test_Container_Resolve(t *testing.T) {
 	t.Run("concurrent dependency cycle", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func(a testtypes.InterfaceA) testtypes.InterfaceB {
-				panic("should not get called")
+				assert.Fail(t, "constructor func should not get called")
+				return nil
 			}),
 			di.WithService(func(b testtypes.InterfaceB) testtypes.InterfaceA {
-				panic("should not get called")
+				assert.Fail(t, "constructor func should not get called")
+				return nil
 			}),
 		)
 		require.NoError(t, err)
