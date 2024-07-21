@@ -104,5 +104,5 @@ func (s *valueService) New(deps []reflect.Value) (any, error) {
 	return s.val, nil
 }
 
-var _ service = &valueService{}
-var _ serviceRegistration = &valueService{}
+var _ service = (*valueService)(nil)
+var _ serviceRegistration = (*valueService)(nil)

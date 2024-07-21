@@ -23,7 +23,7 @@ func Test_Invoke(t *testing.T) {
 		assert.EqualError(t, err, "invoke int: fn must be a function")
 	})
 
-	t.Run("one arg", func(t *testing.T) {
+	t.Run("one param", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -92,10 +92,26 @@ func Test_Invoke(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
+		err = di.Invoke(ctx, c, func() {})
+		LogError(t, err)
+
+		assert.EqualError(t, err, "invoke func(): context canceled")
+	})
+
+	t.Run("with context error during resolve", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+
+		require.NoError(t, err)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
 		err = di.Invoke(ctx, c, func(context.Context, testtypes.InterfaceA) {})
 		LogError(t, err)
 
-		assert.EqualError(t, err, "invoke func(context.Context, testtypes.InterfaceA): context canceled")
+		assert.EqualError(t, err, "invoke func(context.Context, testtypes.InterfaceA): resolve testtypes.InterfaceA: context canceled")
 	})
 
 	t.Run("with tagged", func(t *testing.T) {
@@ -138,6 +154,6 @@ func Test_Invoke(t *testing.T) {
 		)
 		LogError(t, err)
 
-		assert.EqualError(t, err, "invoke func(testtypes.InterfaceA): with tagged testtypes.InterfaceB: argument not found")
+		assert.EqualError(t, err, "invoke func(testtypes.InterfaceA): with tagged testtypes.InterfaceB: parameter not found")
 	})
 }

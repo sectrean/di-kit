@@ -53,8 +53,8 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 		errs = errs.Append(err)
 	}
 
-	if len(errs) > 0 {
-		return nil, errs.Wrap("new container")
+	if err := errs.Join(); err != nil {
+		return nil, errors.Wrap(err, "new container")
 	}
 
 	return c, nil
@@ -123,6 +123,8 @@ func (c *Container) registerDecorator(d *decorator) {
 		c.decorators = make(map[serviceKey][]*decorator)
 	}
 
+	// TODO: Implement decorators registered with a child scope or return an error
+
 	c.decorators[d.Key()] = append(c.decorators[d.Key()], d)
 }
 
@@ -155,8 +157,8 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 		errs = errs.Append(err)
 	}
 
-	if len(errs) > 0 {
-		return nil, errs.Wrap("new scope")
+	if err := errs.Join(); err != nil {
+		return nil, errors.Wrap(err, "new scope")
 	}
 
 	return scope, nil
@@ -392,7 +394,11 @@ func (c *Container) Close(ctx context.Context) error {
 		errs = errs.Append(err)
 	}
 
-	return errs.Wrap("close")
+	if err := errs.Join(); err != nil {
+		return errors.Wrap(err, "close")
+	}
+
+	return nil
 }
 
 var (

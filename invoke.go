@@ -9,7 +9,7 @@ import (
 
 // Invoke calls the given function with dependencies resolved from the provided Scope.
 //
-// The function may take any number of arguments. These dependencies must be registered with the Scope.
+// The function may take any number of parameters. These dependencies must be registered with the Scope.
 // The function may also accept a context.Context.
 // The function may return an error. Any other return values are ignored.
 func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
@@ -26,8 +26,8 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 	}
 
 	for i := 0; i < fnType.NumIn(); i++ {
-		argType := fnType.In(i)
-		config.deps = append(config.deps, serviceKey{Type: argType})
+		paramType := fnType.In(i)
+		config.deps = append(config.deps, serviceKey{Type: paramType})
 	}
 
 	// Apply any options
@@ -37,13 +37,8 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 		errs = errs.Append(err)
 	}
 
-	if len(errs) > 0 {
-		return errs.Wrapf("invoke %T", fn)
-	}
-
-	// Check for a context error before we start resolving deps
-	if ctx.Err() != nil {
-		return errors.Wrapf(ctx.Err(), "invoke %T", fn)
+	if err := errs.Join(); err != nil {
+		return errors.Wrapf(err, "invoke %T", fn)
 	}
 
 	// Resolve deps from the Scope
@@ -66,6 +61,11 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 		if depErr != nil {
 			return errors.Wrapf(depErr, "invoke %T", fn)
 		}
+	}
+
+	// Check for a context error before we invoke the function
+	if ctx.Err() != nil {
+		return errors.Wrapf(ctx.Err(), "invoke %T", fn)
 	}
 
 	// Invoke the function

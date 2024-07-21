@@ -10,7 +10,7 @@ import (
 
 // A Scope allows you to resolve services.
 //
-// Scope can be used as an argument for a service's constructor function.
+// Scope can be used as a parameter for a service's constructor function.
 // This can be used to create a "factory" service.
 //
 // Note that the Scope should be stored on the service struct for later use.

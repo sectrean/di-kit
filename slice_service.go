@@ -19,7 +19,7 @@ type sliceService struct {
 	deps  []serviceKey
 }
 
-var _ service = &sliceService{}
+var _ service = (*sliceService)(nil)
 
 func (s *sliceService) Scope() *Container {
 	return s.scope

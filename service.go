@@ -12,7 +12,7 @@ import (
 //
 // If a function is provided, it will be called to create the service when resolved.
 //
-// This function can take any number of arguments which will also be resolved from the Container.
+// This function can take any number of parameters which will also be resolved from the Container.
 // The function may also accept a [context.Context] or [di.Scope].
 //
 // The function must return a service, or the service and an error.
@@ -55,10 +55,6 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 			return errors.Errorf("with service: funcOrValue is nil")
 		}
 
-		if _, ok := funcOrValue.(ServiceOption); ok {
-			return errors.Errorf("with service %T: unexpected ServiceOption as funcOrValue", funcOrValue)
-		}
-
 		t := reflect.TypeOf(funcOrValue)
 
 		var sr serviceRegistration
@@ -84,6 +80,10 @@ func validateServiceType(t reflect.Type) error {
 	case typeContext,
 		typeScope,
 		typeError:
+		return errors.New("invalid service type")
+	}
+
+	if t.PkgPath() == typeScope.PkgPath() {
 		return errors.New("invalid service type")
 	}
 

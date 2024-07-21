@@ -46,7 +46,7 @@ go get github.com/johnrutherford/di-kit
 
 Use `di.WithService()` to register services with either a value or a constructor function.
 
-The function may accept any number and type of arguments which must also be registered with the `Container`. The service will be registered as the function return type, and may also return an `error`.
+The function may accept any number and type of parameters which must also be registered with the `Container`. The service will be registered as the function return type, and may also return an `error`.
 
 ### Resolving Services
 
@@ -197,7 +197,7 @@ defer func() {
 It's often useful to "wrap" or "decorate" a *service* to add some functionality.
 
 Use `di.WithDecorator()` when creating a `Container` to register a decorator function.
-A decorator function must accept and return a *service*. It may also accept other arguments which will be resolved from the container.
+A decorator function must accept and return a *service*. It may also accept other parameters which will be resolved from the container.
 
 ```go
 c, err := di.NewContainer(

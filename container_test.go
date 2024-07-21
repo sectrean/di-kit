@@ -63,7 +63,7 @@ func Test_NewContainer(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "new container: with service di.Lifetime: unexpected ServiceOption as funcOrValue")
+		assert.EqualError(t, err, "new container: with service di.Lifetime: invalid service type")
 	})
 
 	t.Run("func alias not assignable", func(t *testing.T) {
@@ -95,7 +95,7 @@ func Test_NewContainer(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "new container: with service func() testtypes.InterfaceA: with tagged testtypes.InterfaceB: argument not found")
+		assert.EqualError(t, err, "new container: with service func() testtypes.InterfaceA: with tagged testtypes.InterfaceB: parameter not found")
 	})
 
 	t.Run("value with tagged", func(t *testing.T) {
@@ -108,7 +108,7 @@ func Test_NewContainer(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "new container: with service func() testtypes.InterfaceA: with tagged testtypes.InterfaceB: argument not found")
+		assert.EqualError(t, err, "new container: with service func() testtypes.InterfaceA: with tagged testtypes.InterfaceB: parameter not found")
 	})
 
 	t.Run("with close func not assingable", func(t *testing.T) {
@@ -175,7 +175,7 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "new container: with decorator: decorateFunc is nil")
 	})
 
-	t.Run("with decorator function with no service argument", func(t *testing.T) {
+	t.Run("with decorator function with no service parameter", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 			di.WithDecorator(func() testtypes.InterfaceA { return nil }),
@@ -183,7 +183,64 @@ func Test_NewContainer(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "new container: with decorator func() testtypes.InterfaceA: function must have a Service argument")
+		assert.EqualError(t, err, "new container: with decorator func() testtypes.InterfaceA: function must have a Service parameter")
+	})
+
+	t.Run("with decorator invalid di.Lifetime", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithDecorator(di.Singleton),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with decorator di.Lifetime: invalid decorator type")
+	})
+
+	t.Run("with decorator invalid di.As", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithDecorator(di.As[testtypes.InterfaceA]()),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with decorator di.serviceOption: invalid decorator type")
+	})
+
+	t.Run("with decorator invalid func", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithDecorator(func(testtypes.InterfaceA) {}),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with decorator func(testtypes.InterfaceA): function must return Service")
+	})
+
+	t.Run("with decorator invalid func return", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithDecorator(func(testtypes.InterfaceA) error { return nil }),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with decorator func(testtypes.InterfaceA) error: invalid service type")
+	})
+
+	t.Run("with decorator with tagged not found", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithDecorator(func(testtypes.InterfaceA) testtypes.InterfaceA {
+				return nil
+			}, di.WithTagged[testtypes.InterfaceB]("tag")),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with decorator func(testtypes.InterfaceA) testtypes.InterfaceA: with tagged testtypes.InterfaceB: parameter not found")
 	})
 }
 
@@ -234,7 +291,7 @@ func Test_Container_NewScope(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, scope)
-		assert.EqualError(t, err, "new scope: with service di.Lifetime: unexpected ServiceOption as funcOrValue")
+		assert.EqualError(t, err, "new scope: with service di.Lifetime: invalid service type")
 	})
 
 	t.Run("parent closed", func(t *testing.T) {

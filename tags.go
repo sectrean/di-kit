@@ -99,7 +99,7 @@ func (o depTagOption) applyDeps(deps []serviceKey) error {
 			return nil
 		}
 	}
-	return errors.Errorf("with tagged %s: argument not found", o.t)
+	return errors.Errorf("with tagged %s: parameter not found", o.t)
 }
 
 func (o depTagOption) applyService(sr serviceRegistration) error {

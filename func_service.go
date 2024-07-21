@@ -149,5 +149,5 @@ func (s *funcService) SetCloserFactory(cf closerFactory) {
 	s.closerFactory = cf
 }
 
-var _ service = &funcService{}
-var _ serviceRegistration = &funcService{}
+var _ service = (*funcService)(nil)
+var _ serviceRegistration = (*funcService)(nil)

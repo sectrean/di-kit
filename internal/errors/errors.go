@@ -15,8 +15,8 @@ func New(msg string) error {
 }
 
 // Errorf returns an error with the given message.
-func Errorf(format string, args ...any) error {
-	return fmt.Errorf(format, args...)
+func Errorf(format string, a ...any) error {
+	return fmt.Errorf(format, a...)
 }
 
 // Wrap returns an error with the given message and wraps the original error.
@@ -33,10 +33,10 @@ func Wrap(err error, msg string) error {
 // Wrapf returns an error with a formatted message and wraps the original error.
 //
 // Returns nil if the original error is nil.
-func Wrapf(err error, msg string, args ...any) error {
+func Wrapf(err error, format string, a ...any) error {
 	if err == nil {
 		return nil
 	}
 
-	return fmt.Errorf("%s: %w", fmt.Sprintf(msg, args...), err)
+	return fmt.Errorf("%s: %w", fmt.Sprintf(format, a...), err)
 }

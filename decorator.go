@@ -13,10 +13,6 @@ func WithDecorator(decorateFunc any, opts ...DecoratorOption) ContainerOption {
 			return errors.New("with decorator: decorateFunc is nil")
 		}
 
-		if _, ok := decorateFunc.(DecoratorOption); ok {
-			return errors.Errorf("with decorator %T: unexpected DecoratorOption as decorateFunc", decorateFunc)
-		}
-
 		d, err := newDecorator(decorateFunc, opts)
 		if err != nil {
 			return errors.Wrapf(err, "with decorator %T", decorateFunc)
@@ -39,12 +35,16 @@ func newDecorator(fn any, opts []DecoratorOption) (*decorator, error) {
 
 	// Validate fn is a function
 	if fnType.Kind() != reflect.Func {
-		return nil, errors.Errorf("expected function, got %T", fn)
+		return nil, errors.New("invalid decorator type")
+	}
+
+	if fnType.PkgPath() == typeScope.PkgPath() {
+		return nil, errors.New("invalid decorator type")
 	}
 
 	// Validate fn has one return value
 	if fnType.NumOut() != 1 {
-		return nil, errors.Errorf("function must return Service")
+		return nil, errors.New("function must return Service")
 	}
 
 	t := fnType.Out(0)
@@ -52,13 +52,13 @@ func newDecorator(fn any, opts []DecoratorOption) (*decorator, error) {
 		return nil, err
 	}
 
-	svcInArgs := false
+	svcInParams := false
 	deps := make([]serviceKey, fnType.NumIn())
 
 	for i := 0; i < fnType.NumIn(); i++ {
 		depType := fnType.In(i)
 		if depType == t {
-			svcInArgs = true
+			svcInParams = true
 		}
 
 		deps[i] = serviceKey{
@@ -66,8 +66,8 @@ func newDecorator(fn any, opts []DecoratorOption) (*decorator, error) {
 		}
 	}
 
-	if !svcInArgs {
-		return nil, errors.Errorf("function must have a Service argument")
+	if !svcInParams {
+		return nil, errors.Errorf("function must have a Service parameter")
 	}
 
 	key := serviceKey{
@@ -113,7 +113,7 @@ func (d *decorator) SetTag(tag any) error {
 		}
 	}
 
-	return errors.New("with tag: argument not found")
+	return errors.New("with tag: parameter not found")
 }
 
 func (d *decorator) Decorate(deps []reflect.Value) any {
