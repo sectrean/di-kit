@@ -114,10 +114,6 @@ func (c *Container) registerType(t reflect.Type, sr serviceRegistration) {
 }
 
 func (c *Container) registerDecorator(d *decorator) {
-	// We don't validate that the service is registered,
-	// because it could get registered in a child scope.
-	// If the service is never registered, the decorators will just never be used.
-
 	// Create this map lazily since decorators aren't always used
 	if c.decorators == nil {
 		c.decorators = make(map[serviceKey][]*decorator)

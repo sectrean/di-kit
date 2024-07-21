@@ -239,12 +239,9 @@ The `dihttp` package provides configurable HTTP middleware to create new child s
 ```go
 c, err := di.NewContainer(
 	di.WithService(logger),
-	// NewRequestService(*slog.Logger, *http.Request) *service.RequestService
-	di.WithService(service.NewRequestService, di.Scoped),
+	di.WithService(service.NewRequestService, di.Scoped), // NewRequestService(*slog.Logger, *http.Request) *service.RequestService
 )
 // ...
-
-scopeMiddleware := dihttp.RequestScopeMiddleware(c)
 
 var handler http.Handler
 handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -253,19 +250,22 @@ handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	svc, err := dicontext.Resolve[*service.RequestService](ctx)
 	// ...
 })
+
+// Create and apply the middleware
+scopeMiddleware := dihttp.RequestScopeMiddleware(c)
 handler = scopeMiddleware(handler)
 // ...
 ```
 
-## TODO
+## Feature Ideas
 
-- Get around dependency cycles by injecting `di.Lazy[Service any]`
+- Implement `di.Lazy[Service any]` to inject a lazily-resolvable service.
+	Can be used to avoid creation if service is never needed. Or to get around dependency cycles in a simpler way than injecting `di.Scope`.
 - Track child scopes to make sure all child scopes have been closed. 
 	What do we do in this case? Close the child container(s)? Return an error? 
 - Implement additional Container options:
 	- Validate services: make sure all types are resolvable, with no cycles.
 		(Will need to exclude scoped services in the root container since they may have dependencies registered in child scopes.) 
-
-- Support for `Shutdown` functions like `Closer`?
-- Enable error stacktraces optionally?
-- Logging with `slog`?
+- Automatically call `Shutdown` methods to close services.
+- Enable error stacktraces optionally.
+- Logging with `slog`.

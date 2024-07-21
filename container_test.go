@@ -17,6 +17,13 @@ import (
 	"github.com/johnrutherford/di-kit/internal/testtypes"
 )
 
+// TODO: Add tests for the following:
+// - dependencies on scoped services
+// - slices with scopes
+// - slices with scoped services
+// - decorators registered on child scopes
+// - decorator on parent scope with scoped dependency
+
 func Test_NewContainer(t *testing.T) {
 	t.Run("no options", func(t *testing.T) {
 		c, err := di.NewContainer()
@@ -56,7 +63,7 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "new container: with service: funcOrValue is nil")
 	})
 
-	t.Run("only options", func(t *testing.T) {
+	t.Run("invalid service type", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(di.Singleton, di.WithTag("tag")),
 		)
@@ -368,12 +375,28 @@ func Test_Container_Contains(t *testing.T) {
 func Test_Container_Resolve(t *testing.T) {
 	t.Run("value service", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA()),
+			di.WithService(&testtypes.StructA{}),
 		)
 		require.NoError(t, err)
 
 		ctx := context.Background()
 		got, err := di.Resolve[*testtypes.StructA](ctx, c)
+
+		assert.Equal(t, &testtypes.StructA{}, got)
+		assert.NoError(t, err)
+	})
+
+	t.Run("value service from child scope", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(&testtypes.StructA{}),
+		)
+		require.NoError(t, err)
+
+		scope, err := c.NewScope()
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[*testtypes.StructA](ctx, scope)
 
 		assert.Equal(t, &testtypes.StructA{}, got)
 		assert.NoError(t, err)
@@ -553,6 +576,35 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
+	t.Run("lifetime singleton from child scope", func(t *testing.T) {
+		calls := 0
+
+		c, err := di.NewContainer(
+			di.WithService(
+				func() testtypes.InterfaceA {
+					calls++
+					return &testtypes.StructA{}
+				},
+				di.Singleton,
+			),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		a1, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+		assert.Equal(t, a1, &testtypes.StructA{})
+		assert.NoError(t, err)
+		assert.Equal(t, 1, calls)
+
+		scope, err := c.NewScope()
+		require.NoError(t, err)
+
+		a2, err := di.Resolve[testtypes.InterfaceA](ctx, scope)
+		assert.Same(t, a1, a2)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, calls)
+	})
+
 	t.Run("lifetime transient", func(t *testing.T) {
 		calls := 0
 
@@ -670,9 +722,6 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Nil(t, b)
 		assert.EqualError(t, err, "resolve testtypes.InterfaceB: dependency testtypes.InterfaceA: scoped service must be resolved from a child scope")
 	})
-
-	// TODO: Add tests with dependencies on scoped services,
-	// slices with scopes, etc.
 
 	t.Run("slice service", func(t *testing.T) {
 		c, err := di.NewContainer(
@@ -1299,9 +1348,6 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 1, calls)
 	})
-
-	// TODO: Add tests for decorators with child scopes
-	// - decorator on parent scope with scoped dependency.
 
 	// Concurrent tests should be run with the -race flag to check for race conditions
 

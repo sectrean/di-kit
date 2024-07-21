@@ -7,6 +7,20 @@ import (
 )
 
 // WithDecorator registers a decorator function with a new Container.
+// A decorator is used to "decorate" or "wrap" a service.
+//
+// The decorator function must have a parameter for a Service and return Service.
+// The function may accept other parameters that will be resolved from the Container.
+// No additional return values are allowed.
+//
+// Decorator functions will be applied when the service is resolved.
+//
+// It is possible to register multiple decorators for a service.
+// The decorators will be applied in the order they were registered.
+//
+// This will not validate that the service is registered, because it could get registered in a child scope.
+// If a decorator is registered for a service, but the service is never registered,
+// the decorator will never be used.
 func WithDecorator(decorateFunc any, opts ...DecoratorOption) ContainerOption {
 	return newContainerOption(orderDecorator, func(c *Container) error {
 		if decorateFunc == nil {
