@@ -63,8 +63,8 @@ type tagOption struct {
 	tag any
 }
 
-func (o tagOption) applyService(sr serviceRegistration) error {
-	sr.SetTag(o.tag)
+func (o tagOption) applyServiceConfig(sc serviceConfig) error {
+	sc.SetTag(o.tag)
 	return nil
 }
 
@@ -102,8 +102,8 @@ func (o depTagOption) applyDeps(deps []serviceKey) error {
 	return errors.Errorf("with tagged %s: parameter not found", o.t)
 }
 
-func (o depTagOption) applyService(sr serviceRegistration) error {
-	return o.applyDeps(sr.Dependencies())
+func (o depTagOption) applyServiceConfig(sc serviceConfig) error {
+	return o.applyDeps(sc.Dependencies())
 }
 
 func (o depTagOption) applyDecorator(d *decorator) error {

@@ -57,19 +57,19 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 
 		t := reflect.TypeOf(funcOrValue)
 
-		var sr serviceRegistration
+		var sc serviceConfig
 		var err error
 		if t.Kind() == reflect.Func {
-			sr, err = newFuncService(c, funcOrValue, opts...)
+			sc, err = newFuncService(c, funcOrValue, opts...)
 		} else {
-			sr, err = newValueService(c, funcOrValue, opts...)
+			sc, err = newValueService(c, funcOrValue, opts...)
 		}
 
 		if err != nil {
 			return errors.Wrapf(err, "with service %T", funcOrValue)
 		}
 
-		c.register(sr)
+		c.register(sc)
 		return nil
 	})
 }
@@ -99,13 +99,13 @@ func validateServiceType(t reflect.Type) error {
 
 // ServiceOption is used to configure service registration calling [WithService].
 type ServiceOption interface {
-	applyService(serviceRegistration) error
+	applyServiceConfig(serviceConfig) error
 }
 
-type serviceOption func(serviceRegistration) error
+type serviceOption func(serviceConfig) error
 
-func (o serviceOption) applyService(sr serviceRegistration) error {
-	return o(sr)
+func (o serviceOption) applyServiceConfig(sc serviceConfig) error {
+	return o(sc)
 }
 
 // service provides information about a service and how to resolve it.
@@ -129,7 +129,8 @@ type service interface {
 	CloserFor(val any) Closer
 }
 
-type serviceRegistration interface {
+// serviceConfig provides information to register a service with a Container.
+type serviceConfig interface {
 	service
 
 	// Type returns the type of the service.

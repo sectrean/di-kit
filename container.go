@@ -57,7 +57,7 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 	return c, nil
 }
 
-func (c *Container) register(sr serviceRegistration) {
+func (c *Container) register(sc serviceConfig) {
 	// Child containers point to the same services map as the parent container initially.
 	// If we're registering new services in the child container,
 	// we need to clone the parent map first.
@@ -65,37 +65,37 @@ func (c *Container) register(sr serviceRegistration) {
 		c.services = maps.Clone(c.parent.services)
 	}
 
-	if len(sr.Aliases()) == 0 {
-		c.registerType(sr.Type(), sr)
+	if len(sc.Aliases()) == 0 {
+		c.registerType(sc.Type(), sc)
 	} else {
-		for _, alias := range sr.Aliases() {
-			c.registerType(alias, sr)
+		for _, alias := range sc.Aliases() {
+			c.registerType(alias, sc)
 		}
 	}
 
 	// Pre-resolve value services and add closer
 	// We don't need to take locks here because this is only called when creating a new Container
-	if vs, ok := sr.(*valueService); ok {
-		c.resolved[sr.Key()] = resolveResult{val: vs.val}
+	if vs, ok := sc.(*valueService); ok {
+		c.resolved[sc.Key()] = resolveResult{val: vs.val}
 
-		if closer := sr.CloserFor(vs.val); closer != nil {
+		if closer := sc.CloserFor(vs.val); closer != nil {
 			c.closers = append(c.closers, closer)
 		}
 	}
 }
 
-func (c *Container) registerType(t reflect.Type, sr serviceRegistration) {
+func (c *Container) registerType(t reflect.Type, sc serviceConfig) {
 	// The last service registered for a type will win
 	key := serviceKey{Type: t}
-	c.services[key] = sr
+	c.services[key] = sc
 
 	// Register the service with a tag if it has one
-	if sr.Tag() != nil {
+	if sc.Tag() != nil {
 		keyWithTag := serviceKey{
 			Type: t,
-			Tag:  sr.Tag(),
+			Tag:  sc.Tag(),
 		}
-		c.services[keyWithTag] = sr
+		c.services[keyWithTag] = sc
 	}
 
 	// Add the service to a slice service
@@ -107,7 +107,7 @@ func (c *Container) registerType(t reflect.Type, sr serviceRegistration) {
 	}
 
 	itemKey := sliceSvc.NextItemKey()
-	c.services[itemKey] = sr
+	c.services[itemKey] = sc
 }
 
 func (c *Container) registerDecorator(d *decorator) {

@@ -29,7 +29,7 @@ func newValueService(scope *Container, val any, opts ...ServiceOption) (*valueSe
 	}
 
 	err := applyOptions(opts, func(opt ServiceOption) error {
-		return opt.applyService(svc)
+		return opt.applyServiceConfig(svc)
 	})
 	if err != nil {
 		return nil, err
@@ -102,4 +102,4 @@ func (s *valueService) New(deps []reflect.Value) (any, error) {
 }
 
 var _ service = (*valueService)(nil)
-var _ serviceRegistration = (*valueService)(nil)
+var _ serviceConfig = (*valueService)(nil)

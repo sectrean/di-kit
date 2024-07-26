@@ -54,7 +54,7 @@ func newFuncService(scope *Container, fn any, opts ...ServiceOption) (*funcServi
 	}
 
 	err := applyOptions(opts, func(opt ServiceOption) error {
-		return opt.applyService(svc)
+		return opt.applyServiceConfig(svc)
 	})
 	if err != nil {
 		return nil, err
@@ -146,4 +146,4 @@ func (s *funcService) SetCloserFactory(cf closerFactory) {
 }
 
 var _ service = (*funcService)(nil)
-var _ serviceRegistration = (*funcService)(nil)
+var _ serviceConfig = (*funcService)(nil)
