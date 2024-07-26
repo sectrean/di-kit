@@ -23,6 +23,23 @@ func Test_Invoke(t *testing.T) {
 		assert.EqualError(t, err, "invoke int: fn must be a function")
 	})
 
+	t.Run("dependency nil", func(t *testing.T) {
+		calls := 0
+
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA { return nil }),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		err = di.Invoke(ctx, c, func(a testtypes.InterfaceA) {
+			assert.Nil(t, a)
+			calls++
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, 1, calls)
+	})
+
 	t.Run("one param", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
@@ -54,6 +71,19 @@ func Test_Invoke(t *testing.T) {
 		LogError(t, err)
 
 		assert.EqualError(t, err, "test invoke error")
+	})
+
+	t.Run("return nil error", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		err = di.Invoke(ctx, c, func(testtypes.InterfaceA) error {
+			return nil
+		})
+		assert.NoError(t, err)
 	})
 
 	t.Run("resolve error", func(t *testing.T) {

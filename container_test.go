@@ -1640,6 +1640,45 @@ func Test_Container_Close(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("dependency sequence", func(t *testing.T) {
+		calls := 0
+		ctx := context.Background()
+
+		aMock := mocks.NewInterfaceAMock(t)
+		aMock.EXPECT().
+			Close(ctx).
+			RunAndReturn(func(context.Context) error {
+				assert.Equal(t, 1, calls, "a should be closed after b")
+				calls++
+				return nil
+			}).
+			Once()
+		bMock := mocks.NewInterfaceBMock(t)
+		bMock.EXPECT().
+			Close(ctx).
+			Run(func(context.Context) {
+				assert.Equal(t, 0, calls, "b should be closed before a")
+				calls++
+			}).
+			Once()
+
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA { return aMock }),
+			di.WithService(func(testtypes.InterfaceA) testtypes.InterfaceB { return bMock }),
+		)
+		require.NoError(t, err)
+
+		b, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+		assert.NotNil(t, b)
+		assert.NoError(t, err)
+
+		// b doesn't have any dependencies so it should get closed first
+
+		err = c.Close(ctx)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, calls)
+	})
+
 	t.Run("func not resolved", func(t *testing.T) {
 		aMock := mocks.NewInterfaceAMock(t)
 

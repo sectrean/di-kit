@@ -53,10 +53,10 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 			depVal, depErr = s.Resolve(ctx, dep.Type)
 		}
 
-		in[i] = reflect.ValueOf(depVal)
 		if depErr != nil {
 			return errors.Wrapf(depErr, "invoke %T", fn)
 		}
+		in[i] = safeVal(dep.Type, depVal)
 	}
 
 	// Check for a context error before we invoke the function
