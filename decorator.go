@@ -84,24 +84,19 @@ func newDecorator(fn any, opts []DecoratorOption) (*decorator, error) {
 		return nil, errors.Errorf("function must have a Service parameter")
 	}
 
-	key := serviceKey{
-		Type: t,
-	}
-
 	d := &decorator{
-		key:  key,
+		key: serviceKey{
+			Type: t,
+		},
 		deps: deps,
 		fn:   reflect.ValueOf(fn),
 	}
 
-	var errs errors.MultiError
-	for _, opt := range opts {
-		err := opt.applyDecorator(d)
-		errs = errs.Append(err)
-	}
-
-	if len(errs) > 0 {
-		return nil, errs.Join()
+	err := applyOptions(opts, func(opt DecoratorOption) error {
+		return opt.applyDecorator(d)
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return d, nil

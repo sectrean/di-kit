@@ -42,18 +42,15 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 	}
 
 	// Sort options by precedence
+	// Decorators should be registered after services
 	slices.SortStableFunc(opts, func(a, b ContainerOption) int {
 		return cmp.Compare(a.order(), b.order())
 	})
 
-	// Apply options
-	var errs errors.MultiError
-	for _, opt := range opts {
-		err := opt.applyContainer(c)
-		errs = errs.Append(err)
-	}
-
-	if err := errs.Join(); err != nil {
+	err := applyOptions(opts, func(opt ContainerOption) error {
+		return opt.applyContainer(c)
+	})
+	if err != nil {
 		return nil, errors.Wrap(err, "new container")
 	}
 
@@ -146,14 +143,10 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 		resolved: make(map[serviceKey]resolveResult),
 	}
 
-	// Apply options
-	var errs errors.MultiError
-	for _, opt := range opts {
-		err := opt.applyContainer(scope)
-		errs = errs.Append(err)
-	}
-
-	if err := errs.Join(); err != nil {
+	err := applyOptions(opts, func(opt ContainerOption) error {
+		return opt.applyContainer(scope)
+	})
+	if err != nil {
 		return nil, errors.Wrap(err, "new scope")
 	}
 
@@ -383,14 +376,17 @@ func (c *Container) Close(ctx context.Context) error {
 	}
 	c.closed = true
 
-	// Close services in reverse order
-	var errs errors.MultiError
+	// Close services in LIFO order
+	// This is important because of dependencies
+	var errs []error
 	for i := len(c.closers) - 1; i >= 0; i-- {
 		err := c.closers[i].Close(ctx)
-		errs = errs.Append(err)
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
 
-	if err := errs.Join(); err != nil {
+	if err := errors.Join(errs...); err != nil {
 		return errors.Wrap(err, "close")
 	}
 

@@ -21,7 +21,7 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 		return errors.Errorf("invoke %T: fn must be a function", fn)
 	}
 
-	config := invokeConfig{
+	config := &invokeConfig{
 		fn: fnVal,
 	}
 
@@ -30,14 +30,10 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 		config.deps = append(config.deps, serviceKey{Type: paramType})
 	}
 
-	// Apply any options
-	var errs errors.MultiError
-	for _, opt := range opts {
-		err := opt.applyInvokeConfig(&config)
-		errs = errs.Append(err)
-	}
-
-	if err := errs.Join(); err != nil {
+	err := applyOptions(opts, func(opt InvokeOption) error {
+		return opt.applyInvokeConfig(config)
+	})
+	if err != nil {
 		return errors.Wrapf(err, "invoke %T", fn)
 	}
 

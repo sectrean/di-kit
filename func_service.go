@@ -53,15 +53,11 @@ func newFuncService(scope *Container, fn any, opts ...ServiceOption) (*funcServi
 		closerFactory: getCloser,
 	}
 
-	// Apply options
-	var errs errors.MultiError
-	for _, opt := range opts {
-		err := opt.applyService(svc)
-		errs = errs.Append(err)
-	}
-
-	if len(errs) > 0 {
-		return nil, errs.Join()
+	err := applyOptions(opts, func(opt ServiceOption) error {
+		return opt.applyService(svc)
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return svc, nil
