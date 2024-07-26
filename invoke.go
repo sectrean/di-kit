@@ -38,7 +38,6 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 	}
 
 	// Resolve deps from the Scope
-	// Stop at the first error
 	in := make([]reflect.Value, fnType.NumIn())
 	for i, dep := range config.deps {
 		var depVal any
@@ -54,6 +53,7 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 		}
 
 		if depErr != nil {
+			// Stop at the first error
 			return errors.Wrapf(depErr, "invoke %T", fn)
 		}
 		in[i] = safeVal(dep.Type, depVal)
@@ -67,7 +67,7 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 	// Invoke the function
 	out := fnVal.Call(in)
 
-	// See if the function returns an error
+	// Return the first error return value, if any
 	for i := 0; i < fnType.NumOut(); i++ {
 		if fnType.Out(i) == typeError {
 			err, _ := out[i].Interface().(error)

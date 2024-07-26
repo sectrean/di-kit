@@ -23,6 +23,9 @@ import (
 // - slices with scoped services
 // - decorators registered on child scopes
 // - decorator on parent scope with scoped dependency
+// - more tests around the resolve locking
+// - tests around the close locking
+// - nested joined errors--multiple errors from multiple service options
 
 func Test_NewContainer(t *testing.T) {
 	t.Run("no options", func(t *testing.T) {
