@@ -9,9 +9,9 @@ It's designed to be easy-to-use, lightweight, and full-featured.
 
 ## Usage
 
-1. Create the `Container` and register your *services* using values and constructor functions.
+1. Create the `Container` and register *services* using values and constructor functions.
 2. Resolve *services* by type from the `Container`.
-3. Close the `Container` and *services* when you're done.
+3. Close the `Container` when you're done. The container will `Close` any services it created.
 
 ```go
 // 1. Create the Container and register services using values and constructor functions.
@@ -23,7 +23,8 @@ c, err := di.NewContainer(
 // ...
 
 defer func() {
-	// 3. Close the Container and services when you're done.
+	// 3. Close the Container when you're done. 
+	// The container will Close any services it created.
 	err := c.Close(ctx)
 	// ...
 }()
@@ -46,11 +47,13 @@ go get github.com/johnrutherford/di-kit
 
 Use `di.WithService()` to register services with either a value or a constructor function.
 
-The function may accept any number and type of parameters which must also be registered with the `Container`. The service will be registered as the function return type, and may also return an `error`.
+Constructor functions may accept any number and type of parameters. These parameters will also be resolved from the `Container` and injected into the function. The function must return a service and may optionally return an error. The service is registered as the return type of the function. 
 
 ### Resolving Services
 
+Services are resolved from the `Container` by calling `Resolve` with a type. Function services are resolved by first resolving parameters and then calling the registered function. The service (and error, optionally) will be returned by `Resolve`.
 
+If a requested service is not registered with the `Container`, or a dependency cycle is detected, an error will be returned.
 
 ### Closing Services
 
@@ -113,9 +116,26 @@ c, err := di.NewContainer(
 )
 ```
 
+### Slice Services
+
+If you register multiple services as the same type, you can inject all of them as a slice, or a variadic parameter.
+
+```go
+c, err := di.NewContainer(
+	di.WithService(storage.NewDBStore, di.As[storage.Store](),
+		di.As[Healthchecker](),
+	),
+	di.WithService(cache.NewRedisCache, di.As[cache.Cache](),
+		di.As[Healthchecker](),
+	),
+	// All services registered as Healthchecker will be resolved and injected as a slice
+	di.WithService(NewHealthcheckHandler), // NewHealthHandler([]Healtchecker) HealthHandler
+)
+```
+
 ### Tagged Services
 
-Use `di.WithTag()` when registering a service to differentiate between different services of the same type.
+If you want to register multiple services as the same type, but be able to differentiate them when resolving, use `di.WithTag()` when registering the service.
 
 Use `di.WithTagged[Dependency]()` when registering a dependent service to specify a tag for a dependency.
 
@@ -142,14 +162,6 @@ Use `di.WithTag()` to specify a tag when resolving a service directly from a con
 primary, err := di.Resolve[*db.DB](ctx, c, di.WithTag(db.Primary)) 
 ```
 
-### Slice Services
-
-If you register multiple services of the same type, you can resolve a slice.
-
-- Inject slice
-- Variadic args
-- Use for things like Healthchecks
-
 ### Lifetimes
 
 Lifetimes control how function services are created:
@@ -169,7 +181,7 @@ c, err := di.NewContainer(
 
 ### Scopes
 
-Scopes are useful...
+You can create new Containers with child scopes. Scoped dependencies can be resolved from a child scope. 
 
 ```go
 c, err := di.NewContainer(
@@ -177,17 +189,44 @@ c, err := di.NewContainer(
 	di.WithService(service.NewService),
 	di.WithService(service.NewScopedService, di.Scoped),
 )
-```
 
-Create a new Container with a child scope:
-
-```go
 scope, err := c.NewScope()
 // ...
 
 // Don't forget to Close the scope when you're done
 defer func() {
 	err := scope.Close(ctx)
+	// ...
+}
+```
+
+New services can also be registered when creating a child scope. These new services are isolated from the parent or sibling Containers.
+
+```go
+scope, err := c.NewScope(
+	di.WithService(requestService),
+)
+```
+
+### Special Services
+
+A couple services are provided directly by the container and cannot be registered.
+
+`context.Context` - When a service is resolved, the `Context` passed into `Resolve` will be injected into constructor functions as a dependency. You should avoid resolving resolving Singleton services from a request-scoped Context that may be canceled. 
+
+`di.Scope` - The current `Container` can be injected into a service as `di.Scope`. This allows a service to resolve other services. The scope must be stored and only used *after* the constructor function returns.
+
+```go
+func NewWidgetFactory(scope di.Scope) *WidgetFactory {
+	return &WidgetFactory{scope}
+}
+
+type WidgetFactory struct {
+	scope di.Scope
+}
+
+func (f *WidgetFactory) BuildWidget(color, shape string) *Widget {
+	// Use f.scope to resolve dependencies need to create *Widget
 	// ...
 }
 ```
@@ -263,6 +302,7 @@ handler = scopeMiddleware(handler)
 	Can be used to avoid creation if service is never needed. Or to get around dependency cycles in a simpler way than injecting `di.Scope`.
 - Track child scopes to make sure all child scopes have been closed. 
 	What do we do in this case? Close the child container(s)? Return an error? 
+- Allow retrying `Resolve` if an error was returned. Normally the first error would be cached for singleton or scoped dependencies. Subsequent attempts to resolve the service will return the error. However, there may be some cases where you would want to be able to retry the constructor function.
 - Implement additional Container options:
 	- Validate services: make sure all types are resolvable, with no cycles.
 		(Will need to exclude scoped services in the root container since they may have dependencies registered in child scopes.) 
