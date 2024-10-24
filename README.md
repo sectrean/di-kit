@@ -212,7 +212,7 @@ scope, err := c.NewScope(
 
 A couple services are provided directly by the container and cannot be registered.
 
-`context.Context` - When a service is resolved, the `Context` passed into `Resolve` will be injected into constructor functions as a dependency. You should avoid resolving resolving Singleton services from a request-scoped Context that may be canceled. 
+`context.Context` - When a service is resolved, the context passed into `Resolve` will be injected into constructor functions as a dependency. You should avoid resolving resolving Singleton services from a request-scoped context that may be canceled. 
 
 `di.Scope` - The current `Container` can be injected into a service as `di.Scope`. This allows a service to resolve other services. The scope must be stored and only used *after* the constructor function returns.
 

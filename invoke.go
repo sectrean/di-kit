@@ -68,6 +68,7 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 	out := fnVal.Call(in)
 
 	// Return the first error return value, if any
+	// Don't wrap the error, return it as-is
 	for i := 0; i < fnType.NumOut(); i++ {
 		if fnType.Out(i) == typeError {
 			err, _ := out[i].Interface().(error)
@@ -79,6 +80,9 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 }
 
 // InvokeOption is used to configure the behavior of Invoke.
+//
+// Available options:
+//   - WithTagged
 type InvokeOption interface {
 	applyInvokeConfig(*invokeConfig) error
 }
