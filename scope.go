@@ -24,16 +24,16 @@ import (
 //	}
 //
 //	func NewDBFactory(scope di.Scope) *DBFactory {
-//		return &DBFactory{scope: scope}
+//		return &DBFactory{scope}
 //	}
 //
-//	func (f *DBFactory) NewDB(string dbName) *DB {
+//	func (f *DBFactory) NewDB(ctx context.Context, dbName string) *DB {
 //		// Use the Scope to resolve dependencies...
 //	}
 //
 // Scope is implemented by *Container.
 type Scope interface {
-	// Contains returns whether the Scope can resolve a service of the given type.
+	// Contains returns true if the Scope can resolve a service of the given type.
 	//
 	// Available options:
 	// 	- [WithTag] specifies the tag associated with the service.
@@ -84,10 +84,9 @@ func newInjectedScope(s Scope, key serviceKey) (*injectedScope, func()) {
 // injectedScope wraps a Container to be injected as a Scope dependency.
 // This is used to prevent the Scope from being used until the constructor function has returned.
 // Otherwise a dependency cycle is possible.
-//
-// This also makes it so Close cannot be called on the injected Container.
 type injectedScope struct {
 	scope Scope
+
 	// key is the service the Scope is getting injected into
 	key   serviceKey
 	ready bool

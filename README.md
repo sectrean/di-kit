@@ -41,33 +41,93 @@ svc, err := di.Resolve[*service.Service](ctx, c)
 ```shell
 go get github.com/johnrutherford/di-kit
 ```
-*Requires Go 1.22+.*
+*Requires Go 1.22 or higher*
 
-### Registering Services
+### Create the Container
 
-Use `di.WithService()` to register services with either a value or a constructor function.
+Use `NewContainer` on application startup to create a `Container`. Register services using `di.WithService()` [functional options](https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis) with a *value* or *constructor function*.
 
-Constructor functions may accept any number and type of parameters. These parameters will also be resolved from the `Container` and injected into the function. The function must return a service and may optionally return an error. The service is registered as the return type of the function. 
+A *value* can be a struct or a pointer. When the value type is requested from the `Container`, this value will be returned. The *value service* will be registered as the value's actual type, even if the variable is declared as an interface.
 
-### Resolving Services
+A *constructor function* may accept any parameters. The function must return a service, and may also return an error. When the service is requested from the `Container`, the function is called with the parameters resolved from the container. The *function service* will be registered as the function's return type, which can be a struct, pointer, or interface type.
 
-Services are resolved from the `Container` by calling `Resolve` with a type. Function services are resolved by first resolving parameters and then calling the registered function. The service (and error, optionally) will be returned by `Resolve`.
+```go
+logger := slog.New(/*...*/)
 
-If a requested service is not registered with the `Container`, or a dependency cycle is detected, an error will be returned.
+c, err := di.NewContainer(
+	// Value service registered as *slog.Logger 
+	di.WithService(logger),
+	// Function service registered as storage.Store
+	di.WithService(storage.NewDBStore), // NewDBStore(context.Context) (storage.Store, error)
+	// Function service registered as *service.Service
+	di.WithService(service.NewService), // NewService(*slog.Logger, storage.Store) *service.Service
+)
+```
 
-### Closing Services
+Any errors from registering services will be [joined](https://pkg.go.dev/errors#Join) together.
 
-Services often need to do some clean up when they're done being used.
-The `Container` can be responsible for closing services when the `Container` is closed.
+### Resolve services
 
-By default, services that the `Container` *creates* (registered with a function, not value) will automatically be closed if they implement one the following `Close` method signatures:
+Use `Resolve` to get a service from the `Container` by type. If a requested service is not registered with the `Container`, or a dependency cycle is detected, an error will be returned.
+
+```go
+svc, _ := di.Resolve[*service.Service](ctx, c)
+svc.Run(ctx)
+```
+
+Use `Invoke` to invoke a function using parameters resolved from the `Container`.
+
+```go
+// var c *di.Container
+err = di.Invoke(ctx, c, runService)
+```
+```go
+func runService(ctx context.Context, svc *service.Service) error {
+	err := svc.Start(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Wait ...
+
+	return svc.Stop(ctx)	
+}
+```
+
+### Close the Container
+
+Services often need to do some clean up when they're done being used. The `Container` can handle this for registered services.
+
+On application shutdown, use `Container.Close` to clean up services. By default, the `Container` will call a `Close` method on all services that is has created. Any errors returned from closing services will be [joined](https://pkg.go.dev/errors#Join) together.
+See [Closing](#closing) for more.
+
+## Features
+
+### Aliases
+
+Use the `di.As[Service]()` option to register a service as the specified type.
+This can be used to override the service type and register as another (assignable) type.
+
+```go
+c, err := di.NewContainer(
+	// ...
+	di.WithService(service.NewService,	// Function returns *service.Service
+		di.As[service.Interface](),	// Register as interface type
+		di.As[*service.Service](),	// Also register as pointer type
+	),
+)
+```
+
+### Closing
+
+By default, *function services* are closed with the `Container` if they implement one the following `Close` method signatures:
 
 - `Close(context.Context) error`
 - `Close(context.Context)`
 - `Close() error`
 - `Close()`
 
-This behavior can be disabled using the `di.IgnoreClose()` option:
+The default behavior can be disabled using the `di.IgnoreClose()` option when registering the service:
 
 ```go
 c, err := di.NewContainer(
@@ -80,7 +140,9 @@ c, err := di.NewContainer(
 // ...
 
 svc := di.MustResolve[*service.Service](ctx, c)
-// We want to close it manually
+svc.Run(ctx)
+
+// We want to close this service manually
 defer svc.Close(ctx)
 ```
 
@@ -97,24 +159,7 @@ c, err := di.NewContainer(
 )
 ```
 
-Value services are not closed by default since they are not created by the Container. If you want to have the Container close the value service, use the `di.WithClose()` option to call a supported `Close` method. Or use the `di.WithCloseFunc()` option to specify a custom close function.
-
-## Features
-
-### Aliases
-
-Use the `di.As[Service]()` option to register a service as the specified type.
-This can be used to register a service as as an interface. The alias type must be assignable to the service type.
-
-```go
-c, err := di.NewContainer(
-	// ...
-	di.WithService(service.NewService,	// returns *service.Service
-		di.As[service.Interface](),	// register as interface
-		di.As[*service.Service](),	// also register as actual type
-	),
-)
-```
+*Value services* are not closed by default since they are not created by the `Container`. If you want to have the `Container` close a value service, use the `di.WithClose()` option to call a supported `Close` method. Or use the `di.WithCloseFunc()` option to specify a custom close function.
 
 ### Slice Services
 
@@ -217,17 +262,16 @@ A couple services are provided directly by the container and cannot be registere
 `di.Scope` - The current `Container` can be injected into a service as `di.Scope`. This allows a service to resolve other services. The scope must be stored and only used *after* the constructor function returns.
 
 ```go
-func NewWidgetFactory(scope di.Scope) *WidgetFactory {
-	return &WidgetFactory{scope}
+func NewDBFactory(scope di.Scope) *DBFactory {
+	return &DBFactory{scope}
 }
 
-type WidgetFactory struct {
+type DBFactory struct {
 	scope di.Scope
 }
 
-func (f *WidgetFactory) BuildWidget(color, shape string) *Widget {
-	// Use f.scope to resolve dependencies need to create *Widget
-	// ...
+func (f *DBFactory) NewDB(ctx context.Context, dbName string) *DB {
+	// Use f.scope to resolve dependencies needed to create a *DB...
 }
 ```
 
@@ -253,27 +297,29 @@ If you register multiple decorators for a service, they will be applied in the o
 
 ## `dicontext`
 
-This package allows you to add a container scope to a `context.Context`.
+The `dicontext` package allows you to add a container scope to a `context.Context`.
 Then the scope can be retrieved from the context and used as a [service locator](https://en.wikipedia.org/wiki/Service_locator_pattern).
 
 ```go
-// Add container scope to context
+// Add container scope to the context
 ctx = dicontext.WithScope(ctx, c)
 ```
 
 ```go
 // Get container scope from the context
 scope := dicontext.Scope(ctx)
+// Resolve from the scope
+svc, err := di.Resolve[*service.Service](ctx, scope)
 ```
 
 ```go
-// Resolve from the scope on the context
+// Or, resolve directly from the scope on the context
 svc, err := dicontext.Resolve[*service.Service](ctx)
 ```
 
 ## `dihttp`
 
-The `dihttp` package provides configurable HTTP middleware to create new child scopes for each request.
+The `dihttp` package provides configurable `net/http` middleware to create new child scopes for each request.
 
 ```go
 c, err := di.NewContainer(

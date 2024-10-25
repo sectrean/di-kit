@@ -14,9 +14,9 @@ import (
 // Example:
 //
 //	c, err := di.NewContainer(
-//		di.WithService(service.NewService,	// returns *service.Service
-//			di.As[service.Interface](),	// register as interface
-//			di.As[*service.Service](),	// also register as actual type
+//		di.WithService(service.NewService,	// Function returns *service.Service
+//			di.As[service.Interface](),	// Register as interface type
+//			di.As[*service.Service](),	// Also register as pointer type
 //		),
 //		// ...
 //	)

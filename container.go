@@ -14,8 +14,7 @@ import (
 // Container is a dependency injection container.
 // It is used to resolve services by first resolving their dependencies.
 type Container struct {
-	parent *Container
-
+	parent     *Container
 	services   map[serviceKey]service
 	decorators map[serviceKey][]*decorator
 
@@ -35,6 +34,7 @@ var _ Scope = (*Container)(nil)
 //
 // Available options:
 //   - [WithService] registers a service with a value or a function.
+//   - [WithDecorator] registers a decorator function.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		services: make(map[serviceKey]service),
@@ -42,7 +42,8 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 	}
 
 	// Sort options by precedence
-	// Decorators should be registered after services
+	// Decorators must be registered after all services
+	// Use stable sort because the registration order of services and decorators matters
 	slices.SortStableFunc(opts, func(a, b ContainerOption) int {
 		return cmp.Compare(a.order(), b.order())
 	})
