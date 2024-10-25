@@ -116,8 +116,6 @@ func (c *Container) registerDecorator(d *decorator) {
 		c.decorators = make(map[serviceKey][]*decorator)
 	}
 
-	// TODO: Implement decorators registered with a child scope or return an error
-
 	c.decorators[d.Key()] = append(c.decorators[d.Key()], d)
 }
 

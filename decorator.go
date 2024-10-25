@@ -27,6 +27,10 @@ func WithDecorator(decorateFunc any, opts ...DecoratorOption) ContainerOption {
 			return errors.New("with decorator: decorateFunc is nil")
 		}
 
+		if c.parent != nil {
+			return errors.New("decorators cannot be registered with a child scope")
+		}
+
 		d, err := newDecorator(decorateFunc, opts)
 		if err != nil {
 			return errors.Wrapf(err, "with decorator %T", decorateFunc)
