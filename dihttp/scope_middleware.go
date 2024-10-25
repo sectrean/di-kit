@@ -20,17 +20,17 @@ import (
 //   - WithNewScopeErrorHandler: Set the error handler for when there is an error creating a new scope.
 //   - WithScopeCloseErrorHandler: Set the error handler for when there is an error closing the scope.
 func RequestScopeMiddleware(c *di.Container, opts ...ScopeMiddlewareOption) func(http.Handler) http.Handler {
-	mw := &scopeMiddleware{
-		c:               c,
-		newScopeHandler: defaultNewScopeErrorHandler,
-		closeHandler:    defaultScopeCloseErrorHandler,
-	}
-	for _, opt := range opts {
-		opt.applyScopeMiddleware(mw)
-	}
-
 	return func(next http.Handler) http.Handler {
-		mw.next = next
+		mw := &scopeMiddleware{
+			c:               c,
+			newScopeHandler: defaultNewScopeErrorHandler,
+			closeHandler:    defaultScopeCloseErrorHandler,
+			next:            next,
+		}
+		for _, opt := range opts {
+			opt.applyScopeMiddleware(mw)
+		}
+
 		return mw
 	}
 }
@@ -38,11 +38,12 @@ func RequestScopeMiddleware(c *di.Container, opts ...ScopeMiddlewareOption) func
 // NewScopeErrorHandler is a function that writes an error response to the client.
 // This is called by the scope middleware when there is an error creating the [di.Container].
 //
-// The default handler logs the error to [slog.Default()] and writes a 500 Internal Server Error response.
-type NewScopeErrorHandler = func(w http.ResponseWriter, r *http.Request, err error)
+// The default handler logs the error to [slog.Default()] and writes a "500 Internal Server Error" response.
+type NewScopeErrorHandler = func(http.ResponseWriter, *http.Request, error)
 
 func defaultNewScopeErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
-	slog.ErrorContext(r.Context(), "error creating new HTTP request scope", "error", err)
+	slog.ErrorContext(r.Context(), "error creating new Container scope for HTTP request",
+		"error", err, "request", r)
 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 
@@ -50,10 +51,11 @@ func defaultNewScopeErrorHandler(w http.ResponseWriter, r *http.Request, err err
 // after the request has completed.
 //
 // The default handler logs the error to [slog.Default()].
-type ScopeCloseErrorHandler = func(r *http.Request, err error)
+type ScopeCloseErrorHandler = func(*http.Request, error)
 
 func defaultScopeCloseErrorHandler(r *http.Request, err error) {
-	slog.ErrorContext(r.Context(), "error closing HTTP request scope", "error", err)
+	slog.ErrorContext(r.Context(), "error closing Container scope for HTTP request",
+		"error", err, "request", r)
 }
 
 type scopeMiddleware struct {

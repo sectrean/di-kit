@@ -3,6 +3,7 @@ package dihttp_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/johnrutherford/di-kit"
@@ -25,23 +26,55 @@ func Test_RequestScopeMiddleware(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	middleware := dihttp.RequestScopeMiddleware(c)
-
 	var handler http.Handler
 	handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		b, err := dicontext.Resolve[testtypes.InterfaceB](r.Context())
+		ctx := r.Context()
+		b, err := dicontext.Resolve[testtypes.InterfaceB](ctx)
 		assert.NotNil(t, b)
+		assert.NoError(t, err)
+
+		c, err := dicontext.Resolve[testtypes.InterfaceC](ctx)
+		assert.NotNil(t, c)
+		assert.NoError(t, err)
+
+		req, err := dicontext.Resolve[*http.Request](ctx)
+		assert.NotNil(t, req)
 		assert.NoError(t, err)
 
 		w.WriteHeader(http.StatusOK)
 	})
+
+	middleware := dihttp.RequestScopeMiddleware(c,
+		dihttp.WithContainerOptions(
+			di.WithService(testtypes.NewInterfaceC),
+		),
+	)
 	handler = middleware(handler)
 
-	res := httptest.NewRecorder()
-	req, err := http.NewRequest(http.MethodGet, "/", nil)
-	require.NoError(t, err)
+	testRequest := func(t *testing.T) {
+		res := httptest.NewRecorder()
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
 
-	handler.ServeHTTP(res, req)
+		handler.ServeHTTP(res, req)
+		assert.Equal(t, http.StatusOK, res.Code)
+	}
 
-	assert.Equal(t, http.StatusOK, res.Code)
+	t.Run("single request", testRequest)
+
+	t.Run("concurrent requests", func(t *testing.T) {
+		const count = 20
+
+		wg := sync.WaitGroup{}
+		wg.Add(count)
+
+		for i := 0; i < count; i++ {
+			go func() {
+				testRequest(t)
+				wg.Done()
+			}()
+		}
+
+		wg.Wait()
+	})
 }
