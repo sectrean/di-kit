@@ -11,7 +11,7 @@ It's designed to be easy-to-use, lightweight, and full-featured.
 
 1. Create the `Container` and register *services* using values and constructor functions.
 2. Resolve *services* by type from the `Container`.
-3. Close the `Container` when you're done. The container will `Close` any services it created.
+3. Close the `Container` when you're done. The container will call `Close` on any services it created.
 
 ```go
 // 1. Create the Container and register services using values and constructor functions.
@@ -24,7 +24,7 @@ c, err := di.NewContainer(
 
 defer func() {
 	// 3. Close the Container when you're done. 
-	// The container will Close any services it created.
+	// The container will call Close on any services it created.
 	err := c.Close(ctx)
 	// ...
 }()
@@ -47,9 +47,9 @@ go get github.com/johnrutherford/di-kit
 
 Use `NewContainer` on application startup to create a `Container`. Register services using `di.WithService()` [functional options](https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis) with a *value* or *constructor function*.
 
-A *value* can be a struct or a pointer. When the value type is requested from the `Container`, this value will be returned. The *value service* will be registered as the value's actual type, even if the variable is declared as an interface.
+A *value* can be a struct or a pointer. When the value type is requested from the `Container`, this value will be returned. The service will be registered as the value's actual type, even if the variable is declared as an interface. A service registered with a value is referred to as a *value service*.
 
-A *constructor function* may accept any parameters. The function must return a service, and may also return an error. When the service is requested from the `Container`, the function is called with the parameters resolved from the container. The *function service* will be registered as the function's return type, which can be a struct, pointer, or interface type.
+A *constructor function* may accept any parameters. The function must return a service, and may also return an error. When the service is requested from the `Container`, the function is called with the parameters resolved from the container. The service will be registered as the function's return type, which can be a struct, pointer, or interface type. A service registered with a function is referred to as a *function service*.
 
 ```go
 logger := slog.New(/*...*/)
