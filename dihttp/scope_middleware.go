@@ -42,8 +42,11 @@ func RequestScopeMiddleware(c *di.Container, opts ...ScopeMiddlewareOption) func
 type NewScopeErrorHandler = func(http.ResponseWriter, *http.Request, error)
 
 func defaultNewScopeErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
-	slog.ErrorContext(r.Context(), "error creating new Container scope for HTTP request",
-		"error", err, "request", r)
+	slog.ErrorContext(r.Context(),
+		"error creating new Container scope for HTTP request",
+		"error", err,
+		"request", r,
+	)
 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 
@@ -54,8 +57,11 @@ func defaultNewScopeErrorHandler(w http.ResponseWriter, r *http.Request, err err
 type ScopeCloseErrorHandler = func(*http.Request, error)
 
 func defaultScopeCloseErrorHandler(r *http.Request, err error) {
-	slog.ErrorContext(r.Context(), "error closing Container scope for HTTP request",
-		"error", err, "request", r)
+	slog.ErrorContext(r.Context(),
+		"error closing Container scope for HTTP request",
+		"error", err,
+		"request", r,
+	)
 }
 
 type scopeMiddleware struct {
