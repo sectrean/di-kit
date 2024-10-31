@@ -18,7 +18,6 @@ import (
 )
 
 // TODO: Add tests for the following:
-// - don't support pointer to a basic type as a dependency
 // - dependencies on scoped services
 // - slices with scopes
 // - slices with scoped services
@@ -75,6 +74,26 @@ func Test_NewContainer(t *testing.T) {
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "new container: with service di.Lifetime: invalid service type")
+	})
+
+	t.Run("invalid service type pointer to invalid type", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(map[string]int{}),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with service map[string]int: invalid service type")
+	})
+
+	t.Run("invalid service type func returns pointer to invalid type", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func() *int { return nil }),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with service func() *int: invalid service type")
 	})
 
 	t.Run("func alias not assignable", func(t *testing.T) {

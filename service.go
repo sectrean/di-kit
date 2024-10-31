@@ -16,16 +16,18 @@ import (
 // The function may also accept a [context.Context] or [di.Scope].
 //
 // The function must return a service, or the service and an error.
-// The service will be registered as the return type of the function (struct, pointer, or interface).
+// The service will be registered as the return type of the function, which must be an interface,
+// a struct, or a pointer to an interface or struct.
 //
-// If the function returns an error, this error will be returned when the service is resolved, either directly or as a dependency.
+// If the function returns an error, this error will be returned when the service is resolved,
+// either directly or as a dependency.
 // If the function returns nil for the service, it will not be treated as an error.
 //
 // If the resolved service implements [Closer], or a compatible Close method signature,
 // it will be closed when the Container is closed.
 //
 // If a value is provided, it will be returned as the service when resolved.
-// The value can be a struct or pointer.
+// The value can be a struct or a pointer to a struct.
 // (It will be registered as the actual type even if the the variable was declared as an interface.)
 //
 // Available options:
@@ -87,10 +89,14 @@ func validateServiceType(t reflect.Type) error {
 	}
 
 	switch t.Kind() {
-	case reflect.Interface,
-		reflect.Ptr,
-		reflect.Struct:
+	case reflect.Struct, reflect.Interface:
 		return nil
+
+	case reflect.Ptr:
+		elemKind := t.Elem().Kind()
+		if elemKind == reflect.Struct || elemKind == reflect.Interface {
+			return nil
+		}
 	}
 
 	return errors.New("invalid service type")
