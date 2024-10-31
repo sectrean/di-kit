@@ -18,6 +18,7 @@ import (
 )
 
 // TODO: Add tests for the following:
+// - don't support pointer to a basic type as a dependency
 // - dependencies on scoped services
 // - slices with scopes
 // - slices with scoped services
@@ -251,6 +252,32 @@ func Test_NewContainer(t *testing.T) {
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "new container: with decorator func(testtypes.InterfaceA) testtypes.InterfaceA: with tagged testtypes.InterfaceB: parameter not found")
+	})
+
+	t.Run("with options", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithOptions([]di.ContainerOption{
+				di.WithService(testtypes.NewInterfaceA),
+				di.WithService(testtypes.NewInterfaceB),
+			}),
+			di.WithService(testtypes.NewInterfaceC),
+		)
+		assert.NotNil(t, c)
+		assert.NoError(t, err)
+	})
+
+	t.Run("with options error", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithOptions([]di.ContainerOption{
+				di.WithService(testtypes.NewInterfaceA),
+				di.WithService(nil),
+			}),
+			di.WithService(testtypes.NewInterfaceC),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with options: with service: funcOrValue is nil")
 	})
 }
 
@@ -1350,6 +1377,22 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NotNil(t, got)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("with options", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithOptions([]di.ContainerOption{
+				di.WithService(testtypes.NewInterfaceA),
+				di.WithService(testtypes.NewInterfaceB),
+			}),
+			di.WithService(testtypes.NewInterfaceC),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceC](ctx, c)
+		assert.NotNil(t, got)
+		assert.NoError(t, err)
 	})
 
 	// Concurrent tests should be run with the -race flag to check for race conditions
