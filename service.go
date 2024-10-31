@@ -40,13 +40,12 @@ import (
 //     This is the default for function services. Value services will not be closed by default.
 func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 	// Use a single WithService function for both function and value services
-	// because it's easier to use than separate functions.
-	//
+	// because it's a better UX.
 	// Examples:
 	// WithFunc(NewService) // Correct
-	// WithFunc(NewService()) // Wrong - easy mistake
+	// WithFunc(NewService()) // Easy mistake causes runtime error
 	// WithValue(NewService()) // Correct
-	// WithValue(NewService) // Wrong - easy mistake
+	// WithValue(NewService) // Easy mistake causes runtime error
 	// WithService(NewService) // This works as a func
 	// WithService(NewService()) // This works as a value
 

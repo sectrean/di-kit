@@ -168,13 +168,13 @@ If you register multiple services as the same type, you can inject all of them a
 ```go
 c, err := di.NewContainer(
 	di.WithService(storage.NewDBStore, di.As[storage.Store](),
-		di.As[Healthchecker](),
+		di.As[HealthChecker](),
 	),
 	di.WithService(cache.NewRedisCache, di.As[cache.Cache](),
-		di.As[Healthchecker](),
+		di.As[HealthChecker](),
 	),
-	// All services registered as Healthchecker will be resolved and injected as a slice
-	di.WithService(NewHealthcheckHandler), // NewHealthHandler([]Healtchecker) HealthHandler
+	// All services registered as HealthChecker will be resolved and injected as a slice
+	di.WithService(NewHealthHandler), // NewHealthHandler([]HealthChecker) *HealthHandler
 )
 ```
 
