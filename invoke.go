@@ -7,11 +7,11 @@ import (
 	"github.com/johnrutherford/di-kit/internal/errors"
 )
 
-// Invoke calls the given function with dependencies resolved from the provided Scope.
+// Invoke calls the given function with parameters resolved from the provided Scope.
 //
-// The function may take any number of parameters. These dependencies must be registered with the Scope.
-// The function may also accept a context.Context.
-// The function may return an error. Any other return values are ignored.
+// The function may take any number of parameters.
+// The function may return an error.
+// Any other return values are ignored.
 func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 	fnType := reflect.TypeOf(fn)
 	fnVal := reflect.ValueOf(fn)
