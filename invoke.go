@@ -21,15 +21,21 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 		return errors.Errorf("invoke %T: fn must be a function", fn)
 	}
 
-	config := &invokeConfig{
-		fn: fnVal,
-	}
-
+	// Get the dependencies
+	deps := make([]serviceKey, fnType.NumIn())
 	for i := 0; i < fnType.NumIn(); i++ {
-		paramType := fnType.In(i)
-		config.deps = append(config.deps, serviceKey{Type: paramType})
+		deps[i] = serviceKey{
+			Type: fnType.In(i),
+		}
 	}
 
+	// Create a config struct so we can apply options
+	config := &invokeConfig{
+		fn:   fnVal,
+		deps: deps,
+	}
+
+	// Apply options to the config
 	err := applyOptions(opts, func(opt InvokeOption) error {
 		return opt.applyInvokeConfig(config)
 	})
@@ -46,6 +52,8 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 		switch {
 		case dep.Type == typeContext:
 			depVal = ctx
+		case dep.Type == typeScope:
+			depVal = s
 		case dep.Tag != nil:
 			depVal, depErr = s.Resolve(ctx, dep.Type, WithTag(dep.Tag))
 		default:
@@ -67,8 +75,8 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 	// Invoke the function
 	out := fnVal.Call(in)
 
-	// Return the first error return value, if any
-	// Don't wrap the error, return it as-is
+	// Return the first error return value, if any.
+	// Don't wrap the error, return it as-is.
 	for i := 0; i < fnType.NumOut(); i++ {
 		if fnType.Out(i) == typeError {
 			err, _ := out[i].Interface().(error)
