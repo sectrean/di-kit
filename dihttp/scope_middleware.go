@@ -22,10 +22,10 @@ import (
 func RequestScopeMiddleware(c *di.Container, opts ...ScopeMiddlewareOption) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		mw := &scopeMiddleware{
+			next:            next,
 			c:               c,
 			newScopeHandler: defaultNewScopeErrorHandler,
 			closeHandler:    defaultScopeCloseErrorHandler,
-			next:            next,
 		}
 		for _, opt := range opts {
 			opt.applyScopeMiddleware(mw)
@@ -65,11 +65,11 @@ func defaultScopeCloseErrorHandler(r *http.Request, err error) {
 }
 
 type scopeMiddleware struct {
+	next            http.Handler
 	c               *di.Container
 	opts            []di.ContainerOption
 	newScopeHandler NewScopeErrorHandler
 	closeHandler    ScopeCloseErrorHandler
-	next            http.Handler
 }
 
 func (m *scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -78,6 +78,7 @@ func (m *scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		di.WithService(r),
 	)
 
+	// Create child scope for the request
 	scope, err := m.c.NewScope(opts...)
 	if err != nil {
 		if m.newScopeHandler != nil {
@@ -86,9 +87,12 @@ func (m *scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Add the scope to the request context
+	// Call the next handler with the new context
 	ctx := dicontext.WithScope(r.Context(), scope)
 	m.next.ServeHTTP(w, r.WithContext(ctx))
 
+	// Close the scope after the request has been processed
 	err = scope.Close(ctx)
 	if err != nil && m.closeHandler != nil {
 		m.closeHandler(r, err)

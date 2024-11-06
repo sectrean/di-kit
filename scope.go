@@ -2,6 +2,7 @@ package di
 
 import (
 	"context"
+	"sync/atomic"
 
 	"reflect"
 
@@ -89,11 +90,11 @@ type injectedScope struct {
 
 	// key is the service the Scope is getting injected into
 	key   serviceKey
-	ready bool
+	ready atomic.Bool
 }
 
 func (s *injectedScope) setReady() {
-	s.ready = true
+	s.ready.Store(true)
 }
 
 func (s *injectedScope) Contains(t reflect.Type, opts ...ResolveOption) bool {
@@ -107,7 +108,7 @@ func (s *injectedScope) Resolve(
 ) (any, error) {
 	// Resolve cannot be called until the constructor function has returned.
 	// Otherwise a deadlock is possible.
-	if !s.ready {
+	if !s.ready.Load() {
 		return nil, errors.Errorf(
 			"resolve %v: "+
 				"resolve not supported within constructor function for %s: "+
