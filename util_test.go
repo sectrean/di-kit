@@ -3,6 +3,7 @@ package di_test
 import (
 	"context"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/johnrutherford/di-kit"
@@ -62,4 +63,18 @@ type TestFactory struct {
 
 func (f *TestFactory) Build(ctx context.Context) testtypes.InterfaceA {
 	return f.fn(ctx, f.scope)
+}
+
+func runConcurrent(concurrency int, f func(int)) {
+	wg := sync.WaitGroup{}
+	wg.Add(concurrency)
+
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			defer wg.Done()
+			f(i)
+		}()
+	}
+
+	wg.Wait()
 }

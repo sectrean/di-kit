@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/johnrutherford/di-kit"
+	"github.com/johnrutherford/di-kit/internal/errors"
 	"github.com/johnrutherford/di-kit/internal/mocks"
 	"github.com/johnrutherford/di-kit/internal/testtypes"
 )
@@ -24,8 +25,6 @@ import (
 // - decorators registered on child scopes
 // - decorator on parent scope with scoped dependency
 // - more tests around the resolve locking
-// - tests around the close locking
-// - nested joined errors--multiple errors from multiple service options
 
 func Test_NewContainer(t *testing.T) {
 	t.Run("no options", func(t *testing.T) {
@@ -192,7 +191,26 @@ func Test_NewContainer(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "new container: with service []testtypes.InterfaceA: invalid service type\nwith service func() testtypes.InterfaceA: as testtypes.InterfaceB: type testtypes.InterfaceA not assignable to testtypes.InterfaceB")
+		assert.EqualError(t, err, "new container: with service []testtypes.InterfaceA: invalid service type\n"+
+			"with service func() testtypes.InterfaceA: as testtypes.InterfaceB: type testtypes.InterfaceA not assignable to testtypes.InterfaceB",
+		)
+	})
+
+	t.Run("multiple service errors", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService([]testtypes.InterfaceA{}),
+			di.WithService(testtypes.NewInterfaceA,
+				di.As[testtypes.InterfaceB](),
+				di.WithTagged[*testtypes.StructB]("tag"),
+			),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with service []testtypes.InterfaceA: invalid service type\n"+
+			"with service func() testtypes.InterfaceA: as testtypes.InterfaceB: type testtypes.InterfaceA not assignable to testtypes.InterfaceB\n"+
+			"with tagged *testtypes.StructB: parameter not found",
+		)
 	})
 
 	t.Run("with nil decorator", func(t *testing.T) {
@@ -1426,7 +1444,7 @@ func Test_Container_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		wg := &sync.WaitGroup{}
+		wg := sync.WaitGroup{}
 		wg.Add(4)
 
 		go func() {
@@ -1474,7 +1492,7 @@ func Test_Container_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		wg := &sync.WaitGroup{}
+		wg := sync.WaitGroup{}
 
 		for i := 0; i < 10; i++ {
 			wg.Add(1)
@@ -1511,7 +1529,7 @@ func Test_Container_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		wg := &sync.WaitGroup{}
+		wg := sync.WaitGroup{}
 
 		for i := 0; i < 100; i++ {
 			wg.Add(1)
@@ -1545,7 +1563,7 @@ func Test_Container_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		wg := &sync.WaitGroup{}
+		wg := sync.WaitGroup{}
 		wg.Add(2)
 
 		go func() {
@@ -1583,7 +1601,7 @@ func Test_Container_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		wg := &sync.WaitGroup{}
+		wg := sync.WaitGroup{}
 		wg.Add(2)
 
 		go func() {
@@ -1627,7 +1645,7 @@ func Test_Container_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		wg := &sync.WaitGroup{}
+		wg := sync.WaitGroup{}
 		wg.Add(2)
 
 		go func() {
@@ -1929,5 +1947,80 @@ func Test_Container_Close(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.True(t, aClosed)
+	})
+
+	t.Run("concurrent close", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		const concurrency = 10
+		expectedErr := errors.Wrap(di.ErrContainerClosed, "close: already closed")
+
+		// Only one call should return a nil error
+		expected := make([]error, concurrency)
+		for i := 1; i < concurrency; i++ {
+			expected[i] = expectedErr
+		}
+
+		results := make([]error, concurrency)
+		runConcurrent(concurrency, func(i int) {
+			results[i] = c.Close(context.Background())
+		})
+
+		assert.ElementsMatch(t, expected, results)
+	})
+
+	t.Run("concurrent close with resolve", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(&testtypes.StructA{}),
+		)
+		require.NoError(t, err)
+
+		var closeErr, resolveErr error
+		wg := sync.WaitGroup{}
+		wg.Add(2)
+
+		go func() {
+			closeErr = c.Close(context.Background())
+			wg.Done()
+		}()
+
+		go func() {
+			_, resolveErr = di.Resolve[*testtypes.StructA](context.Background(), c)
+			wg.Done()
+		}()
+
+		wg.Wait()
+
+		assert.Nil(t, closeErr)
+		if resolveErr != nil {
+			assert.EqualError(t, resolveErr, "resolve *testtypes.StructA: container closed")
+		}
+	})
+
+	t.Run("concurrent close with new scope", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		var closeErr, scopeErr error
+		wg := sync.WaitGroup{}
+		wg.Add(2)
+
+		go func() {
+			closeErr = c.Close(context.Background())
+			wg.Done()
+		}()
+
+		go func() {
+			_, scopeErr = c.NewScope()
+			wg.Done()
+		}()
+
+		wg.Wait()
+
+		assert.Nil(t, closeErr)
+		if scopeErr != nil {
+			assert.EqualError(t, scopeErr, "new scope: container closed")
+		}
 	})
 }
