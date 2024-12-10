@@ -2,9 +2,8 @@ package di
 
 import (
 	"context"
-	"sync/atomic"
-
 	"reflect"
+	"sync/atomic"
 
 	"github.com/johnrutherford/di-kit/internal/errors"
 )

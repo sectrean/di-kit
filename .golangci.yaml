@@ -14,6 +14,8 @@ linters:
     - gosec
     - revive
     - asasalint
+    - copyloopvar
+    - gci
 
 linters-settings:
   govet:

@@ -9,13 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/johnrutherford/di-kit"
 	"github.com/johnrutherford/di-kit/internal/errors"
 	"github.com/johnrutherford/di-kit/internal/mocks"
 	"github.com/johnrutherford/di-kit/internal/testtypes"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TODO: Add tests for the following:
