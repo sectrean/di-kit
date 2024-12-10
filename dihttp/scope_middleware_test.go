@@ -55,7 +55,7 @@ func Test_RequestScopeMiddleware(t *testing.T) {
 
 	testRequest := func(t *testing.T) {
 		res := httptest.NewRecorder()
-		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		req, err := http.NewRequest(http.MethodGet, "/", http.NoBody)
 		require.NoError(t, err)
 
 		handler.ServeHTTP(res, req)

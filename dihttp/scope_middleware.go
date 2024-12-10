@@ -90,10 +90,9 @@ type scopeMiddleware struct {
 }
 
 func (m *scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	opts := append(m.opts,
-		// Register the *http.Request with the new scope
-		di.WithService(r),
-	)
+	// Register the *http.Request with the new scope
+	//nolint:gocritic // appendAssign: we are intentionally assigning to a new slice
+	opts := append(m.opts, di.WithService(r))
 
 	// Create child scope for the request
 	scope, err := m.parent.NewScope(opts...)

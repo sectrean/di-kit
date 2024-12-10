@@ -22,11 +22,12 @@ func newFuncService(scope *Container, fn any, opts ...ServiceOption) (*funcServi
 
 	// Get the return type
 	var t reflect.Type
-	if fnType.NumOut() == 1 {
+	switch {
+	case fnType.NumOut() == 1:
 		t = fnType.Out(0)
-	} else if fnType.NumOut() == 2 && fnType.Out(1) == typeError {
+	case fnType.NumOut() == 2 && fnType.Out(1) == typeError:
 		t = fnType.Out(0)
-	} else {
+	default:
 		return nil, errors.New("function must return Service or (Service, error)")
 	}
 

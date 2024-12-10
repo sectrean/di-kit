@@ -72,7 +72,7 @@ func MustResolve[Service any](ctx context.Context, s Scope, opts ...ResolveOptio
 	return val
 }
 
-func newInjectedScope(s Scope, key serviceKey) (*injectedScope, func()) {
+func newInjectedScope(s Scope, key serviceKey) (scope *injectedScope, ready func()) {
 	wrapper := &injectedScope{
 		scope: s,
 		key:   key,
