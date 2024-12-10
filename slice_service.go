@@ -39,7 +39,7 @@ func (s *sliceService) Dependencies() []serviceKey {
 	return s.deps
 }
 
-func (s *sliceService) CloserFor(val any) Closer {
+func (s *sliceService) CloserFor(any) Closer {
 	// Closers for the individual services will be added to the container
 	// as they are resolved.
 	return nil

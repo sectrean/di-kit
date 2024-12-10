@@ -10,17 +10,18 @@ linters:
     - unused
 
     # Additional linters
-    #- gofmt
-    #- gosec
-    #- revive
+    - gofmt
+    - gosec
+    - revive
+    - asasalint
 
 linters-settings:
   govet:
     enable-all: true
 
-  # gosec:
-  #   excludes:
-  #     - G404
+  gosec:
+    excludes:
+      - G404
 
-
-
+  revive:
+    enable-all: true

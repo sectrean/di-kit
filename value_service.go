@@ -97,7 +97,7 @@ func (s *valueService) SetCloserFactory(cf closerFactory) {
 	s.closerFactory = cf
 }
 
-func (s *valueService) New(deps []reflect.Value) (any, error) {
+func (s *valueService) New([]reflect.Value) (any, error) {
 	return s.val, nil
 }
 

@@ -1029,7 +1029,7 @@ func Test_Container_Resolve(t *testing.T) {
 				assert.Fail(t, "should not be called")
 				return nil, nil
 			}),
-			di.WithService(func(a testtypes.InterfaceA) testtypes.InterfaceB {
+			di.WithService(func(testtypes.InterfaceA) testtypes.InterfaceB {
 				return &testtypes.StructB{}
 			}, di.WithTagged[testtypes.InterfaceA]("A1")),
 		)
@@ -1322,7 +1322,7 @@ func Test_Container_Resolve(t *testing.T) {
 		calls := 0
 		c, err := di.NewContainer(
 			di.WithService(func() testtypes.InterfaceA { return nil }),
-			di.WithDecorator(func(a testtypes.InterfaceA) testtypes.InterfaceA {
+			di.WithDecorator(func(testtypes.InterfaceA) testtypes.InterfaceA {
 				calls++
 				return &testtypes.StructA{}
 			}),
@@ -1518,7 +1518,7 @@ func Test_Container_Resolve(t *testing.T) {
 				time.Sleep(time.Duration(r) * time.Microsecond)
 				return &testtypes.StructA{}
 			}, di.Transient),
-			di.WithService(func(a testtypes.InterfaceA) testtypes.InterfaceB {
+			di.WithService(func(testtypes.InterfaceA) testtypes.InterfaceB {
 				calls++
 				return &testtypes.StructB{}
 			}, di.Scoped),
@@ -1589,11 +1589,11 @@ func Test_Container_Resolve(t *testing.T) {
 
 	t.Run("concurrent dependency cycle", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(func(a testtypes.InterfaceA) testtypes.InterfaceB {
+			di.WithService(func(testtypes.InterfaceA) testtypes.InterfaceB {
 				assert.Fail(t, "constructor func should not get called")
 				return nil
 			}),
-			di.WithService(func(b testtypes.InterfaceB) testtypes.InterfaceA {
+			di.WithService(func(testtypes.InterfaceB) testtypes.InterfaceA {
 				assert.Fail(t, "constructor func should not get called")
 				return nil
 			}),
@@ -1935,7 +1935,7 @@ func Test_Container_Close(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(aMock,
 				di.As[testtypes.InterfaceA](),
-				di.WithCloseFunc(func(ctx context.Context, a testtypes.InterfaceA) error {
+				di.WithCloseFunc(func(context.Context, testtypes.InterfaceA) error {
 					aClosed = true
 					return nil
 				}),
