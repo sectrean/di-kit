@@ -81,7 +81,6 @@ func Test_Resolve(t *testing.T) {
 
 func Test_MustResolve(t *testing.T) {
 	t.Run("resolve", func(t *testing.T) {
-
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)

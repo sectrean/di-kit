@@ -39,7 +39,7 @@ func newFuncService(scope *Container, fn any, opts ...ServiceOption) (*funcServi
 	var deps []serviceKey
 	if fnType.NumIn() > 0 {
 		deps = make([]serviceKey, fnType.NumIn())
-		for i := 0; i < fnType.NumIn(); i++ {
+		for i := range fnType.NumIn() {
 			deps[i] = serviceKey{
 				Type: fnType.In(i),
 			}

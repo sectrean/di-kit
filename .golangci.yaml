@@ -17,6 +17,13 @@ linters:
     - copyloopvar
     - gci
     - gocritic
+    - godot
+    - gofmt
+    - whitespace
+    - dupword
+    - testifylint
+    - testpackage
+    - intrange
 
 linters-settings:
   govet:
@@ -33,3 +40,8 @@ linters-settings:
     enable-all: true
     disabled-checks:
       - deferInLoop # for now
+
+  testifylint:
+    enable-all: true
+    disable:
+      - require-error

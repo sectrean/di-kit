@@ -23,7 +23,7 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 
 	// Get the dependencies
 	deps := make([]serviceKey, fnType.NumIn())
-	for i := 0; i < fnType.NumIn(); i++ {
+	for i := range fnType.NumIn() {
 		deps[i] = serviceKey{
 			Type: fnType.In(i),
 		}
@@ -77,7 +77,7 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 
 	// Return the first error return value, if any.
 	// Don't wrap the error, return it as-is.
-	for i := 0; i < fnType.NumOut(); i++ {
+	for i := range fnType.NumOut() {
 		if fnType.Out(i) == typeError {
 			err, _ := out[i].Interface().(error)
 			return err

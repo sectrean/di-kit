@@ -42,7 +42,7 @@ func LogError(t *testing.T, err error) {
 
 type ctxKey struct{}
 
-// ContextWithTestValue returns a context with the provided value
+// ContextWithTestValue returns a context with the provided value.
 func ContextWithTestValue(ctx context.Context, val any) context.Context {
 	return context.WithValue(ctx, ctxKey{}, val)
 }
@@ -69,7 +69,7 @@ func runConcurrent(concurrency int, f func(int)) {
 	wg := sync.WaitGroup{}
 	wg.Add(concurrency)
 
-	for i := 0; i < concurrency; i++ {
+	for i := range concurrency {
 		go func() {
 			defer wg.Done()
 			f(i)

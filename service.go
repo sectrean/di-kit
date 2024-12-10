@@ -28,7 +28,7 @@ import (
 //
 // If a value is provided, it will be returned as the service when resolved.
 // The value can be a struct or a pointer to a struct.
-// (It will be registered as the actual type even if the the variable was declared as an interface.)
+// (It will be registered as the actual type even if the variable was declared as an interface.)
 //
 // Available options:
 //   - [Lifetime] is used to specify how services are created when resolved.

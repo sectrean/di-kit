@@ -632,7 +632,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		a1, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		assert.Equal(t, a1, &testtypes.StructA{})
+		assert.Equal(t, &testtypes.StructA{}, a1)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, calls)
 
@@ -658,7 +658,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		a1, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		assert.Equal(t, a1, &testtypes.StructA{})
+		assert.Equal(t, &testtypes.StructA{}, a1)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, calls)
 
@@ -687,12 +687,12 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		a1, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		assert.Equal(t, a1, &testtypes.StructA{})
+		assert.Equal(t, &testtypes.StructA{}, a1)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, calls)
 
 		a2, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		assert.Equal(t, a2, &testtypes.StructA{})
+		assert.Equal(t, &testtypes.StructA{}, a2)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, calls)
 	})
@@ -715,7 +715,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 
-		for i := 0; i < 3; i++ {
+		for range 3 {
 			scope, err := c.NewScope()
 			require.NoError(t, err)
 
@@ -1493,7 +1493,7 @@ func Test_Container_Resolve(t *testing.T) {
 		ctx := context.Background()
 		wg := sync.WaitGroup{}
 
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -1530,7 +1530,7 @@ func Test_Container_Resolve(t *testing.T) {
 		ctx := context.Background()
 		wg := sync.WaitGroup{}
 
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -1991,7 +1991,7 @@ func Test_Container_Close(t *testing.T) {
 
 		wg.Wait()
 
-		assert.Nil(t, closeErr)
+		assert.NoError(t, closeErr)
 		if resolveErr != nil {
 			assert.EqualError(t, resolveErr, "resolve *testtypes.StructA: container closed")
 		}
@@ -2017,7 +2017,7 @@ func Test_Container_Close(t *testing.T) {
 
 		wg.Wait()
 
-		assert.Nil(t, closeErr)
+		assert.NoError(t, closeErr)
 		if scopeErr != nil {
 			assert.EqualError(t, scopeErr, "new scope: container closed")
 		}

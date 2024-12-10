@@ -1,8 +1,9 @@
-package di
+package di_test
 
 import (
 	"testing"
 
+	"github.com/johnrutherford/di-kit"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -10,26 +11,26 @@ func Test_Lifetime_String(t *testing.T) {
 	tests := []struct {
 		name     string
 		want     string
-		lifetime Lifetime
+		lifetime di.Lifetime
 	}{
 		{
 			name:     "singleton",
-			lifetime: Singleton,
+			lifetime: di.Singleton,
 			want:     "Singleton",
 		},
 		{
 			name:     "transient",
-			lifetime: Transient,
+			lifetime: di.Transient,
 			want:     "Transient",
 		},
 		{
 			name:     "scoped",
-			lifetime: Scoped,
+			lifetime: di.Scoped,
 			want:     "Scoped",
 		},
 		{
 			name:     "unknown lifetime",
-			lifetime: Lifetime(99),
+			lifetime: di.Lifetime(99),
 			want:     "Unknown Lifetime 99",
 		},
 	}

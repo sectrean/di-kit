@@ -91,7 +91,7 @@ type depTagOption struct {
 //
 // The slice is modified in place.
 func (o depTagOption) applyDeps(deps []serviceKey) error {
-	for i := 0; i < len(deps); i++ {
+	for i := range deps {
 		// Find a dependency with the right type
 		// Skip past any that have already been assigned a tag
 		if deps[i].Type == o.t && deps[i].Tag == nil {

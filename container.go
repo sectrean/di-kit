@@ -400,7 +400,7 @@ var (
 	ErrContainerClosed = errors.New("container closed")
 )
 
-// Common types
+// These are commonly used types.
 var (
 	typeError   = reflect.TypeFor[error]()
 	typeContext = reflect.TypeFor[context.Context]()

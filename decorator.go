@@ -73,7 +73,7 @@ func newDecorator(fn any, opts []DecoratorOption) (*decorator, error) {
 	svcInParams := false
 	deps := make([]serviceKey, fnType.NumIn())
 
-	for i := 0; i < fnType.NumIn(); i++ {
+	for i := range fnType.NumIn() {
 		depType := fnType.In(i)
 		if depType == t {
 			svcInParams = true

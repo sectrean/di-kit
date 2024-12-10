@@ -70,7 +70,7 @@ func Test_RequestScopeMiddleware(t *testing.T) {
 		wg := sync.WaitGroup{}
 		wg.Add(count)
 
-		for i := 0; i < count; i++ {
+		for range count {
 			go func() {
 				testRequest(t)
 				wg.Done()
