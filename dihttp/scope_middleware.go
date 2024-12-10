@@ -6,9 +6,12 @@ import (
 
 	"github.com/johnrutherford/di-kit"
 	"github.com/johnrutherford/di-kit/dicontext"
+	"github.com/johnrutherford/di-kit/internal/errors"
 )
 
-// RequestScopeMiddleware returns HTTP middleware that creates a new child container by calling
+type Middleware = func(http.Handler) http.Handler
+
+// NewRequestScopeMiddleware returns HTTP middleware that creates a new child container by calling
 // [di.Container.NewScope] for each request.
 // The child container is stored on the request context and can be accessed using [dicontext.Scope], [dicontext.Resolve], or [dicontext.MustResolve].
 // The child container is closed after the request is processed.
@@ -21,24 +24,32 @@ import (
 //   - WithScopeCloseErrorHandler: Set the error handler for when there is an error closing the scope.
 //
 // This will panic if parent is nil.
-func RequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOption) func(http.Handler) http.Handler {
+func NewRequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOption) (Middleware, error) {
 	if parent == nil {
-		panic("parent is nil")
+		return nil, errors.New("new request scope middleware: parent is nil")
+	}
+
+	mw := &scopeMiddleware{
+		parent:          parent,
+		newScopeHandler: defaultNewScopeErrorHandler,
+		closeHandler:    defaultScopeCloseErrorHandler,
+	}
+
+	var errs []error
+	for _, opt := range opts {
+		err := opt.applyScopeMiddleware(mw)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if err := errors.Join(errs...); err != nil {
+		return nil, err
 	}
 
 	return func(next http.Handler) http.Handler {
-		mw := &scopeMiddleware{
-			next:            next,
-			parent:          parent,
-			newScopeHandler: defaultNewScopeErrorHandler,
-			closeHandler:    defaultScopeCloseErrorHandler,
-		}
-		for _, opt := range opts {
-			opt.applyScopeMiddleware(mw)
-		}
-
+		mw.next = next
 		return mw
-	}
+	}, nil
 }
 
 // NewScopeErrorHandler is a function that writes an error response to the client.

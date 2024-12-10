@@ -23,6 +23,7 @@ func HTTP_Example() {
 	)
 	if err != nil {
 		logger.Error("error creating container", "error", err)
+		return
 	}
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -30,9 +31,13 @@ func HTTP_Example() {
 		svc.HandleRequest(r, w)
 	})
 
-	mux := http.NewServeMux()
+	scopeMiddleware, err := dihttp.NewRequestScopeMiddleware(c)
+	if err != nil {
+		logger.Error("error creating scope middleware", "error", err)
+		return
+	}
 
-	scopeMiddleware := dihttp.RequestScopeMiddleware(c)
+	mux := http.NewServeMux()
 	mux.Handle("/", scopeMiddleware(handler))
 
 	err = http.ListenAndServe(":8080", nil)

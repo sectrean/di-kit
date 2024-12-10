@@ -44,11 +44,13 @@ func Test_RequestScopeMiddleware(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	middleware := dihttp.RequestScopeMiddleware(c,
+	middleware, err := dihttp.NewRequestScopeMiddleware(c,
 		dihttp.WithContainerOptions(
 			di.WithService(testtypes.NewInterfaceC),
 		),
 	)
+	require.NoError(t, err)
+
 	handler = middleware(handler)
 
 	testRequest := func(t *testing.T) {
