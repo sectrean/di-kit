@@ -7,13 +7,13 @@ import (
 )
 
 type funcService struct {
-	scope         *Container
 	key           serviceKey
+	scope         *Container
+	closerFactory func(any) Closer
 	fn            reflect.Value
 	deps          []serviceKey
-	lifetime      Lifetime
 	aliases       []reflect.Type
-	closerFactory func(any) Closer
+	lifetime      Lifetime
 }
 
 func newFuncService(scope *Container, fn any, opts ...ServiceOption) (*funcService, error) {

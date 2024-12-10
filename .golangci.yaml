@@ -1,0 +1,26 @@
+---
+linters:
+  enable:
+    # Enabled by default
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+    # Additional linters
+    #- gofmt
+    #- gosec
+    #- revive
+
+linters-settings:
+  govet:
+    enable-all: true
+
+  # gosec:
+  #   excludes:
+  #     - G404
+
+
+

@@ -84,9 +84,9 @@ func defaultScopeCloseErrorHandler(r *http.Request, err error) {
 type scopeMiddleware struct {
 	next            http.Handler
 	parent          *di.Container
-	opts            []di.ContainerOption
 	newScopeHandler NewScopeErrorHandler
 	closeHandler    ScopeCloseErrorHandler
+	opts            []di.ContainerOption
 }
 
 func (m *scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {

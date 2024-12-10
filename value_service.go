@@ -7,11 +7,11 @@ import (
 )
 
 type valueService struct {
-	scope         *Container
 	key           serviceKey
 	val           any
-	aliases       []reflect.Type
+	scope         *Container
 	closerFactory func(any) Closer
+	aliases       []reflect.Type
 }
 
 func newValueService(scope *Container, val any, opts ...ServiceOption) (*valueService, error) {

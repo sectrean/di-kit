@@ -17,15 +17,12 @@ type Container struct {
 	parent     *Container
 	services   map[serviceKey]service
 	decorators map[serviceKey][]*decorator
-
-	resolvedMu sync.RWMutex
 	resolved   map[serviceKey]resolveResult
-
-	closersMu sync.Mutex
-	closers   []Closer
-
-	closedMu sync.RWMutex
-	closed   bool
+	closers    []Closer
+	resolvedMu sync.RWMutex
+	closedMu   sync.RWMutex
+	closersMu  sync.Mutex
+	closed     bool
 }
 
 var _ Scope = (*Container)(nil)

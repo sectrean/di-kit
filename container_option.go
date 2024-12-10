@@ -21,7 +21,7 @@ type ContainerOption interface {
 //		di.WithService(NewHandler), // NewHandler(*slog.Logger, *db.DB) *Handler
 //	)
 func WithOptions(opts []ContainerOption) ContainerOption {
-	return containerOption{orderOptions, func(c *Container) error {
+	return newContainerOption(orderOptions, func(c *Container) error {
 		var errs []error
 		for _, opt := range opts {
 			if err := opt.applyContainer(c); err != nil {
@@ -33,7 +33,7 @@ func WithOptions(opts []ContainerOption) ContainerOption {
 			return errors.Wrap(err, "with options")
 		}
 		return nil
-	}}
+	})
 }
 
 type optionOrder int8
@@ -45,12 +45,12 @@ const (
 )
 
 func newContainerOption(order optionOrder, fn func(*Container) error) ContainerOption {
-	return containerOption{order, fn}
+	return containerOption{fn: fn, ord: order}
 }
 
 type containerOption struct {
-	ord optionOrder
 	fn  func(*Container) error
+	ord optionOrder
 }
 
 func (o containerOption) order() optionOrder {

@@ -9,8 +9,8 @@ import (
 func Test_Lifetime_String(t *testing.T) {
 	tests := []struct {
 		name     string
-		lifetime Lifetime
 		want     string
+		lifetime Lifetime
 	}{
 		{
 			name:     "singleton",

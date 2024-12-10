@@ -29,17 +29,17 @@ func Test_RequestScopeMiddleware(t *testing.T) {
 	var handler http.Handler
 	handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		b, err := dicontext.Resolve[testtypes.InterfaceB](ctx)
+		b, resolveErr := dicontext.Resolve[testtypes.InterfaceB](ctx)
 		assert.NotNil(t, b)
-		assert.NoError(t, err)
+		assert.NoError(t, resolveErr)
 
-		c, err := dicontext.Resolve[testtypes.InterfaceC](ctx)
+		c, resolveErr := dicontext.Resolve[testtypes.InterfaceC](ctx)
 		assert.NotNil(t, c)
-		assert.NoError(t, err)
+		assert.NoError(t, resolveErr)
 
-		req, err := dicontext.Resolve[*http.Request](ctx)
+		req, resolveErr := dicontext.Resolve[*http.Request](ctx)
 		assert.NotNil(t, req)
-		assert.NoError(t, err)
+		assert.NoError(t, resolveErr)
 
 		w.WriteHeader(http.StatusOK)
 	})
