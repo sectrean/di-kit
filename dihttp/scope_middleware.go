@@ -9,6 +9,7 @@ import (
 	"github.com/johnrutherford/di-kit/internal/errors"
 )
 
+// Middleware is a function that wraps an HTTP handler.
 type Middleware = func(http.Handler) http.Handler
 
 // NewRequestScopeMiddleware returns HTTP middleware that creates a new child container by calling
