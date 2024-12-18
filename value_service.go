@@ -64,7 +64,7 @@ func (s *valueService) AddAlias(alias reflect.Type) error {
 }
 
 func (s *valueService) Lifetime() Lifetime {
-	return Singleton
+	return SingletonLifetime
 }
 
 func (s *valueService) SetLifetime(Lifetime) {

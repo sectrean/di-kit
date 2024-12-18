@@ -7,9 +7,9 @@ import "fmt"
 // Use when registering a service with [WithService].
 //
 // Available lifetimes:
-//   - [Singleton] specifies that a service is created once and subsequent requests return the same instance.
-//   - [Transient] specifies that a service is created for each request.
-//   - [Scoped] specifies that a service is created once per scope.
+//   - [SingletonLifetime] specifies that a service is created once and subsequent requests return the same instance.
+//   - [TransientLifetime] specifies that a service is created for each request.
+//   - [ScopedLifetime] specifies that a service is created once per scope.
 //
 // Example:
 //
@@ -20,16 +20,16 @@ import "fmt"
 type Lifetime uint8
 
 const (
-	// Singleton specifies that a service is created once and subsequent requests to resolve return the same instance.
+	// SingletonLifetime specifies that a service is created once and subsequent requests to resolve return the same instance.
 	//
 	// This is the default lifetime for services.
-	Singleton Lifetime = iota
+	SingletonLifetime Lifetime = iota
 
-	// Transient specifies that a service is created for each request.
-	Transient Lifetime = iota
+	// TransientLifetime specifies that a service is created for each request.
+	TransientLifetime Lifetime = iota
 
-	// Scoped specifies that a service is created once per scope.
-	Scoped Lifetime = iota
+	// ScopedLifetime specifies that a service is created once per scope.
+	ScopedLifetime Lifetime = iota
 )
 
 func (l Lifetime) applyServiceConfig(sc serviceConfig) error {
@@ -37,15 +37,15 @@ func (l Lifetime) applyServiceConfig(sc serviceConfig) error {
 	return nil
 }
 
-var _ ServiceOption = Singleton
+var _ ServiceOption = SingletonLifetime
 
 func (l Lifetime) String() string {
 	switch l {
-	case Singleton:
+	case SingletonLifetime:
 		return "Singleton"
-	case Transient:
+	case TransientLifetime:
 		return "Transient"
-	case Scoped:
+	case ScopedLifetime:
 		return "Scoped"
 	default:
 		return fmt.Sprintf("Unknown Lifetime %d", l)

@@ -15,17 +15,17 @@ func Test_Lifetime_String(t *testing.T) {
 	}{
 		{
 			name:     "singleton",
-			lifetime: di.Singleton,
+			lifetime: di.SingletonLifetime,
 			want:     "Singleton",
 		},
 		{
 			name:     "transient",
-			lifetime: di.Transient,
+			lifetime: di.TransientLifetime,
 			want:     "Transient",
 		},
 		{
 			name:     "scoped",
-			lifetime: di.Scoped,
+			lifetime: di.ScopedLifetime,
 			want:     "Scoped",
 		},
 		{

@@ -32,7 +32,7 @@ func (s *sliceService) Key() serviceKey {
 func (s *sliceService) Lifetime() Lifetime {
 	// This must be transient because the lifetime of the individual services
 	// could be transient or scoped.
-	return Transient
+	return TransientLifetime
 }
 
 func (s *sliceService) Dependencies() []serviceKey {

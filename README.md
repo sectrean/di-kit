@@ -219,8 +219,8 @@ Specify a lifetime when registering a function service:
 
 ```go
 c, err := di.NewContainer(
-	di.WithService(service.NewScopedService, di.Scoped),
-	di.WithService(service.NewTransientService, di.Transient),
+	di.WithService(service.NewScopedService, di.ScopedLifetime),
+	di.WithService(service.NewTransientService, di.TransientLifetime),
 )
 ```
 
@@ -232,7 +232,7 @@ You can create new Containers with child scopes. Scoped dependencies can be reso
 c, err := di.NewContainer(
 	di.WithService(logger),
 	di.WithService(service.NewService),
-	di.WithService(service.NewScopedService, di.Scoped),
+	di.WithService(service.NewScopedService, di.ScopedLifetime),
 )
 
 scope, err := c.NewScope()
@@ -257,7 +257,7 @@ scope, err := c.NewScope(
 
 A couple services are provided directly by the container and cannot be registered.
 
-`context.Context` - When a service is resolved, the context passed into `Resolve` will be injected into constructor functions as a dependency. You should avoid resolving resolving Singleton services from a request-scoped context that may be canceled. 
+`context.Context` - When a service is resolved, the context passed into `Resolve` will be injected into constructor functions as a dependency. You should avoid resolving resolving singleton services from a request-scoped context that may be canceled. 
 
 `di.Scope` - The current `Container` can be injected into a service as `di.Scope`. This allows a service to resolve other services. The scope must be stored and only used *after* the constructor function returns.
 
@@ -324,7 +324,7 @@ The `dihttp` package provides configurable `net/http` middleware to create new c
 ```go
 c, err := di.NewContainer(
 	di.WithService(logger),
-	di.WithService(service.NewRequestService, di.Scoped), // NewRequestService(*slog.Logger, *http.Request) *service.RequestService
+	di.WithService(service.NewRequestService, di.ScopedLifetime), // NewRequestService(*slog.Logger, *http.Request) *service.RequestService
 )
 // ...
 

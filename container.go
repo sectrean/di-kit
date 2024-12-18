@@ -215,15 +215,15 @@ func resolve(
 
 	// For singleton services, use the scope the service is registered with.
 	// Otherwise, use the current scope.
-	if svc.Lifetime() == Singleton {
+	if svc.Lifetime() == SingletonLifetime {
 		scope = svc.Scope()
-	} else if svc.Lifetime() == Scoped && scope == svc.Scope() {
+	} else if svc.Lifetime() == ScopedLifetime && scope == svc.Scope() {
 		return nil, errors.New("scoped service must be resolved from a child scope")
 	}
 
 	// For Singleton or Scoped services, we store the result.
 	// See if this service has already been resolved.
-	if svc.Lifetime() != Transient {
+	if svc.Lifetime() != TransientLifetime {
 		scope.resolvedMu.RLock()
 		res, exists := scope.resolved[svc.Key()]
 		scope.resolvedMu.RUnlock()
@@ -311,7 +311,7 @@ func resolve(
 		}
 	}
 
-	if svc.Lifetime() != Transient {
+	if svc.Lifetime() != TransientLifetime {
 		// We need to lock before we create the service to make sure we don't create it twice
 		scope.resolvedMu.Lock()
 		defer scope.resolvedMu.Unlock()

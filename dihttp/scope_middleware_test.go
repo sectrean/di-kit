@@ -22,7 +22,7 @@ func Test_RequestScopeMiddleware(t *testing.T) {
 			assert.NotNil(t, r)
 
 			return &testtypes.StructB{}
-		}, di.Scoped),
+		}, di.ScopedLifetime),
 	)
 	require.NoError(t, err)
 
