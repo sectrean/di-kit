@@ -1026,7 +1026,7 @@ func Test_Container_Resolve(t *testing.T) {
 			),
 			di.WithService(func() (testtypes.InterfaceA, error) {
 				assert.Fail(t, "should not be called")
-				return nil, nil
+				return &testtypes.StructA{}, nil
 			}),
 			di.WithService(func(testtypes.InterfaceA) testtypes.InterfaceB {
 				return &testtypes.StructB{}
