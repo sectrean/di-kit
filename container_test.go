@@ -94,6 +94,27 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "new container: with service func() *int: invalid service type")
 	})
 
+	t.Run("invalid dependency type", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func(int) testtypes.InterfaceA { return nil }),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with service func(int) testtypes.InterfaceA: invalid dependency type int")
+	})
+
+	t.Run("invalid dependency types", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func(int, di.Lifetime) testtypes.InterfaceA { return nil }),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with service func(int, di.Lifetime) testtypes.InterfaceA: invalid dependency type int\n"+
+			"invalid dependency type di.Lifetime")
+	})
+
 	t.Run("func alias not assignable", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA, di.As[*testtypes.StructA]()),
@@ -139,7 +160,7 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "new container: with service func() testtypes.InterfaceA: with tagged testtypes.InterfaceB: parameter not found")
 	})
 
-	t.Run("with close func not assingable", func(t *testing.T) {
+	t.Run("with close func not assignable", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA,
 				di.WithCloseFunc(func(context.Context, *testtypes.StructA) error { return nil }),
@@ -290,6 +311,28 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "new container: with decorator func(testtypes.InterfaceA) testtypes.InterfaceA: with tagged testtypes.InterfaceB: parameter not found")
 	})
 
+	t.Run("with decorator invalid dependency type", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithDecorator(func(int, testtypes.InterfaceA) testtypes.InterfaceA { return nil }),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with decorator func(int, testtypes.InterfaceA) testtypes.InterfaceA: invalid dependency type int")
+	})
+
+	t.Run("with decorator invalid dependency types", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithDecorator(func(int, di.Lifetime, testtypes.InterfaceA) testtypes.InterfaceA { return nil }),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "new container: with decorator func(int, di.Lifetime, testtypes.InterfaceA) testtypes.InterfaceA: invalid dependency type int\n"+
+			"invalid dependency type di.Lifetime")
+	})
 	t.Run("with options", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithOptions([]di.ContainerOption{

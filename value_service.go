@@ -18,8 +18,8 @@ func newValueService(scope *Container, val any, opts ...ServiceOption) (*valueSe
 	t := reflect.TypeOf(val)
 	v := reflect.ValueOf(val)
 
-	if err := validateServiceType(t); err != nil {
-		return nil, err
+	if ok := validateServiceType(t); !ok {
+		return nil, errors.New("invalid service type")
 	}
 
 	svc := &valueService{

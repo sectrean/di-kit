@@ -66,26 +66,37 @@ func newDecorator(fn any, opts []DecoratorOption) (*decorator, error) {
 	}
 
 	t := fnType.Out(0)
-	if err := validateServiceType(t); err != nil {
-		return nil, err
+	if ok := validateServiceType(t); !ok {
+		return nil, errors.New("invalid service type")
 	}
 
-	svcInParams := false
 	deps := make([]serviceKey, fnType.NumIn())
+	var errs []error
+	var svcInDeps bool
 
 	for i := range fnType.NumIn() {
 		depType := fnType.In(i)
-		if depType == t {
-			svcInParams = true
-		}
-
 		deps[i] = serviceKey{
 			Type: depType,
 		}
+		if depType == t {
+			svcInDeps = true
+			continue
+		}
+
+		if ok := validateDependencyType(depType); !ok {
+			err := errors.Errorf("invalid dependency type %s", depType)
+			errs = append(errs, err)
+		}
 	}
 
-	if !svcInParams {
-		return nil, errors.Errorf("function must have a Service parameter")
+	if !svcInDeps {
+		err := errors.Errorf("function must have a Service parameter")
+		errs = append(errs, err)
+	}
+
+	if err := errors.Join(errs...); err != nil {
+		return nil, err
 	}
 
 	d := &decorator{

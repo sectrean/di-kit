@@ -75,31 +75,45 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 	})
 }
 
-func validateServiceType(t reflect.Type) error {
+func validateServiceType(t reflect.Type) bool {
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+
 	switch t {
-	// These are the only special types used by the Container.
+	// These special types cannot be registered as services
 	case typeContext,
 		typeScope,
 		typeError:
-		return errors.New("invalid service type")
+		return false
 	}
 
+	// We don't want someone to accidentally register a ContainerOption or something.
 	if t.PkgPath() == typeScope.PkgPath() {
-		return errors.New("invalid service type")
+		return false
 	}
 
-	switch t.Kind() {
-	case reflect.Struct, reflect.Interface:
-		return nil
-
-	case reflect.Ptr:
-		elemKind := t.Elem().Kind()
-		if elemKind == reflect.Struct || elemKind == reflect.Interface {
-			return nil
-		}
+	if t.Kind() == reflect.Interface || t.Kind() == reflect.Struct {
+		return true
 	}
 
-	return errors.New("invalid service type")
+	return false
+}
+
+func validateDependencyType(t reflect.Type) bool {
+	switch t {
+	// These special types are allowed as dependencies
+	case typeContext,
+		typeScope,
+		typeError:
+		return true
+	}
+
+	if t.Kind() == reflect.Slice {
+		t = t.Elem()
+	}
+
+	return validateServiceType(t)
 }
 
 // ServiceOption is used to configure service registration calling [WithService].

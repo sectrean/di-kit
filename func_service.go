@@ -31,19 +31,33 @@ func newFuncService(scope *Container, fn any, opts ...ServiceOption) (*funcServi
 		return nil, errors.New("function must return Service or (Service, error)")
 	}
 
-	if err := validateServiceType(t); err != nil {
-		return nil, err
+	if ok := validateServiceType(t); !ok {
+		return nil, errors.New("invalid service type")
 	}
 
-	// Get the dependencies
+	// Get the dependencies and validate dependency types
 	var deps []serviceKey
+	var errs []error
+
 	if fnType.NumIn() > 0 {
 		deps = make([]serviceKey, fnType.NumIn())
 		for i := range fnType.NumIn() {
+			depType := fnType.In(i)
+
+			if ok := validateDependencyType(depType); !ok {
+				err := errors.Errorf("invalid dependency type %s", depType)
+				errs = append(errs, err)
+				continue
+			}
+
 			deps[i] = serviceKey{
-				Type: fnType.In(i),
+				Type: depType,
 			}
 		}
+	}
+
+	if err := errors.Join(errs...); err != nil {
+		return nil, err
 	}
 
 	svc := &funcService{
