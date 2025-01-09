@@ -333,9 +333,10 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "new container: with decorator func(int, di.Lifetime, testtypes.InterfaceA) testtypes.InterfaceA: invalid dependency type int\n"+
 			"invalid dependency type di.Lifetime")
 	})
-	t.Run("with options", func(t *testing.T) {
+
+	t.Run("with module", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithOptions([]di.ContainerOption{
+			di.WithModule(di.Module{
 				di.WithService(testtypes.NewInterfaceA),
 				di.WithService(testtypes.NewInterfaceB),
 			}),
@@ -345,9 +346,9 @@ func Test_NewContainer(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("with options error", func(t *testing.T) {
+	t.Run("with module error", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithOptions([]di.ContainerOption{
+			di.WithModule([]di.ContainerOption{
 				di.WithService(testtypes.NewInterfaceA),
 				di.WithService(nil),
 			}),
@@ -356,7 +357,7 @@ func Test_NewContainer(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "new container: with options: with service: funcOrValue is nil")
+		assert.EqualError(t, err, "new container: with service: funcOrValue is nil")
 	})
 }
 
@@ -1458,9 +1459,9 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
-	t.Run("with options", func(t *testing.T) {
+	t.Run("with module", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithOptions([]di.ContainerOption{
+			di.WithModule(di.Module{
 				di.WithService(testtypes.NewInterfaceA),
 				di.WithService(testtypes.NewInterfaceB),
 			}),

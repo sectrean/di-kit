@@ -1,11 +1,9 @@
 package di
 
 import (
-	"cmp"
 	"context"
 	"maps"
 	"reflect"
-	"slices"
 	"sync"
 
 	"github.com/johnrutherford/di-kit/internal/errors"
@@ -38,21 +36,19 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 		resolved: make(map[serviceKey]resolveResult),
 	}
 
-	// Sort options by precedence
-	// Decorators must be registered after all services
-	// Use stable sort because the registration order of services and decorators matters
-	slices.SortStableFunc(opts, func(a, b ContainerOption) int {
-		return cmp.Compare(a.order(), b.order())
-	})
-
-	err := applyOptions(opts, func(opt ContainerOption) error {
-		return opt.applyContainer(c)
-	})
+	err := applyContainerOptions(c, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "new container")
 	}
 
 	return c, nil
+}
+
+// ContainerOption is used to configure a new [Container] when calling [NewContainer]
+// or [Container.NewScope].
+type ContainerOption interface {
+	order() optionOrder
+	applyContainer(*Container) error
 }
 
 func (c *Container) register(sc serviceConfig) {
@@ -139,9 +135,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 		resolved: make(map[serviceKey]resolveResult),
 	}
 
-	err := applyOptions(opts, func(opt ContainerOption) error {
-		return opt.applyContainer(scope)
-	})
+	err := applyContainerOptions(scope, opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "new scope")
 	}
@@ -400,12 +394,29 @@ var (
 	ErrContainerClosed = errors.New("container closed")
 )
 
-// These are commonly used types.
-var (
-	typeError   = reflect.TypeFor[error]()
-	typeContext = reflect.TypeFor[context.Context]()
-	typeScope   = reflect.TypeFor[Scope]()
+type optionOrder int8
+
+const (
+	orderService   optionOrder = iota
+	orderDecorator optionOrder = iota
 )
+
+func newContainerOption(order optionOrder, fn func(*Container) error) ContainerOption {
+	return containerOption{fn: fn, ord: order}
+}
+
+type containerOption struct {
+	fn  func(*Container) error
+	ord optionOrder
+}
+
+func (o containerOption) order() optionOrder {
+	return o.ord
+}
+
+func (o containerOption) applyContainer(c *Container) error {
+	return o.fn(c)
+}
 
 type resolveResult struct {
 	val any
