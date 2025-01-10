@@ -111,9 +111,9 @@ This can be used to override the service type and register as another (assignabl
 ```go
 c, err := di.NewContainer(
 	// ...
-	di.WithService(service.NewService,	// Function returns *service.Service
-		di.As[service.Interface](),	// Register as interface type
-		di.As[*service.Service](),	// Also register as pointer type
+	di.WithService(service.NewService,	// NewService() *service.Service
+		di.As[*service.Service](),	// Register as pointer type
+		di.As[service.Interface](),	// Also register as any implemented interface
 	),
 )
 ```
@@ -137,13 +137,6 @@ c, err := di.NewContainer(
 		di.IgnoreClose(),
 	),
 )
-// ...
-
-svc := di.MustResolve[*service.Service](ctx, c)
-svc.Run(ctx)
-
-// We want to close this service manually
-defer svc.Close(ctx)
 ```
 
 If a service uses another method to clean up, a custom close function can be configured using the `di.WithCloseFunc()` option:
@@ -295,6 +288,26 @@ svc, err := di.Resolve[service.Interface](ctx, c)
 
 If you register multiple decorators for a service, they will be applied in the order they are registered. Value services cannot be decorated.
 
+### Modules
+
+Modules allow you to export a collection of container options (services, decorators, etc.) that can be re-used by different containers.
+
+```go
+func DependencyModule() di.Module {
+	return di.Module{
+		di.WithService(logging.NewLogger),
+		//...
+	}
+}
+```
+
+```go
+c, err := di.NewContainer(
+	di.WithModule(common.DependencyModule()),
+	di.WithService(NewService),
+)
+```
+
 ## `dicontext`
 
 The `dicontext` package allows you to add a container scope to a `context.Context`.
@@ -306,14 +319,7 @@ ctx = dicontext.WithScope(ctx, c)
 ```
 
 ```go
-// Get container scope from the context
-scope := dicontext.Scope(ctx)
-// Resolve from the scope
-svc, err := di.Resolve[*service.Service](ctx, scope)
-```
-
-```go
-// Or, resolve directly from the scope on the context
+// Resolve services from the scope on the context
 svc, err := dicontext.Resolve[*service.Service](ctx)
 ```
 
@@ -344,8 +350,9 @@ handler = scopeMiddleware(handler)
 
 ## Feature Ideas
 
-- Implement `di.Lazy[Service any]` to inject a lazily-resolvable service.
+- Use `di.Lazy[Service any]` to inject a lazily-resolvable service.
 	Can be used to avoid creation if service is never needed. Or to get around dependency cycles in a simpler way than injecting `di.Scope`.
+- Add `dicontext.WithoutScope(context.Context)` to remove/hide a scope from child contexts. 
 - Track child scopes to make sure all child scopes have been closed. 
 	What do we do in this case? Close the child container(s)? Return an error? 
 - Allow retrying `Resolve` if an error was returned. Normally the first error would be cached for singleton or scoped dependencies. Subsequent attempts to resolve the service will return the error. However, there may be some cases where you would want to be able to retry the constructor function.
