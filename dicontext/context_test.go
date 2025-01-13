@@ -37,8 +37,8 @@ func Test_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := dicontext.WithScope(context.Background(), c)
-
 		got, err := dicontext.Resolve[testtypes.InterfaceA](ctx)
+
 		assert.Equal(t, &testtypes.StructA{}, got)
 		assert.NoError(t, err)
 	})
@@ -54,28 +54,32 @@ func Test_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := dicontext.WithScope(context.Background(), c)
-
 		got, err := dicontext.Resolve[testtypes.InterfaceA](ctx, di.WithTag("tag"))
+
 		assert.Equal(t, &testtypes.StructA{}, got)
 		assert.NoError(t, err)
 	})
 
 	t.Run("resolve error", func(t *testing.T) {
-		ctx := context.Background()
+		c, err := di.NewContainer()
+		require.NoError(t, err)
 
+		ctx := dicontext.WithScope(context.Background(), c)
 		got, err := dicontext.Resolve[testtypes.InterfaceA](ctx)
+		// TODO: Log error messages
+
 		assert.Nil(t, got)
 		assert.EqualError(t, err,
-			"resolve testtypes.InterfaceA from context: scope not found on context")
+			"dicontext.Resolve: di.Container.Resolve testtypes.InterfaceA: service not registered")
 	})
 
 	t.Run("no scope", func(t *testing.T) {
 		ctx := context.Background()
-
 		got, err := dicontext.Resolve[testtypes.InterfaceA](ctx)
+
 		assert.Nil(t, got)
 		assert.EqualError(t, err,
-			"resolve testtypes.InterfaceA from context: scope not found on context")
+			"dicontext.Resolve testtypes.InterfaceA: scope not found on context")
 	})
 }
 
@@ -87,23 +91,26 @@ func Test_MustResolve(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := dicontext.WithScope(context.Background(), c)
-
 		got := dicontext.MustResolve[testtypes.InterfaceA](ctx)
+
 		assert.Equal(t, &testtypes.StructA{}, got)
 	})
 
 	t.Run("no scope", func(t *testing.T) {
 		ctx := context.Background()
 
-		assert.PanicsWithError(t, "resolve testtypes.InterfaceA from context: scope not found on context", func() {
+		assert.PanicsWithError(t, "dicontext.Resolve testtypes.InterfaceA: scope not found on context", func() {
 			_ = dicontext.MustResolve[testtypes.InterfaceA](ctx)
 		})
 	})
 
 	t.Run("resolve error", func(t *testing.T) {
-		ctx := context.Background()
+		c, err := di.NewContainer()
+		require.NoError(t, err)
 
-		assert.PanicsWithError(t, "resolve testtypes.InterfaceA from context: scope not found on context", func() {
+		ctx := dicontext.WithScope(context.Background(), c)
+
+		assert.PanicsWithError(t, "dicontext.Resolve: di.Container.Resolve testtypes.InterfaceA: service not registered", func() {
 			_ = dicontext.MustResolve[testtypes.InterfaceA](ctx)
 		})
 	})

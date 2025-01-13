@@ -38,7 +38,7 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 
 	err := applyContainerOptions(c, opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "new container")
+		return nil, errors.Wrap(err, "di.NewContainer")
 	}
 
 	return c, nil
@@ -126,7 +126,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 	defer c.closedMu.RUnlock()
 
 	if c.closed {
-		return nil, errors.Wrap(ErrContainerClosed, "new scope")
+		return nil, errors.Wrap(ErrContainerClosed, "di.Container.NewScope")
 	}
 
 	scope := &Container{
@@ -137,7 +137,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 
 	err := applyContainerOptions(scope, opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "new scope")
+		return nil, errors.Wrap(err, "di.Container.NewScope")
 	}
 
 	return scope, nil
@@ -183,11 +183,11 @@ func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...Resolve
 	defer c.closedMu.RUnlock()
 
 	if c.closed {
-		return nil, errors.Wrapf(ErrContainerClosed, "resolve %s", key)
+		return nil, errors.Wrapf(ErrContainerClosed, "di.Container.Resolve %s", key)
 	}
 
 	val, err := resolve(ctx, c, key, make(resolveVisitor))
-	return val, errors.Wrapf(err, "resolve %s", key)
+	return val, errors.Wrapf(err, "di.Container.Resolve %s", key)
 }
 
 func resolve(
@@ -362,7 +362,7 @@ func (c *Container) Close(ctx context.Context) error {
 	defer c.closedMu.Unlock()
 
 	if c.closed {
-		return errors.Wrap(ErrContainerClosed, "close: already closed")
+		return errors.Wrap(ErrContainerClosed, "di.Container.Close: closed already")
 	}
 	c.closed = true
 
@@ -377,7 +377,7 @@ func (c *Container) Close(ctx context.Context) error {
 	}
 
 	if err := errors.Join(errs...); err != nil {
-		return errors.Wrap(err, "close")
+		return errors.Wrap(err, "di.Container.Close")
 	}
 
 	return nil

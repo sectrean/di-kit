@@ -109,11 +109,9 @@ func (s *injectedScope) Resolve(
 	// Otherwise a deadlock is possible.
 	if !s.ready.Load() {
 		return nil, errors.Errorf(
-			"resolve %v: "+
-				"resolve not supported within constructor function for %s: "+
-				"the di.Scope must be stored and used later",
+			"di.Container.Resolve %v: "+
+				"not supported within service constructor function",
 			t,
-			s.key,
 		)
 	}
 

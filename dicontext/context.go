@@ -34,7 +34,7 @@ func Resolve[Service any](ctx context.Context, opts ...di.ResolveOption) (Servic
 
 	scope := Scope(ctx)
 	if scope == nil {
-		return val, errors.Errorf("resolve %s from context: scope not found on context",
+		return val, errors.Errorf("dicontext.Resolve %s: scope not found on context",
 			reflect.TypeFor[Service]())
 	}
 
@@ -43,7 +43,7 @@ func Resolve[Service any](ctx context.Context, opts ...di.ResolveOption) (Servic
 		val = anyVal.(Service)
 	}
 
-	return val, errors.Wrap(err, "resolve from context")
+	return val, errors.Wrap(err, "dicontext.Resolve")
 }
 
 // MustResolve resolves a service of type Service from the container scope stored on the [context.Context].

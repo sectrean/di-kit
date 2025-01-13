@@ -53,7 +53,7 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 
 	return newContainerOption(orderService, func(c *Container) error {
 		if funcOrValue == nil {
-			return errors.Errorf("with service: funcOrValue is nil")
+			return errors.Errorf("WithService: funcOrValue is nil")
 		}
 
 		t := reflect.TypeOf(funcOrValue)
@@ -67,7 +67,7 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 		}
 
 		if err != nil {
-			return errors.Wrapf(err, "with service %T", funcOrValue)
+			return errors.Wrapf(err, "WithService %T", funcOrValue)
 		}
 
 		c.register(sc)

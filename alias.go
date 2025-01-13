@@ -26,7 +26,7 @@ func As[Service any]() ServiceOption {
 
 		err := sc.AddAlias(aliasType)
 		if err != nil {
-			return errors.Wrapf(err, "as %s", aliasType)
+			return errors.Wrapf(err, "As %s", aliasType)
 		}
 
 		return nil

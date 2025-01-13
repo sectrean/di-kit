@@ -85,25 +85,19 @@ type closerFactory func(val any) Closer
 //
 // This option will return an error if the service type is not assignable to Service.
 func WithCloseFunc[Service any](f func(context.Context, Service) error) ServiceOption {
-	return closeFuncOption[Service]{f}
-}
+	return serviceOption(func(sc serviceConfig) error {
+		if !sc.Type().AssignableTo(reflect.TypeFor[Service]()) {
+			return errors.Errorf("WithCloseFunc: service type %s is not assignable to %s",
+				sc.Type(), reflect.TypeFor[Service]())
+		}
 
-type closeFuncOption[Service any] struct {
-	f func(context.Context, Service) error
-}
-
-func (o closeFuncOption[Service]) applyServiceConfig(sc serviceConfig) error {
-	if !sc.Type().AssignableTo(reflect.TypeFor[Service]()) {
-		return errors.Errorf("with close func: service type %s is not assignable to %s",
-			sc.Type(), reflect.TypeFor[Service]())
-	}
-
-	sc.SetCloserFactory(func(val any) Closer {
-		return closeFunc(func(ctx context.Context) error {
-			return o.f(ctx, val.(Service))
+		sc.SetCloserFactory(func(val any) Closer {
+			return closeFunc(func(ctx context.Context) error {
+				return f(ctx, val.(Service))
+			})
 		})
+		return nil
 	})
-	return nil
 }
 
 // getCloser returns the Closer interface if the given value implements it,

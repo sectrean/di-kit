@@ -24,16 +24,16 @@ import (
 func WithDecorator(decorateFunc any, opts ...DecoratorOption) ContainerOption {
 	return newContainerOption(orderDecorator, func(c *Container) error {
 		if decorateFunc == nil {
-			return errors.New("with decorator: decorateFunc is nil")
+			return errors.New("WithDecorator: decorateFunc is nil")
 		}
 
 		if c.parent != nil {
-			return errors.New("decorators cannot be registered with a child scope")
+			return errors.New("WithDecorator: decorators cannot be registered with a child scope")
 		}
 
 		d, err := newDecorator(decorateFunc, opts)
 		if err != nil {
-			return errors.Wrapf(err, "with decorator %T", decorateFunc)
+			return errors.Wrapf(err, "WithDecorator %T", decorateFunc)
 		}
 
 		c.registerDecorator(d)
@@ -91,7 +91,7 @@ func newDecorator(fn any, opts []DecoratorOption) (*decorator, error) {
 	}
 
 	if !svcInDeps {
-		err := errors.Errorf("function must have a Service parameter")
+		err := errors.New("function must have a Service parameter")
 		errs = append(errs, err)
 	}
 
@@ -137,7 +137,7 @@ func (d *decorator) SetTag(tag any) error {
 		}
 	}
 
-	return errors.New("with tag: parameter not found")
+	return errors.New("dependency not found")
 }
 
 func (d *decorator) Decorate(deps []reflect.Value) any {

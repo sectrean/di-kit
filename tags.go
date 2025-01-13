@@ -18,6 +18,14 @@ func WithTag(tag any) ServiceTagOption {
 	return tagOption{tag: tag}
 }
 
+// ServiceTagOption is used to specify the tag associated with a service when calling [WithService],
+// [Resolve], [Container.Resolve], or [Container.Contains].
+type ServiceTagOption interface {
+	ServiceOption
+	ResolveOption
+	DecoratorOption
+}
+
 // WithTagged is used to specify a tag for a service dependency when calling
 // [WithService] or [Invoke].
 //
@@ -37,23 +45,29 @@ func WithTag(tag any) ServiceTagOption {
 //	)
 //
 // This option will return an error if the Service does not have a dependency of type Dependency.
-func WithTagged[Dependency any](tag any) DependencyTagOption {
-	return depTagOption{
-		t:   reflect.TypeFor[Dependency](),
-		tag: tag,
-	}
+func WithTagged[Dependency any](tag any) DependencyOption {
+	// Assign the tag to the first dependency of the right type that does not already have a tag.
+	// If no dependency is found, an error is returned.
+	//
+	// We modify the slice items in place.
+	return dependencyOption(func(deps []serviceKey) error {
+		depType := reflect.TypeFor[Dependency]()
+
+		for i := range deps {
+			// Find the first dependency with the right type
+			// Skip past any that have already been assigned a tag
+			if deps[i].Type == depType && deps[i].Tag == nil {
+				deps[i].Tag = tag
+				return nil
+			}
+		}
+
+		return errors.Errorf("WithTagged %s: parameter not found", depType)
+	})
 }
 
-// ServiceTagOption is used to specify the tag associated with a service when calling [WithService],
-// [Resolve], [Container.Resolve], or [Container.Contains].
-type ServiceTagOption interface {
-	ServiceOption
-	ResolveOption
-	DecoratorOption
-}
-
-// DependencyTagOption is used to specify a tag for a dependency when calling [WithService] or [Invoke].
-type DependencyTagOption interface {
+// DependencyOption is used to configure a service dependency when calling [WithService] or [Invoke].
+type DependencyOption interface {
 	ServiceOption
 	InvokeOption
 	DecoratorOption
@@ -81,37 +95,18 @@ func (o tagOption) applyDecorator(d *decorator) error {
 
 var _ ServiceTagOption = tagOption{}
 
-type depTagOption struct {
-	t   reflect.Type
-	tag any
+type dependencyOption func(deps []serviceKey) error
+
+func (o dependencyOption) applyServiceConfig(sc serviceConfig) error {
+	return o(sc.Dependencies())
 }
 
-// applyDeps assigns the tag to the first dependency of the right type that does not already have a tag.
-// If no dependency is found, an error is returned.
-//
-// The slice is modified in place.
-func (o depTagOption) applyDeps(deps []serviceKey) error {
-	for i := range deps {
-		// Find a dependency with the right type
-		// Skip past any that have already been assigned a tag
-		if deps[i].Type == o.t && deps[i].Tag == nil {
-			deps[i].Tag = o.tag
-			return nil
-		}
-	}
-	return errors.Errorf("with tagged %s: parameter not found", o.t)
+func (o dependencyOption) applyDecorator(d *decorator) error {
+	return o(d.deps)
 }
 
-func (o depTagOption) applyServiceConfig(sc serviceConfig) error {
-	return o.applyDeps(sc.Dependencies())
+func (o dependencyOption) applyInvokeConfig(c *invokeConfig) error {
+	return o(c.deps)
 }
 
-func (o depTagOption) applyDecorator(d *decorator) error {
-	return o.applyDeps(d.deps)
-}
-
-func (o depTagOption) applyInvokeConfig(c *invokeConfig) error {
-	return o.applyDeps(c.deps)
-}
-
-var _ DependencyTagOption = depTagOption{}
+var _ DependencyOption = dependencyOption(nil)

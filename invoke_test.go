@@ -20,7 +20,7 @@ func Test_Invoke(t *testing.T) {
 		err = di.Invoke(ctx, c, 1234)
 		LogError(t, err)
 
-		assert.EqualError(t, err, "invoke int: fn must be a function")
+		assert.EqualError(t, err, "di.Invoke int: fn must be a function")
 	})
 
 	t.Run("dependency nil", func(t *testing.T) {
@@ -95,7 +95,7 @@ func Test_Invoke(t *testing.T) {
 		err = di.Invoke(ctx, c, func(testtypes.InterfaceA) {})
 		LogError(t, err)
 
-		assert.EqualError(t, err, "invoke func(testtypes.InterfaceA): resolve testtypes.InterfaceA: service not registered")
+		assert.EqualError(t, err, "di.Invoke func(testtypes.InterfaceA): di.Container.Resolve testtypes.InterfaceA: service not registered")
 	})
 
 	t.Run("with context", func(t *testing.T) {
@@ -125,7 +125,7 @@ func Test_Invoke(t *testing.T) {
 		err = di.Invoke(ctx, c, func() {})
 		LogError(t, err)
 
-		assert.EqualError(t, err, "invoke func(): context canceled")
+		assert.EqualError(t, err, "di.Invoke func(): context canceled")
 	})
 
 	t.Run("with context error during resolve", func(t *testing.T) {
@@ -141,7 +141,7 @@ func Test_Invoke(t *testing.T) {
 		err = di.Invoke(ctx, c, func(context.Context, testtypes.InterfaceA) {})
 		LogError(t, err)
 
-		assert.EqualError(t, err, "invoke func(context.Context, testtypes.InterfaceA): resolve testtypes.InterfaceA: context canceled")
+		assert.EqualError(t, err, "di.Invoke func(context.Context, testtypes.InterfaceA): di.Container.Resolve testtypes.InterfaceA: context canceled")
 	})
 
 	t.Run("with tagged", func(t *testing.T) {
@@ -184,6 +184,6 @@ func Test_Invoke(t *testing.T) {
 		)
 		LogError(t, err)
 
-		assert.EqualError(t, err, "invoke func(testtypes.InterfaceA): with tagged testtypes.InterfaceB: parameter not found")
+		assert.EqualError(t, err, "di.Invoke func(testtypes.InterfaceA): WithTagged testtypes.InterfaceB: parameter not found")
 	})
 }

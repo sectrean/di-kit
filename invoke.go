@@ -18,7 +18,7 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 
 	// Make sure fn is a function
 	if fnType.Kind() != reflect.Func {
-		return errors.Errorf("invoke %T: fn must be a function", fn)
+		return errors.Errorf("di.Invoke %T: fn must be a function", fn)
 	}
 
 	// Get the dependencies
@@ -40,7 +40,7 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 		return opt.applyInvokeConfig(config)
 	})
 	if err != nil {
-		return errors.Wrapf(err, "invoke %T", fn)
+		return errors.Wrapf(err, "di.Invoke %T", fn)
 	}
 
 	// Resolve deps from the Scope
@@ -62,14 +62,14 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 
 		if depErr != nil {
 			// Stop at the first error
-			return errors.Wrapf(depErr, "invoke %T", fn)
+			return errors.Wrapf(depErr, "di.Invoke %T", fn)
 		}
 		in[i] = safeVal(dep.Type, depVal)
 	}
 
 	// Check for a context error before we invoke the function
 	if ctx.Err() != nil {
-		return errors.Wrapf(ctx.Err(), "invoke %T", fn)
+		return errors.Wrapf(ctx.Err(), "di.Invoke %T", fn)
 	}
 
 	// Invoke the function

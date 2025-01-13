@@ -27,7 +27,7 @@ type Middleware = func(http.Handler) http.Handler
 // This will panic if parent is nil.
 func NewRequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOption) (Middleware, error) {
 	if parent == nil {
-		return nil, errors.New("new request scope middleware: parent is nil")
+		return nil, errors.New("dihttp.NewRequestScopeMiddleware: parent is nil")
 	}
 
 	mw := &scopeMiddleware{
