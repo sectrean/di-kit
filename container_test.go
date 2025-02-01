@@ -667,7 +667,7 @@ func Test_Container_Resolve(t *testing.T) {
 			di.WithService(
 				func() testtypes.InterfaceA {
 					calls++
-					return &testtypes.StructA{}
+					return &testtypes.StructA{Tag: 1}
 				},
 				di.SingletonLifetime,
 			),
@@ -676,7 +676,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		a1, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		assert.Equal(t, &testtypes.StructA{}, a1)
+		assert.Equal(t, &testtypes.StructA{Tag: 1}, a1)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, calls)
 
@@ -693,7 +693,7 @@ func Test_Container_Resolve(t *testing.T) {
 			di.WithService(
 				func() testtypes.InterfaceA {
 					calls++
-					return &testtypes.StructA{}
+					return &testtypes.StructA{Tag: 1}
 				},
 				di.SingletonLifetime,
 			),
@@ -702,7 +702,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		a1, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		assert.Equal(t, &testtypes.StructA{}, a1)
+		assert.Equal(t, &testtypes.StructA{Tag: 1}, a1)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, calls)
 
@@ -722,7 +722,7 @@ func Test_Container_Resolve(t *testing.T) {
 			di.WithService(
 				func() testtypes.InterfaceA {
 					calls++
-					return &testtypes.StructA{}
+					return &testtypes.StructA{Tag: calls}
 				},
 				di.TransientLifetime,
 			),
@@ -731,12 +731,12 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		a1, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		assert.Equal(t, &testtypes.StructA{}, a1)
+		assert.Equal(t, &testtypes.StructA{Tag: 1}, a1)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, calls)
 
 		a2, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		assert.Equal(t, &testtypes.StructA{}, a2)
+		assert.Equal(t, &testtypes.StructA{Tag: 2}, a2)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, calls)
 	})
@@ -956,7 +956,10 @@ func Test_Container_Resolve(t *testing.T) {
 
 	t.Run("alias same instance", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewStructAPtr,
+			di.WithService(
+				func() *testtypes.StructA {
+					return &testtypes.StructA{Tag: 1}
+				},
 				di.As[testtypes.InterfaceA](),
 				di.As[*testtypes.StructA](),
 			),
@@ -977,7 +980,12 @@ func Test_Container_Resolve(t *testing.T) {
 
 	t.Run("tag with func", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),
+			di.WithService(
+				func() testtypes.InterfaceA {
+					return &testtypes.StructA{Tag: 1}
+				},
+				di.WithTag("tag"),
+			),
 		)
 		require.NoError(t, err)
 
@@ -993,7 +1001,7 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("tag with value", func(t *testing.T) {
-		a := &testtypes.StructA{}
+		a := &testtypes.StructA{Tag: 1}
 
 		c, err := di.NewContainer(
 			di.WithService(a, di.WithTag("tag")),
@@ -1026,8 +1034,8 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("tags mixed", func(t *testing.T) {
-		a1 := &testtypes.StructA{}
-		a2 := &testtypes.StructA{}
+		a1 := &testtypes.StructA{Tag: 1}
+		a2 := &testtypes.StructA{Tag: 2}
 
 		c, err := di.NewContainer(
 			di.WithService(a1, di.As[testtypes.InterfaceA]()),
@@ -1035,15 +1043,15 @@ func Test_Container_Resolve(t *testing.T) {
 		)
 		require.NoError(t, err)
 
+		// Should we make it so that the service registered with
+		// no tag takes precedence if when requesting the service with no tag?
+
 		ctx := context.Background()
-		got, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag(2))
-		assert.Same(t, a2, got)
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+		assert.Same(t, a2, got, "should get a2 because it was registered last")
 		assert.NoError(t, err)
 
-		// We get a2 here because it was registered last.
-		// Should we make it so that the service registered with
-		// no tag takes precedence?
-		got, err = di.Resolve[testtypes.InterfaceA](ctx, c)
+		got, err = di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag(2))
 		assert.Same(t, a2, got)
 		assert.NoError(t, err)
 	})
@@ -1086,8 +1094,8 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("tagged multiple", func(t *testing.T) {
-		a1 := &testtypes.StructA{}
-		a2 := &testtypes.StructA{}
+		a1 := &testtypes.StructA{Tag: 1}
+		a2 := &testtypes.StructA{Tag: 2}
 
 		c, err := di.NewContainer(
 			di.WithService(func() testtypes.InterfaceA { return a1 }, di.WithTag("1")),
@@ -1205,28 +1213,30 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("decorator", func(t *testing.T) {
-		a := &testtypes.StructA{}
+		a1 := &testtypes.StructA{}
 		calls := 0
 
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA),
-			di.WithDecorator(func(a testtypes.InterfaceA) testtypes.InterfaceA {
+			di.WithService(func() *testtypes.StructA { return a1 }),
+			di.WithDecorator(func(a *testtypes.StructA) *testtypes.StructA {
 				calls++
+				a.Tag = "decorated"
 				return a
 			}),
 		)
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+		got, err := di.Resolve[*testtypes.StructA](ctx, c)
 
-		assert.Same(t, a, got)
+		assert.Same(t, a1, got)
+		assert.Equal(t, &testtypes.StructA{Tag: "decorated"}, got)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, calls)
 	})
 
 	t.Run("decorator value service", func(t *testing.T) {
-		a := &testtypes.StructA{}
+		a := &testtypes.StructA{Tag: "original"}
 
 		c, err := di.NewContainer(
 			di.WithService(a, di.As[testtypes.InterfaceA]()),
@@ -1244,9 +1254,9 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("decorators multiple", func(t *testing.T) {
-		a1 := &testtypes.StructA{}
-		a2 := &testtypes.StructA{}
-		a3 := &testtypes.StructA{}
+		a1 := &testtypes.StructA{Tag: 1}
+		a2 := &testtypes.StructA{Tag: 2}
+		a3 := &testtypes.StructA{Tag: 3}
 		calls1 := 0
 		calls2 := 0
 
@@ -1403,7 +1413,7 @@ func Test_Container_Resolve(t *testing.T) {
 	t.Run("decorator with tag", func(t *testing.T) {
 		const tag = "decorate me"
 
-		a := &testtypes.StructA{}
+		a := &testtypes.StructA{Tag: tag}
 		calls := 0
 
 		c, err := di.NewContainer(
@@ -1432,7 +1442,7 @@ func Test_Container_Resolve(t *testing.T) {
 	t.Run("decorator with tagged", func(t *testing.T) {
 		const tag = "decorate me"
 
-		a := &testtypes.StructA{}
+		a := &testtypes.StructA{Tag: tag}
 		calls := 0
 
 		c, err := di.NewContainer(
@@ -1459,18 +1469,28 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("with module", func(t *testing.T) {
+		// The module service should be registered first since the module is added before the
+		// other service registrations.
+		a1 := &testtypes.StructA{Tag: 1}
+		a2 := &testtypes.StructA{Tag: 2}
+
 		c, err := di.NewContainer(
 			di.WithModule(di.Module{
-				di.WithService(testtypes.NewInterfaceA),
+				di.WithService(a1, di.As[testtypes.InterfaceA]()),
 				di.WithService(testtypes.NewInterfaceB),
 			}),
 			di.WithService(testtypes.NewInterfaceC),
+			di.WithService(a2, di.As[testtypes.InterfaceA]()),
 		)
 		require.NoError(t, err)
 
 		ctx := context.Background()
 		got, err := di.Resolve[testtypes.InterfaceC](ctx, c)
 		assert.NotNil(t, got)
+		assert.NoError(t, err)
+
+		aGot, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+		assert.Same(t, a2, aGot)
 		assert.NoError(t, err)
 	})
 
@@ -1522,7 +1542,7 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("concurrent singleton", func(t *testing.T) {
-		expected := &testtypes.StructA{}
+		expected := &testtypes.StructA{Tag: 1}
 		calls := 0
 
 		c, err := di.NewContainer(
@@ -2000,7 +2020,7 @@ func Test_Container_Close(t *testing.T) {
 
 		// Only one call should return a nil error
 		expected := make([]error, concurrency)
-		for i := 1; i < concurrency; i++ {
+		for i := range concurrency - 1 {
 			expected[i] = expectedErr
 		}
 

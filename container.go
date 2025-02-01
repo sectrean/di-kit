@@ -1,9 +1,11 @@
 package di
 
 import (
+	"cmp"
 	"context"
 	"maps"
 	"reflect"
+	"slices"
 	"sync"
 
 	"github.com/sectrean/di-kit/internal/errors"
@@ -36,7 +38,7 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 		resolved: make(map[serviceKey]resolveResult),
 	}
 
-	err := applyContainerOptions(c, opts)
+	err := c.applyOptions(opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "di.NewContainer")
 	}
@@ -49,6 +51,31 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 type ContainerOption interface {
 	order() optionOrder
 	applyContainer(*Container) error
+}
+
+func (c *Container) applyOptions(opts []ContainerOption) error {
+	// Flatten any modules before sorting and applying options
+	for i := 0; i < len(opts); i++ {
+		if mod, ok := opts[i].(Module); ok {
+			opts = slices.Insert(opts, i+1, mod...)
+		}
+	}
+
+	// Sort options by precedence
+	// Use stable sort because the registration order of services matters
+	slices.SortStableFunc(opts, func(a, b ContainerOption) int {
+		return cmp.Compare(a.order(), b.order())
+	})
+
+	var errs []error
+	for _, o := range opts {
+		err := o.applyContainer(c)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 func (c *Container) register(sc serviceConfig) {
@@ -135,7 +162,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 		resolved: make(map[serviceKey]resolveResult),
 	}
 
-	err := applyContainerOptions(scope, opts)
+	err := scope.applyOptions(opts)
 	if err != nil {
 		return nil, errors.Wrap(err, "di.Container.NewScope")
 	}
@@ -228,7 +255,7 @@ func resolve(
 	}
 
 	// Throw an error if we've already visited this service
-	if visited := visitor.Enter(key); visited {
+	if ok := visitor.Enter(key); !ok {
 		return nil, ErrDependencyCycle
 	}
 	defer visitor.Leave(key)
@@ -425,13 +452,13 @@ type resolveResult struct {
 
 type resolveVisitor map[serviceKey]struct{}
 
-func (v resolveVisitor) Enter(key serviceKey) (visited bool) {
+func (v resolveVisitor) Enter(key serviceKey) bool {
 	if _, exists := v[key]; exists {
-		return true
+		return false
 	}
 
 	v[key] = struct{}{}
-	return false
+	return true
 }
 
 func (v resolveVisitor) Leave(key serviceKey) {

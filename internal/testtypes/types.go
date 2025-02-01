@@ -24,7 +24,9 @@ type InterfaceD interface {
 	Close()
 }
 
-type StructA struct{}
+type StructA struct {
+	Tag any
+}
 
 func (StructA) A()                          {}
 func (StructA) Close(context.Context) error { return nil }
