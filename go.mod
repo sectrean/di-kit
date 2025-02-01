@@ -1,4 +1,4 @@
-module github.com/johnrutherford/di-kit
+module github.com/sectrean/di-kit
 
 go 1.22
 

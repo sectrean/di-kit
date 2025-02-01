@@ -3,7 +3,7 @@ package di
 import (
 	"reflect"
 
-	"github.com/johnrutherford/di-kit/internal/errors"
+	"github.com/sectrean/di-kit/internal/errors"
 )
 
 // WithTag is used to specify the tag associated with a service.

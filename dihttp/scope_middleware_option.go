@@ -3,7 +3,7 @@ package dihttp
 import (
 	"errors"
 
-	"github.com/johnrutherford/di-kit"
+	"github.com/sectrean/di-kit"
 )
 
 // ScopeMiddlewareOption is an option used to configure the scope middleware when calling [NewRequestScopeMiddleware].

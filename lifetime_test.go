@@ -3,7 +3,7 @@ package di_test
 import (
 	"testing"
 
-	"github.com/johnrutherford/di-kit"
+	"github.com/sectrean/di-kit"
 	"github.com/stretchr/testify/assert"
 )
 

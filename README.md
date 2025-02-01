@@ -1,8 +1,8 @@
 # 🧰 di-kit 
 [![Build Status][ci-img]][ci]
 
-[ci-img]: https://github.com/johnrutherford/di-kit/actions/workflows/go.yaml/badge.svg
-[ci]: https://github.com/johnrutherford/di-kit/actions/workflows/go.yaml
+[ci-img]: https://github.com/sectrean/di-kit/actions/workflows/go.yaml/badge.svg
+[ci]: https://github.com/sectrean/di-kit/actions/workflows/go.yaml
 
 **di-kit** is a dependency injection toolkit for modern Go applications.
 It's designed to be easy-to-use, lightweight, and full-featured.
@@ -39,7 +39,7 @@ svc, err := di.Resolve[*service.Service](ctx, c)
 ### Install
 
 ```shell
-go get github.com/johnrutherford/di-kit
+go get github.com/sectrean/di-kit
 ```
 *Requires Go 1.22 or higher*
 

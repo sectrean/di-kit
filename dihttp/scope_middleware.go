@@ -4,9 +4,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/johnrutherford/di-kit"
-	"github.com/johnrutherford/di-kit/dicontext"
-	"github.com/johnrutherford/di-kit/internal/errors"
+	"github.com/sectrean/di-kit"
+	"github.com/sectrean/di-kit/dicontext"
+	"github.com/sectrean/di-kit/internal/errors"
 )
 
 // Middleware is a function that wraps an HTTP handler.

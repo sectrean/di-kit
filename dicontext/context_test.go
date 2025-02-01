@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/johnrutherford/di-kit"
-	"github.com/johnrutherford/di-kit/dicontext"
-	"github.com/johnrutherford/di-kit/internal/testtypes"
+	"github.com/sectrean/di-kit"
+	"github.com/sectrean/di-kit/dicontext"
+	"github.com/sectrean/di-kit/internal/testtypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

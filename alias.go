@@ -3,7 +3,7 @@ package di
 import (
 	"reflect"
 
-	"github.com/johnrutherford/di-kit/internal/errors"
+	"github.com/sectrean/di-kit/internal/errors"
 )
 
 // As registers the service as type Service when calling [WithService].

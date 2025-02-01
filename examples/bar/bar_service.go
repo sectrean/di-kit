@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/johnrutherford/di-kit/examples/foo"
+	"github.com/sectrean/di-kit/examples/foo"
 )
 
 type BarService struct {

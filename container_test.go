@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnrutherford/di-kit"
-	"github.com/johnrutherford/di-kit/internal/errors"
-	"github.com/johnrutherford/di-kit/internal/mocks"
-	"github.com/johnrutherford/di-kit/internal/testtypes"
+	"github.com/sectrean/di-kit"
+	"github.com/sectrean/di-kit/internal/errors"
+	"github.com/sectrean/di-kit/internal/mocks"
+	"github.com/sectrean/di-kit/internal/testtypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

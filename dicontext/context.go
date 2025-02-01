@@ -4,8 +4,8 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/johnrutherford/di-kit"
-	"github.com/johnrutherford/di-kit/internal/errors"
+	"github.com/sectrean/di-kit"
+	"github.com/sectrean/di-kit/internal/errors"
 )
 
 type scopeKey struct{}

@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/johnrutherford/di-kit/internal/errors"
+	"github.com/sectrean/di-kit/internal/errors"
 )
 
 // These are commonly used types.

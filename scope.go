@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"sync/atomic"
 
-	"github.com/johnrutherford/di-kit/internal/errors"
+	"github.com/sectrean/di-kit/internal/errors"
 )
 
 // A Scope allows you to resolve services.

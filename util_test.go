@@ -6,8 +6,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/johnrutherford/di-kit"
-	"github.com/johnrutherford/di-kit/internal/testtypes"
+	"github.com/sectrean/di-kit"
+	"github.com/sectrean/di-kit/internal/testtypes"
 )
 
 var (

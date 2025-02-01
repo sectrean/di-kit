@@ -8,8 +8,8 @@ Example:
 	import (
 		"net/http"
 
-		"github.com/johnrutherford/di-kit"
-		"github.com/johnrutherford/di-kit/dihttp"
+		"github.com/sectrean/di-kit"
+		"github.com/sectrean/di-kit/dihttp"
 	)
 
 	func main() {

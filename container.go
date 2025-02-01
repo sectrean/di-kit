@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/johnrutherford/di-kit/internal/errors"
+	"github.com/sectrean/di-kit/internal/errors"
 )
 
 // Container is a dependency injection container.

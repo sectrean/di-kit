@@ -4,7 +4,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/johnrutherford/di-kit/internal/errors"
+	"github.com/sectrean/di-kit/internal/errors"
 )
 
 // Closer is used to close a service when closing the Container.

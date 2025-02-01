@@ -3,7 +3,7 @@ package di
 import (
 	"reflect"
 
-	"github.com/johnrutherford/di-kit/internal/errors"
+	"github.com/sectrean/di-kit/internal/errors"
 )
 
 type valueService struct {

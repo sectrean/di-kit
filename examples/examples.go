@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/johnrutherford/di-kit"
-	"github.com/johnrutherford/di-kit/examples/foo"
+	"github.com/sectrean/di-kit"
+	"github.com/sectrean/di-kit/examples/foo"
 )
 
 func Example() {

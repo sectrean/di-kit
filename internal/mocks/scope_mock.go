@@ -5,7 +5,7 @@ package mocks
 import (
 	context "context"
 
-	di "github.com/johnrutherford/di-kit"
+	di "github.com/sectrean/di-kit"
 	mock "github.com/stretchr/testify/mock"
 
 	reflect "reflect"

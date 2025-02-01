@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/johnrutherford/di-kit"
-	"github.com/johnrutherford/di-kit/dicontext"
-	"github.com/johnrutherford/di-kit/dihttp"
-	"github.com/johnrutherford/di-kit/examples/bar"
-	"github.com/johnrutherford/di-kit/examples/foo"
+	"github.com/sectrean/di-kit"
+	"github.com/sectrean/di-kit/dicontext"
+	"github.com/sectrean/di-kit/dihttp"
+	"github.com/sectrean/di-kit/examples/bar"
+	"github.com/sectrean/di-kit/examples/foo"
 )
 
 func HTTP_Example() {

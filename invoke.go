@@ -4,7 +4,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/johnrutherford/di-kit/internal/errors"
+	"github.com/sectrean/di-kit/internal/errors"
 )
 
 // Invoke calls the given function with parameters resolved from the provided Scope.
