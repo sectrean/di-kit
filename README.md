@@ -49,7 +49,7 @@ Use `NewContainer` on application startup to create a `Container`. Register serv
 
 A *value* can be a struct or a pointer to a struct. When the value type is requested from the `Container`, this value will be returned. The service will be registered as the value's actual type, even if the variable is declared as an interface. A service registered with a value is referred to as a *value service*.
 
-A *constructor function* may accept any parameters. The function must return a service, and may also return an error. When the service is requested from the `Container`, the function is called with the parameters resolved from the container. The service will be registered as the function's return type, which can be an interface, a struct, or a pointer to an interface or struct. A service registered with a function is referred to as a *function service*.
+A *constructor function* may accept any parameters. The function must return a service, and may also return an error. When the service is requested from the `Container`, the function is called with the parameters resolved from the container. The service will be registered as the function's return type, which can be a struct, a pointer to a struct, or an interface. A service registered with a function is referred to as a *function service*.
 
 ```go
 logger := slog.New(/*...*/)
@@ -185,19 +185,27 @@ c, err := di.NewContainer(
 	di.WithService(db.NewReplicaDB, // NewReplicaDB(context.Context) (*db.DB, error)
 		di.WithTag(db.Replica),
 	),
-	di.WithService(storage.NewReadWriteStore, // NewReadWriteStore(*db.DB) storage.*ReadWriteStore
+	di.WithService(storage.NewReadWriteStore, // NewReadWriteStore(*db.DB) *storage.ReadWriteStore
 		di.WithTagged[*db.DB](db.Primary),
 	),
-	di.WithService(storage.NewReadOnlyStore, // NewReadOnlyStore(*db.DB) storage.*ReadOnlyStore
+	di.WithService(storage.NewReadOnlyStore, // NewReadOnlyStore(*db.DB) *storage.ReadOnlyStore
 		di.WithTagged[*db.DB](db.Replica),
 	),
 )
 ```
 
+```go
+// The *db.DB service tagged with db.Primary will be injected
+rwStore, err := di.Resolve[*storage.ReadWriteStore](ctx, c)
+
+// The *db.DB service tagged with db.Replica will be injected
+roStore, err := di.Resolve[*storage.ReadOnlyStore](ctx, c)
+```
+
 Use `di.WithTag()` to specify a tag when resolving a service directly from a container.
 
 ```go
-primary, err := di.Resolve[*db.DB](ctx, c, di.WithTag(db.Primary)) 
+primary, err := di.Resolve[*db.DB](ctx, c, di.WithTag(db.Primary))
 ```
 
 ### Lifetimes
@@ -290,9 +298,11 @@ If you register multiple decorators for a service, they will be applied in the o
 
 ### Modules
 
-Modules allow you to export a collection of container options (services, decorators, etc.) that can be re-used by different containers.
+Modules allow you to export a collection of container options (services, decorators, etc.) that can be re-used for different containers.
 
 ```go
+package common
+
 func DependencyModule() di.Module {
 	return di.Module{
 		di.WithService(logging.NewLogger),
@@ -325,7 +335,7 @@ svc, err := dicontext.Resolve[*service.Service](ctx)
 
 ## `dihttp`
 
-The `dihttp` package provides configurable `net/http` middleware to create new child scopes for each request.
+The `dihttp` package provides configurable `net/http` middleware to create new child scopes for each request. The scope is added to the request context using the `dicontext` package.
 
 ```go
 c, err := di.NewContainer(
