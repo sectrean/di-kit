@@ -1,8 +1,11 @@
 # 🧰 di-kit 
 [![Build Status][ci-img]][ci]
+[![codecov][cov-img]][cov]
 
 [ci-img]: https://github.com/sectrean/di-kit/actions/workflows/go.yaml/badge.svg
 [ci]: https://github.com/sectrean/di-kit/actions/workflows/go.yaml
+[cov-img]: https://codecov.io/gh/sectrean/di-kit/graph/badge.svg?token=EOSZDYMEEM
+[cov]: https://codecov.io/gh/sectrean/di-kit
 
 **di-kit** is a dependency injection toolkit for modern Go applications.
 It's designed to be easy-to-use, lightweight, and full-featured.

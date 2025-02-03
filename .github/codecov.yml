@@ -1,0 +1,4 @@
+ignore:
+- "internal/mocks/*.go"
+- "internal/testtypes/*.go"
+- "examples"
