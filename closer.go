@@ -7,11 +7,11 @@ import (
 	"github.com/sectrean/di-kit/internal/errors"
 )
 
-// Closer is used to close a service when closing the Container.
-// This is useful for cleaning up resources when the service is no longer needed.
+// Closer is an interface for cleaning up resources associated with a service when the
+// [Container] is closed.
 //
-// The Container can automatically close services that implement Closer,
-// or a compatible Close function signature:
+// A [Container] will automatically close services that implement any of these
+// Close function signatures:
 //
 //	Close(context.Context) error
 //	Close(context.Context)
@@ -19,29 +19,27 @@ import (
 //	Close()
 //
 // This is the default behavior for function services.
-// When the Container creates a service, it will be responsible for closing it.
+// When the [Container] creates a service, it will be responsible for closing it.
 // Use the [IgnoreClose] option to ignore a Close method for a service.
 //
 // Value services are not closed by default.
-// Since value services are not created by the Container, it is assumed that
-// their lifetime will be managed outside of the Container.
-// Use the [WithClose] option to automatically close a value service when the Container is closed.
+// Since value services are not created by the [Container], it is assumed that
+// their lifetime will be managed outside of the [Container].
+// Use the [WithClose] option to automatically close a value service when the [Container] is closed.
 //
 // Use the [WithCloseFunc] option to specify a custom function to close a service.
 type Closer interface {
-	// Close is used to clean up resources when the service is no longer needed.
+	// Close resources owned by the service.
 	Close(ctx context.Context) error
 }
 
-// WithClose is used to close a service when the Container is closed.
+// WithClose is used to close a value service when the [Container] is closed.
 //
-// If the service implements Closer, or a compatible Close function signature,
-// it will be called when the Container is closed.
+// If a function service implements [Closer], or a compatible Close function signature,
+// it will be called when the [Container] is closed.
 //
 // Value services are not closed by default.
-// Use this option if you want the Container to close a value service.
-//
-// This is the default behavior for function services.
+// Use this option if you want the [Container] to call Close on a value service.
 //
 // See Closer for more information.
 func WithClose() ServiceOption {
@@ -51,16 +49,14 @@ func WithClose() ServiceOption {
 	})
 }
 
-// IgnoreClose is used when you do not want a service to be automatically closed by the Container.
-//
-// This is useful when you want to manage the lifecycle of a service outside of the Container.
+// IgnoreClose will not close the service when the [Container] is closed.
+// This is useful when you want to manage the lifecycle of a service outside of the [Container].
 //
 // Function services are closed by default.
-// Use this option if you do not want a function service to be closed by the Container.
-//
+// Use this option if you do not want a function service to be closed by the [Container].
 // This is the default behavior for value services.
 //
-// See Closer for more information.
+// See [Closer] for more information.
 func IgnoreClose() ServiceOption {
 	return serviceOption(func(sc serviceConfig) error {
 		sc.SetCloserFactory(nil)
@@ -70,7 +66,7 @@ func IgnoreClose() ServiceOption {
 
 type closerFactory func(val any) Closer
 
-// WithCloseFunc can be used to set a custom function to call for a service when the Container is closed.
+// WithCloseFunc configures a custom function to call to close the service when the [Container] is closed.
 //
 // This is useful if a service has a method called Shutdown or Stop instead of Close that should be
 // used to close the service.
@@ -81,7 +77,7 @@ type closerFactory func(val any) Closer
 //		return s.Shutdown(ctx)
 //	})
 //
-// See Closer for more information.
+// See [Closer] for more information.
 //
 // This option will return an error if the service type is not assignable to Service.
 func WithCloseFunc[Service any](f func(context.Context, Service) error) ServiceOption {

@@ -5,12 +5,14 @@ package di
 //
 // Example:
 //
+//	package common
+//
 //	func DependencyModule() di.Module {
 //		return di.Module{
-//	        di.WithService(NewDB),
-//	        di.WithService(NewStore),
-//	        di.WithService(NewService),
-//	    }
+//			di.WithService(NewDB),
+//			di.WithService(NewStore),
+//			di.WithService(NewService),
+//		}
 //	}
 type Module []ContainerOption
 
@@ -23,7 +25,7 @@ func (Module) order() optionOrder                { return 0 }
 // Example:
 //
 //	c, err := di.NewContainer(
-//		di.WithModule(app.DependencyModule()), // DependencyModule() di.Module
+//		di.WithModule(common.DependencyModule()), // DependencyModule() di.Module
 //		di.WithService(NewHandler), // NewHandler(*slog.Logger, *db.DB) *Handler
 //	)
 func WithModule(m Module) ContainerOption {

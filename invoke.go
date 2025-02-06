@@ -9,9 +9,9 @@ import (
 
 // Invoke calls the given function with parameters resolved from the provided Scope.
 //
-// The function may take any number of parameters.
-// The function may return an error.
-// Any other return values are ignored.
+// The function may take any number of parameters which will be resolved from the container,
+// and may return any number of results.
+// An [error] return parameter will be passed along and any other return parameters are ignored.
 func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 	fnType := reflect.TypeOf(fn)
 	fnVal := reflect.ValueOf(fn)

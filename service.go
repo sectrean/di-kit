@@ -7,7 +7,7 @@ import (
 	"github.com/sectrean/di-kit/internal/errors"
 )
 
-// WithService registers the provided function or value with a new Container
+// WithService registers the provided function or value with a new [Container]
 // when calling [NewContainer] or [Container.NewScope].
 //
 // If a function is provided, it will be called to create the service when resolved.
@@ -32,7 +32,7 @@ import (
 //
 // Available options:
 //   - [Lifetime] is used to specify how services are created when resolved.
-//   - [As] registers an alias for a service.
+//   - [As] overrides the type a service is registered as.
 //   - [WithTag] specifies a tag differentiate between services of the same type.
 //   - [WithTagged] specifies a tag for a service dependency.
 //   - [WithCloseFunc] specifies a function to be called when the service is closed.
@@ -114,6 +114,39 @@ func validateDependencyType(t reflect.Type) bool {
 	}
 
 	return validateServiceType(t)
+}
+
+// As registers the service as type Service when calling [WithService].
+//
+// By default, function services will be registered as the constructor function return type.
+// Value services will be registered as the actual type of the value.
+//
+// For your services to depend on interfaces, you must provide the implemented interface type(s) when creating the [Container].
+//
+// Example:
+//
+//	c, err := di.NewContainer(
+//		di.WithService(db.NewSQLDB,	// NewSQLDB() *db.SQLDB
+//			di.As[db.DB](),	// Register as an implemented interface
+//		),
+//		di.WithService(storage.NewDBStorage),	// NewDBStorage(db.DB) *storage.DBStorage
+//		// ...
+//	)
+//
+// If you use any [As] option, the original type will not be registered unless you specify it with another [As] option.
+//
+// This option will return an error if the service type is not assignable to type Service.
+func As[Service any]() ServiceOption {
+	return serviceOption(func(sc serviceConfig) error {
+		aliasType := reflect.TypeFor[Service]()
+
+		err := sc.AddAlias(aliasType)
+		if err != nil {
+			return errors.Wrapf(err, "As %s", aliasType)
+		}
+
+		return nil
+	})
 }
 
 // ServiceOption is used to configure service registration calling [WithService].

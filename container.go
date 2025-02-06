@@ -27,10 +27,10 @@ type Container struct {
 
 var _ Scope = (*Container)(nil)
 
-// NewContainer creates a new Container with the provided options.
+// NewContainer creates a new [Container] with the provided options.
 //
 // Available options:
-//   - [WithService] registers a service with a value or a function.
+//   - [WithService] registers a service with a value or constructor function.
 //   - [WithDecorator] registers a decorator function.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
@@ -140,11 +140,11 @@ func (c *Container) registerDecorator(d *decorator) {
 	c.decorators[d.Key()] = append(c.decorators[d.Key()], d)
 }
 
-// NewScope creates a new Container with a child scope.
+// NewScope creates a new [Container] with a child scope.
 //
-// Services registered with the parent Container will be inherited by the child Container.
-// Additional services can be registered with the new Scope if needed.
-// They will only be available to the new scope.
+// Services registered with the parent [Container] will be inherited by the child [Container].
+// Additional services can be registered with the new scope if needed and they will be isolated from
+// the parent and sibling containers.
 //
 // Available options:
 //   - [WithService] registers a service with a value or a function.
@@ -170,7 +170,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 	return scope, nil
 }
 
-// Contains returns true if the Container has a service registered for the given [reflect.Type].
+// Contains returns true if the [Container] has a service registered for the given [reflect.Type].
 //
 // Available options:
 //   - [WithTag] specifies a key associated with the service.
@@ -195,8 +195,8 @@ type ResolveOption interface {
 
 // Resolve a service of the given [reflect.Type].
 //
-// The type must be registered with the Container.
-// This will return an error if the Container has been closed.
+// The type must be registered with the [Container].
+// This will return an error if the [Container] has been closed.
 //
 // Available options:
 //   - [WithTag] specifies a key associated with the service.
@@ -378,7 +378,7 @@ func resolve(
 	return val, nil
 }
 
-// Close the Container and resolved services.
+// Close the [Container] and resolved services.
 //
 // Services are closed in the reverse order they were resolved/created.
 // Errors returned from closing services are joined together.

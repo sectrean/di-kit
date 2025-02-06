@@ -115,7 +115,7 @@ func Test_NewContainer(t *testing.T) {
 			"invalid dependency type di.Lifetime")
 	})
 
-	t.Run("func alias not assignable", func(t *testing.T) {
+	t.Run("func as not assignable", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA, di.As[*testtypes.StructA]()),
 		)
@@ -125,7 +125,7 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "di.NewContainer: WithService func() testtypes.InterfaceA: As *testtypes.StructA: type testtypes.InterfaceA not assignable to *testtypes.StructA")
 	})
 
-	t.Run("value alias not assignable", func(t *testing.T) {
+	t.Run("value as not assignable", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(&testtypes.StructA{}, di.As[testtypes.InterfaceB]()),
 		)
@@ -934,7 +934,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("alias override type", func(t *testing.T) {
+	t.Run("as override type", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(&testtypes.StructA{},
 				di.As[testtypes.InterfaceA](),
@@ -954,7 +954,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
-	t.Run("alias same instance", func(t *testing.T) {
+	t.Run("as same instance", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(
 				func() *testtypes.StructA {
@@ -1014,7 +1014,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("tag with alias", func(t *testing.T) {
+	t.Run("as with tag", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewStructAPtr,
 				di.As[testtypes.InterfaceA](),

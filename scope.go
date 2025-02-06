@@ -8,13 +8,13 @@ import (
 	"github.com/sectrean/di-kit/internal/errors"
 )
 
-// A Scope allows you to resolve services.
+// Scope is an interface to resolve services from a [Container].
 //
 // Scope can be used as a parameter for a service's constructor function.
 // This can be used to create a "factory" service.
 //
 // Note that the Scope should be stored on the service struct for later use.
-// [Scope.Resolve] cannot be called from within the constructor function.
+// Resolve cannot be called from within the constructor function.
 // It will return an error.
 //
 // Example:
@@ -30,25 +30,21 @@ import (
 //	func (f *DBFactory) NewDB(ctx context.Context, dbName string) *DB {
 //		// Use the Scope to resolve dependencies...
 //	}
-//
-// Scope is implemented by *Container.
 type Scope interface {
 	// Contains returns true if the Scope can resolve a service of the given type.
 	//
-	// Available options:
-	// 	- [WithTag] specifies the tag associated with the service.
+	// See [Container.Contains] for more information.
 	Contains(t reflect.Type, opts ...ResolveOption) bool
 
 	// Resolve returns a service of the given type from the Scope.
 	//
-	// Available options:
-	// 	- [WithTag] specifies the tag associated with the service.
+	// See [Container.Resolve] for more information.
 	Resolve(ctx context.Context, t reflect.Type, opts ...ResolveOption) (any, error)
 }
 
-// Resolve a service of type Service from the [Scope].
+// Resolve a service of type Service.
 //
-// See [Scope.Resolve] for more information.
+// See [Container.Resolve] for more information.
 func Resolve[Service any](ctx context.Context, s Scope, opts ...ResolveOption) (Service, error) {
 	var val Service
 	anyVal, err := s.Resolve(ctx, reflect.TypeFor[Service](), opts...)
@@ -59,9 +55,9 @@ func Resolve[Service any](ctx context.Context, s Scope, opts ...ResolveOption) (
 	return val, err
 }
 
-// MustResolve resolves a service of type Service from the [Scope].
+// MustResolve resolves a service of type Service.
 //
-// See [Scope.Resolve] for more information.
+// See [Container.Resolve] for more information.
 //
 // This will panic if the service cannot be resolved.
 func MustResolve[Service any](ctx context.Context, s Scope, opts ...ResolveOption) Service {

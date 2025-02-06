@@ -1,7 +1,10 @@
-# 🧰 di-kit 
+# 🧰 di-kit
+[![Go Reference][go-img]][go]
 [![Build Status][ci-img]][ci]
 [![codecov][cov-img]][cov]
 
+[go-img]: https://pkg.go.dev/badge/github.com/sectrean/di-kit.svg
+[go]: https://pkg.go.dev/github.com/sectrean/di-kit
 [ci-img]: https://github.com/sectrean/di-kit/actions/workflows/go.yaml/badge.svg
 [ci]: https://github.com/sectrean/di-kit/actions/workflows/go.yaml
 [cov-img]: https://codecov.io/gh/sectrean/di-kit/graph/badge.svg?token=EOSZDYMEEM
@@ -20,7 +23,9 @@ It's designed to be easy-to-use, lightweight, and full-featured.
 // 1. Create the Container and register services using values and constructor functions.
 c, err := di.NewContainer(
 	di.WithService(logger),             // var logger *slog.Logger
-	di.WithService(storage.NewDBStore), // NewDBStore(context.Context) (storage.Store, error)
+	di.WithService(storage.NewDBStore, // NewDBStore(context.Context) (*storage.DBStore, error)
+		di.As[storage.Store](),
+	),
 	di.WithService(service.NewService), // NewService(*slog.Logger, storage.Store) *service.Service
 )
 // ...
@@ -61,7 +66,7 @@ c, err := di.NewContainer(
 	// Value service registered as *slog.Logger 
 	di.WithService(logger),
 	// Function service registered as storage.Store
-	di.WithService(storage.NewDBStore), // NewDBStore(context.Context) (storage.Store, error)
+	di.WithService(storage.NewDBStore, di.As[storage.Store]()), // NewDBStore(context.Context) (*storage.DBStore, error)
 	// Function service registered as *service.Service
 	di.WithService(service.NewService), // NewService(*slog.Logger, storage.Store) *service.Service
 )
@@ -106,18 +111,20 @@ See [Closing](#closing) for more.
 
 ## Features
 
-### Aliases
+### Interfaces
 
-Use the `di.As[Service]()` option to register a service as the specified type.
-This can be used to override the service type and register as another (assignable) type.
+It's recommended that your service constructor functions *[accept interfaces and return structs](https://medium.com/@cep21/what-accept-interfaces-return-structs-means-in-go-2fe879e25ee8)*.
+
+By default, function services are registered as the function return type.
+Use the `di.As[Service]()` option to register a service as an interface that it implements. This allows your other services to depend on interfaces, which makes mocking/testing easier.
 
 ```go
 c, err := di.NewContainer(
-	// ...
-	di.WithService(service.NewService,	// NewService() *service.Service
-		di.As[*service.Service](),	// Register as pointer type
-		di.As[service.Interface](),	// Also register as any implemented interface
+	di.WithService(storage.NewDBStore,	// NewDBStore() *storage.DBStore
+		di.As[storage.Store](),	// Register the service as implemented interface
+		di.As[*storage.DBStore](),	// Add this if you also want to use the function return type
 	),
+	di.WithService(service.NewService), // NewService(storage.Store) *service.Service
 )
 ```
 
@@ -164,13 +171,13 @@ If you register multiple services as the same type, you can inject all of them a
 ```go
 c, err := di.NewContainer(
 	di.WithService(storage.NewDBStore, di.As[storage.Store](),
-		di.As[HealthChecker](),
+		di.As[healthcheck.HealthChecker](),
 	),
 	di.WithService(cache.NewRedisCache, di.As[cache.Cache](),
-		di.As[HealthChecker](),
+		di.As[healthcheck.HealthChecker](),
 	),
 	// All services registered as HealthChecker will be resolved and injected as a slice
-	di.WithService(NewHealthHandler), // NewHealthHandler([]HealthChecker) *HealthHandler
+	di.WithService(healthcheck.NewHealthHandler), // NewHealthHandler([]HealthChecker) *HealthHandler
 )
 ```
 
@@ -289,7 +296,9 @@ A decorator function must accept and return a *service*. It may also accept othe
 ```go
 c, err := di.NewContainer(
 	di.WithService(logger), // var logger *slog.Logger
-	di.WithService(service.NewService), // NewService() service.Interface
+	di.WithService(service.NewService, // NewService() *service.Service
+		di.As[service.Interface](),
+	),
 	di.WithDecorator(service.NewLoggedService), // NewLoggedService(service.Interface, *slog.Logger) service.Interface
 )
 // ...
@@ -317,7 +326,7 @@ func DependencyModule() di.Module {
 ```go
 c, err := di.NewContainer(
 	di.WithModule(common.DependencyModule()),
-	di.WithService(NewService),
+	di.WithService(NewService), // NewService(*slog.Logger) *service.Service
 )
 ```
 
