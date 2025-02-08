@@ -214,7 +214,11 @@ func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...Resolve
 	}
 
 	val, err := resolve(ctx, c, key, make(resolveVisitor))
-	return val, errors.Wrapf(err, "di.Container.Resolve %s", key)
+	if err != nil {
+		return val, errors.Wrapf(err, "di.Container.Resolve %s", key)
+	}
+
+	return val, nil
 }
 
 func resolve(

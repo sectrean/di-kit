@@ -42,8 +42,11 @@ func Resolve[Service any](ctx context.Context, opts ...di.ResolveOption) (Servic
 	if anyVal != nil {
 		val = anyVal.(Service)
 	}
+	if err != nil {
+		return val, errors.Wrap(err, "dicontext.Resolve")
+	}
 
-	return val, errors.Wrap(err, "dicontext.Resolve")
+	return val, nil
 }
 
 // MustResolve resolves a service of type Service from the container scope stored on the [context.Context].
