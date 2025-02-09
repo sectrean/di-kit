@@ -3,7 +3,6 @@ package di
 import (
 	"cmp"
 	"context"
-	"maps"
 	"reflect"
 	"slices"
 	"sync"
@@ -34,7 +33,9 @@ var _ Scope = (*Container)(nil)
 //   - [WithDecorator] registers a decorator function.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
-		services: make(map[serviceKey]service),
+		// Pre-allocate space for services. This will not be accurate if modules or decorators are
+		// used, but it's a probably better than the default starting size.
+		services: make(map[serviceKey]service, len(opts)),
 		resolved: make(map[serviceKey]resolveResult),
 	}
 
@@ -79,13 +80,6 @@ func (c *Container) applyOptions(opts []ContainerOption) error {
 }
 
 func (c *Container) register(sc serviceConfig) {
-	// Child containers point to the same services map as the parent container initially.
-	// If we're registering new services in the child container,
-	// we need to clone the parent map first.
-	if c.parent != nil && reflect.DeepEqual(c.parent.services, c.services) {
-		c.services = maps.Clone(c.parent.services)
-	}
-
 	if len(sc.Aliases()) == 0 {
 		c.registerType(sc.Type(), sc)
 	} else {
@@ -158,13 +152,16 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 
 	scope := &Container{
 		parent:   c,
-		services: c.services,
 		resolved: make(map[serviceKey]resolveResult),
 	}
 
-	err := scope.applyOptions(opts)
-	if err != nil {
-		return nil, errors.Wrap(err, "di.Container.NewScope")
+	if len(opts) > 0 {
+		scope.services = make(map[serviceKey]service, len(opts))
+
+		err := scope.applyOptions(opts)
+		if err != nil {
+			return nil, errors.Wrap(err, "di.Container.NewScope")
+		}
 	}
 
 	return scope, nil
@@ -180,8 +177,8 @@ func (c *Container) Contains(t reflect.Type, opts ...ResolveOption) bool {
 		key = opt.applyServiceKey(key)
 	}
 
-	_, found := c.services[key]
-	return found
+	_, registered := getService(c, key)
+	return registered
 }
 
 // ResolveOption can be used when calling [Resolve], [MustResolve],
@@ -221,6 +218,17 @@ func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...Resolve
 	return val, nil
 }
 
+func getService(scope *Container, key serviceKey) (service, bool) {
+	for ; scope != nil; scope = scope.parent {
+		svc, ok := scope.services[key]
+		if ok {
+			return svc, true
+		}
+	}
+
+	return nil, false
+}
+
 func resolve(
 	ctx context.Context,
 	scope *Container,
@@ -228,7 +236,7 @@ func resolve(
 	visitor resolveVisitor,
 ) (val any, err error) {
 	// Look up the service
-	svc, registered := scope.services[key]
+	svc, registered := getService(scope, key)
 	if !registered {
 		return nil, ErrServiceNotRegistered
 	}
@@ -240,15 +248,16 @@ func resolve(
 
 	// For singleton services, use the scope the service is registered with.
 	// Otherwise, use the current scope.
-	if svc.Lifetime() == SingletonLifetime {
+	lifetime := svc.Lifetime()
+	if lifetime == SingletonLifetime {
 		scope = svc.Scope()
-	} else if svc.Lifetime() == ScopedLifetime && scope == svc.Scope() {
+	} else if lifetime == ScopedLifetime && scope == svc.Scope() {
 		return nil, errors.New("scoped service must be resolved from a child scope")
 	}
 
 	// For Singleton or Scoped services, we store the result.
 	// See if this service has already been resolved.
-	if svc.Lifetime() != TransientLifetime {
+	if lifetime != TransientLifetime {
 		scope.resolvedMu.RLock()
 		res, exists := scope.resolved[svc.Key()]
 		scope.resolvedMu.RUnlock()
@@ -265,10 +274,12 @@ func resolve(
 	defer visitor.Leave(key)
 
 	// Recursively resolve dependencies
-	var deps []reflect.Value
-	if len(svc.Dependencies()) > 0 {
-		deps = make([]reflect.Value, len(svc.Dependencies()))
-		for i, depKey := range svc.Dependencies() {
+	var depVals []reflect.Value
+
+	deps := svc.Dependencies()
+	if len(deps) > 0 {
+		depVals = make([]reflect.Value, len(deps))
+		for i, depKey := range deps {
 			var depVal any
 			var depErr error
 
@@ -291,7 +302,7 @@ func resolve(
 				// Stop at the first error
 				return nil, errors.Wrapf(depErr, "dependency %s", depKey)
 			}
-			deps[i] = safeVal(depKey.Type, depVal)
+			depVals[i] = safeVal(depKey.Type, depVal)
 		}
 	}
 
@@ -353,7 +364,7 @@ func resolve(
 	}
 
 	// Create the service
-	val, err = svc.New(deps)
+	val, err = svc.New(depVals)
 
 	// Skip the rest if there was an error
 	if err != nil {

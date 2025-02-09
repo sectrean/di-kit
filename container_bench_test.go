@@ -10,28 +10,34 @@ import (
 )
 
 func Benchmark_NewContainer(b *testing.B) {
+	optsOneService := []di.ContainerOption{
+		di.WithService(testtypes.NewInterfaceAStruct),
+	}
+
+	optsTwoServices := []di.ContainerOption{
+		di.WithService(testtypes.NewInterfaceAStruct),
+		di.WithService(testtypes.NewInterfaceBStruct),
+	}
+
+	optsOneServiceValue := []di.ContainerOption{
+		di.WithService(&testtypes.StructA{}),
+	}
+
 	b.Run("func service one", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, _ = di.NewContainer(
-				di.WithService(testtypes.NewInterfaceAStruct),
-			)
+			_, _ = di.NewContainer(optsOneService...)
 		}
 	})
 
 	b.Run("func service two", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, _ = di.NewContainer(
-				di.WithService(testtypes.NewInterfaceAStruct),
-				di.WithService(testtypes.NewInterfaceBStruct),
-			)
+			_, _ = di.NewContainer(optsTwoServices...)
 		}
 	})
 
 	b.Run("value service one", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, _ = di.NewContainer(
-				di.WithService(&testtypes.StructA{}),
-			)
+			_, _ = di.NewContainer(optsOneServiceValue...)
 		}
 	})
 }
@@ -59,10 +65,12 @@ func Benchmark_Container_NewScope(b *testing.B) {
 
 		b.ResetTimer()
 
+		opts := []di.ContainerOption{
+			di.WithService(&testtypes.StructA{}),
+		}
+
 		for i := 0; i < b.N; i++ {
-			_, _ = root.NewScope(
-				di.WithService(&testtypes.StructB{}),
-			)
+			_, _ = root.NewScope(opts...)
 		}
 	})
 
@@ -74,10 +82,12 @@ func Benchmark_Container_NewScope(b *testing.B) {
 
 		b.ResetTimer()
 
+		opts := []di.ContainerOption{
+			di.WithService(testtypes.NewInterfaceB),
+		}
+
 		for i := 0; i < b.N; i++ {
-			_, _ = root.NewScope(
-				di.WithService(testtypes.NewInterfaceB),
-			)
+			_, _ = root.NewScope(opts...)
 		}
 	})
 }
@@ -105,8 +115,10 @@ func Benchmark_Container_Contains(b *testing.B) {
 
 		b.ResetTimer()
 
+		tagOpt := di.WithTag("b")
+
 		for i := 0; i < b.N; i++ {
-			_ = c.Contains(TypeInterfaceA, di.WithTag("b"))
+			_ = c.Contains(TypeInterfaceA, tagOpt)
 		}
 	})
 
@@ -132,8 +144,10 @@ func Benchmark_Container_Contains(b *testing.B) {
 
 		b.ResetTimer()
 
+		tagOpt := di.WithTag("b")
+
 		for i := 0; i < b.N; i++ {
-			_ = c.Contains(TypeStructAPtr, di.WithTag("b"))
+			_ = c.Contains(TypeStructAPtr, tagOpt)
 		}
 	})
 }
