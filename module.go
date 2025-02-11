@@ -5,27 +5,22 @@ package di
 //
 // Example:
 //
-//	package common
-//
-//	func DependencyModule() di.Module {
-//		return di.Module{
-//			di.WithService(NewDB),
-//			di.WithService(NewStore),
-//			di.WithService(NewService),
-//		}
+//	var DependencyModule = di.Module{
+//		di.WithService(NewDB),
+//		di.WithService(NewStore),
+//		di.WithService(NewService),
 //	}
 type Module []ContainerOption
 
 func (Module) applyContainer(c *Container) error { return nil }
 func (Module) order() optionOrder                { return 0 }
 
-// WithModule applies a [Module] when calling [NewContainer] or [Container.NewScope].
-// This can be useful if you want to create re-usable collections of services.
+// WithModule applies the options in a module [Module] when calling [NewContainer] or [Container.NewScope].
 //
 // Example:
 //
 //	c, err := di.NewContainer(
-//		di.WithModule(common.DependencyModule()), // DependencyModule() di.Module
+//		di.WithModule(DependencyModule), // var DependencyModule di.Module
 //		di.WithService(NewHandler), // NewHandler(*slog.Logger, *db.DB) *Handler
 //	)
 func WithModule(m Module) ContainerOption {

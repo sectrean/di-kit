@@ -313,19 +313,15 @@ If you register multiple decorators for a service, they will be applied in the o
 Modules allow you to export a collection of container options (services, decorators, etc.) that can be re-used for different containers.
 
 ```go
-package common
-
-func DependencyModule() di.Module {
-	return di.Module{
-		di.WithService(logging.NewLogger),
-		//...
-	}
+var DependencyModule = di.Module{
+	di.WithService(NewLogger),
+	//...
 }
 ```
 
 ```go
 c, err := di.NewContainer(
-	di.WithModule(common.DependencyModule()),
+	di.WithModule(DependencyModule), // var DependencyModule di.Module
 	di.WithService(NewService), // NewService(*slog.Logger) *service.Service
 )
 ```
