@@ -7,6 +7,7 @@ import (
 	"github.com/sectrean/di-kit"
 	"github.com/sectrean/di-kit/dicontext"
 	"github.com/sectrean/di-kit/internal/testtypes"
+	"github.com/sectrean/di-kit/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -66,7 +67,7 @@ func Test_Resolve(t *testing.T) {
 
 		ctx := dicontext.WithScope(context.Background(), c)
 		got, err := dicontext.Resolve[testtypes.InterfaceA](ctx)
-		// TODO: Log error messages
+		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err,
@@ -76,6 +77,7 @@ func Test_Resolve(t *testing.T) {
 	t.Run("no scope", func(t *testing.T) {
 		ctx := context.Background()
 		got, err := dicontext.Resolve[testtypes.InterfaceA](ctx)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err,

@@ -13,6 +13,7 @@ import (
 	"github.com/sectrean/di-kit/internal/errors"
 	"github.com/sectrean/di-kit/internal/mocks"
 	"github.com/sectrean/di-kit/internal/testtypes"
+	"github.com/sectrean/di-kit/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,7 +48,7 @@ func Test_NewContainer(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(1234),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService int: invalid service type")
@@ -58,7 +59,7 @@ func Test_NewContainer(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(a),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService: funcOrValue is nil")
@@ -68,7 +69,7 @@ func Test_NewContainer(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(di.SingletonLifetime, di.WithTag("tag")),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService di.Lifetime: invalid service type")
@@ -78,7 +79,7 @@ func Test_NewContainer(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(map[string]int{}),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService map[string]int: invalid service type")
@@ -88,7 +89,7 @@ func Test_NewContainer(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func() *int { return nil }),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService func() *int: invalid service type")
@@ -98,7 +99,7 @@ func Test_NewContainer(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func(int) testtypes.InterfaceA { return nil }),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService func(int) testtypes.InterfaceA: invalid dependency type int")
@@ -108,7 +109,7 @@ func Test_NewContainer(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func(int, di.Lifetime) testtypes.InterfaceA { return nil }),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService func(int, di.Lifetime) testtypes.InterfaceA: invalid dependency type int\n"+
@@ -119,7 +120,7 @@ func Test_NewContainer(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA, di.As[*testtypes.StructA]()),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService func() testtypes.InterfaceA: As *testtypes.StructA: type testtypes.InterfaceA not assignable to *testtypes.StructA")
@@ -129,7 +130,7 @@ func Test_NewContainer(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(&testtypes.StructA{}, di.As[testtypes.InterfaceB]()),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService *testtypes.StructA: As testtypes.InterfaceB: type *testtypes.StructA not assignable to testtypes.InterfaceB")
@@ -141,7 +142,7 @@ func Test_NewContainer(t *testing.T) {
 				di.WithTagged[testtypes.InterfaceB]("tag"),
 			),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService func() testtypes.InterfaceA: WithTagged testtypes.InterfaceB: parameter not found")
@@ -154,7 +155,7 @@ func Test_NewContainer(t *testing.T) {
 				di.WithTagged[testtypes.InterfaceB]("tag"),
 			),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService func() testtypes.InterfaceA: WithTagged testtypes.InterfaceB: parameter not found")
@@ -166,7 +167,7 @@ func Test_NewContainer(t *testing.T) {
 				di.WithCloseFunc(func(context.Context, *testtypes.StructA) error { return nil }),
 			),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService func() testtypes.InterfaceA: WithCloseFunc: service type testtypes.InterfaceA is not assignable to *testtypes.StructA")
@@ -176,7 +177,7 @@ func Test_NewContainer(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func() (testtypes.InterfaceA, testtypes.InterfaceB) { return nil, nil }),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err,
@@ -187,7 +188,7 @@ func Test_NewContainer(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func() error { return stderrors.New("test error") }),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService func() error: invalid service type")
@@ -197,7 +198,7 @@ func Test_NewContainer(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(context.Background),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService func() context.Context: invalid service type")
@@ -208,7 +209,7 @@ func Test_NewContainer(t *testing.T) {
 			di.WithService([]testtypes.InterfaceA{}),
 			di.WithService(testtypes.NewInterfaceA, di.As[testtypes.InterfaceB]()),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService []testtypes.InterfaceA: invalid service type\n"+
@@ -224,7 +225,7 @@ func Test_NewContainer(t *testing.T) {
 				di.WithTagged[*testtypes.StructB]("tag"),
 			),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService []testtypes.InterfaceA: invalid service type\n"+
@@ -238,7 +239,7 @@ func Test_NewContainer(t *testing.T) {
 			di.WithService(testtypes.NewInterfaceA),
 			di.WithDecorator(nil),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithDecorator: decorateFunc is nil")
 	})
@@ -248,7 +249,7 @@ func Test_NewContainer(t *testing.T) {
 			di.WithService(testtypes.NewInterfaceA),
 			di.WithDecorator(func() testtypes.InterfaceA { return nil }),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithDecorator func() testtypes.InterfaceA: function must have a Service parameter")
@@ -259,7 +260,7 @@ func Test_NewContainer(t *testing.T) {
 			di.WithService(testtypes.NewInterfaceA),
 			di.WithDecorator(di.SingletonLifetime),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithDecorator di.Lifetime: invalid decorator type")
@@ -270,7 +271,7 @@ func Test_NewContainer(t *testing.T) {
 			di.WithService(testtypes.NewInterfaceA),
 			di.WithDecorator(di.As[testtypes.InterfaceA]()),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithDecorator di.serviceOption: invalid decorator type")
@@ -281,7 +282,7 @@ func Test_NewContainer(t *testing.T) {
 			di.WithService(testtypes.NewInterfaceA),
 			di.WithDecorator(func(testtypes.InterfaceA) {}),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithDecorator func(testtypes.InterfaceA): function must return Service")
@@ -292,7 +293,7 @@ func Test_NewContainer(t *testing.T) {
 			di.WithService(testtypes.NewInterfaceA),
 			di.WithDecorator(func(testtypes.InterfaceA) error { return nil }),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithDecorator func(testtypes.InterfaceA) error: invalid service type")
@@ -305,7 +306,7 @@ func Test_NewContainer(t *testing.T) {
 				return nil
 			}, di.WithTagged[testtypes.InterfaceB]("tag")),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithDecorator func(testtypes.InterfaceA) testtypes.InterfaceA: WithTagged testtypes.InterfaceB: parameter not found")
@@ -316,7 +317,7 @@ func Test_NewContainer(t *testing.T) {
 			di.WithService(testtypes.NewInterfaceA),
 			di.WithDecorator(func(int, testtypes.InterfaceA) testtypes.InterfaceA { return nil }),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithDecorator func(int, testtypes.InterfaceA) testtypes.InterfaceA: invalid dependency type int")
@@ -327,7 +328,7 @@ func Test_NewContainer(t *testing.T) {
 			di.WithService(testtypes.NewInterfaceA),
 			di.WithDecorator(func(int, di.Lifetime, testtypes.InterfaceA) testtypes.InterfaceA { return nil }),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithDecorator func(int, di.Lifetime, testtypes.InterfaceA) testtypes.InterfaceA: invalid dependency type int\n"+
@@ -354,7 +355,7 @@ func Test_NewContainer(t *testing.T) {
 			}),
 			di.WithService(testtypes.NewInterfaceC),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService: funcOrValue is nil")
@@ -405,7 +406,7 @@ func Test_Container_NewScope(t *testing.T) {
 		scope, err := c.NewScope(
 			di.WithService(di.ScopedLifetime),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, scope)
 		assert.EqualError(t, err, "di.Container.NewScope: WithService di.Lifetime: invalid service type")
@@ -420,7 +421,7 @@ func Test_Container_NewScope(t *testing.T) {
 		assert.NoError(t, err)
 
 		scope, err := c.NewScope()
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, scope)
 		assert.EqualError(t, err, "di.Container.NewScope: container closed")
@@ -550,7 +551,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 
 		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: container closed")
@@ -566,7 +567,7 @@ func Test_Container_Resolve(t *testing.T) {
 		cancel()
 
 		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: context canceled")
@@ -583,7 +584,7 @@ func Test_Container_Resolve(t *testing.T) {
 		defer cancel()
 
 		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: context deadline exceeded")
@@ -596,7 +597,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: service not registered")
@@ -609,7 +610,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		got, err := di.Resolve[di.Scope](ctx, c)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve di.Scope: service not registered")
@@ -622,7 +623,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		got, err := di.Resolve[context.Context](ctx, c)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve context.Context: service not registered")
@@ -637,7 +638,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		got, err := di.Resolve[testtypes.InterfaceB](ctx, c)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceB: dependency testtypes.InterfaceA: service not registered")
@@ -653,7 +654,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: dependency testtypes.InterfaceB: dependency testtypes.InterfaceA: dependency cycle detected")
@@ -786,7 +787,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		got, err := di.Resolve[testtypes.InterfaceB](ctx, c)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceB: scoped service must be resolved from a child scope")
@@ -805,7 +806,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		b, err := di.Resolve[testtypes.InterfaceB](ctx, scope1)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, b)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceB: scoped service must be resolved from a child scope")
@@ -827,7 +828,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		b, err := di.Resolve[testtypes.InterfaceB](ctx, c)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, b)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceB: dependency testtypes.InterfaceA: scoped service must be resolved from a child scope")
@@ -948,7 +949,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 
 		got, err = di.Resolve[*testtypes.StructA](ctx, c)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
 		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
@@ -1064,7 +1065,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		got, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag("other"))
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA (Tag other): service not registered")
@@ -1129,13 +1130,13 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		a, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, a)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: constructor error")
 
 		b, err := di.Resolve[testtypes.InterfaceB](ctx, c)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, b)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceB: dependency testtypes.InterfaceA: constructor error")
@@ -1161,7 +1162,7 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("dependency context.Context", func(t *testing.T) {
-		ctx := ContextWithTestValue(context.Background(), "value")
+		ctx := testutils.ContextWithTestValue(context.Background(), "value")
 
 		c, err := di.NewContainer(
 			di.WithService(func(ctxDep context.Context) testtypes.InterfaceA {
@@ -1179,10 +1180,10 @@ func Test_Container_Resolve(t *testing.T) {
 	t.Run("dependency di.Scope", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
-			di.WithService(func(ctx context.Context, scope di.Scope) *TestFactory {
+			di.WithService(func(ctx context.Context, scope di.Scope) *testtypes.TestFactory[testtypes.InterfaceA] {
 				// We cannot call Resolve on the scope here.
 				a, err := di.Resolve[testtypes.InterfaceA](ctx, scope)
-				LogError(t, err)
+				testutils.LogError(t, err)
 
 				assert.Nil(t, a)
 				assert.EqualError(t, err,
@@ -1194,22 +1195,20 @@ func Test_Container_Resolve(t *testing.T) {
 				assert.True(t, hasA)
 
 				// We have to store it and we can call Resolve later.
-				return NewTestFactory(scope, func(ctx context.Context, s di.Scope) testtypes.InterfaceA {
-					a, err := di.Resolve[testtypes.InterfaceA](ctx, s)
-					assert.NotNil(t, a)
-					assert.NoError(t, err)
-					return a
+				return testtypes.NewTestFactory(scope, func(ctx context.Context, s di.Scope) (testtypes.InterfaceA, error) {
+					return di.Resolve[testtypes.InterfaceA](ctx, s)
 				})
 			}),
 		)
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		factory, err := di.Resolve[*TestFactory](ctx, c)
+		factory, err := di.Resolve[*testtypes.TestFactory[testtypes.InterfaceA]](ctx, c)
 		require.NoError(t, err)
 
-		a := factory.Build(ctx)
+		a, err := factory.Build(ctx)
 		assert.NotNil(t, a)
+		assert.NoError(t, err)
 	})
 
 	t.Run("decorator", func(t *testing.T) {
@@ -1364,7 +1363,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		got, err := di.Resolve[testtypes.InterfaceB](ctx, c)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceB: decorator func(testtypes.InterfaceB, testtypes.InterfaceA) testtypes.InterfaceB: dependency testtypes.InterfaceA: constructor error")
@@ -1669,14 +1668,14 @@ func Test_Container_Resolve(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			_, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-			LogError(t, err)
+			testutils.LogError(t, err)
 			assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: dependency testtypes.InterfaceB: dependency testtypes.InterfaceA: dependency cycle detected")
 		}()
 
 		go func() {
 			defer wg.Done()
 			_, err := di.Resolve[testtypes.InterfaceB](ctx, c)
-			LogError(t, err)
+			testutils.LogError(t, err)
 			assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceB: dependency testtypes.InterfaceA: dependency testtypes.InterfaceB: dependency cycle detected")
 		}()
 
@@ -1742,14 +1741,14 @@ func Test_Container_Close(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = c.Close(ctx)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.EqualError(t, err, "di.Container.Close: closed already: container closed")
 		assert.ErrorIs(t, err, di.ErrContainerClosed)
 	})
 
 	t.Run("all close funcs", func(t *testing.T) {
-		ctx := ContextWithTestValue(context.Background(), "value")
+		ctx := testutils.ContextWithTestValue(context.Background(), "value")
 
 		aMock := mocks.NewInterfaceAMock(t)
 		aMock.EXPECT().
@@ -1891,7 +1890,7 @@ func Test_Container_Close(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = scope.Close(ctx)
-		LogError(t, err)
+		testutils.LogError(t, err)
 		assert.EqualError(t, err, "di.Container.Close: err a")
 	})
 
@@ -1919,7 +1918,7 @@ func Test_Container_Close(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = scope.Close(ctx)
-		LogError(t, err)
+		testutils.LogError(t, err)
 		assert.EqualError(t, err, "di.Container.Close: err c\nerr a")
 	})
 
@@ -2025,7 +2024,7 @@ func Test_Container_Close(t *testing.T) {
 		}
 
 		results := make([]error, concurrency)
-		runConcurrent(concurrency, func(i int) {
+		testutils.RunParallel(concurrency, func(i int) {
 			results[i] = c.Close(context.Background())
 		})
 

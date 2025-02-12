@@ -7,6 +7,7 @@ import (
 	"github.com/sectrean/di-kit"
 	"github.com/sectrean/di-kit/internal/errors"
 	"github.com/sectrean/di-kit/internal/testtypes"
+	"github.com/sectrean/di-kit/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +19,7 @@ func Test_Invoke(t *testing.T) {
 
 		ctx := context.Background()
 		err = di.Invoke(ctx, c, 1234)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.EqualError(t, err, "di.Invoke int: fn must be a function")
 	})
@@ -68,7 +69,7 @@ func Test_Invoke(t *testing.T) {
 		err = di.Invoke(ctx, c, func(testtypes.InterfaceA) error {
 			return errors.New("test invoke error")
 		})
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.EqualError(t, err, "test invoke error")
 	})
@@ -93,7 +94,7 @@ func Test_Invoke(t *testing.T) {
 
 		ctx := context.Background()
 		err = di.Invoke(ctx, c, func(testtypes.InterfaceA) {})
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.EqualError(t, err, "di.Invoke func(testtypes.InterfaceA): di.Container.Resolve testtypes.InterfaceA: service not registered")
 	})
@@ -104,7 +105,7 @@ func Test_Invoke(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		ctx := ContextWithTestValue(context.Background(), "value")
+		ctx := testutils.ContextWithTestValue(context.Background(), "value")
 		err = di.Invoke(ctx, c, func(ctx2 context.Context, a testtypes.InterfaceA) {
 			assert.Same(t, ctx, ctx2)
 			assert.NotNil(t, a)
@@ -123,7 +124,7 @@ func Test_Invoke(t *testing.T) {
 		cancel()
 
 		err = di.Invoke(ctx, c, func() {})
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.EqualError(t, err, "di.Invoke func(): context canceled")
 	})
@@ -139,7 +140,7 @@ func Test_Invoke(t *testing.T) {
 		cancel()
 
 		err = di.Invoke(ctx, c, func(context.Context, testtypes.InterfaceA) {})
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.EqualError(t, err, "di.Invoke func(context.Context, testtypes.InterfaceA): di.Container.Resolve testtypes.InterfaceA: context canceled")
 	})
@@ -182,7 +183,7 @@ func Test_Invoke(t *testing.T) {
 			func(testtypes.InterfaceA) {},
 			di.WithTagged[testtypes.InterfaceB]("tag"),
 		)
-		LogError(t, err)
+		testutils.LogError(t, err)
 
 		assert.EqualError(t, err, "di.Invoke func(testtypes.InterfaceA): WithTagged testtypes.InterfaceB: parameter not found")
 	})

@@ -2,6 +2,25 @@ package testtypes
 
 import (
 	"context"
+	"reflect"
+)
+
+var (
+	TypeStructA    = reflect.TypeFor[StructA]()
+	TypeStructAPtr = reflect.TypeFor[*StructA]()
+	TypeInterfaceA = reflect.TypeFor[InterfaceA]()
+
+	TypeStructB    = reflect.TypeFor[StructB]()
+	TypeStructBPtr = reflect.TypeFor[*StructB]()
+	TypeInterfaceB = reflect.TypeFor[InterfaceB]()
+
+	TypeStructC    = reflect.TypeFor[StructC]()
+	TypeStructCPtr = reflect.TypeFor[*StructC]()
+	TypeInterfaceC = reflect.TypeFor[InterfaceC]()
+
+	TypeStructD    = reflect.TypeFor[StructD]()
+	TypeStructDPtr = reflect.TypeFor[*StructD]()
+	TypeInterfaceD = reflect.TypeFor[InterfaceD]()
 )
 
 type InterfaceA interface {
