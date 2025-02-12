@@ -44,7 +44,7 @@ func NewRequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOpti
 		}
 	}
 	if err := errors.Join(errs...); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "dihttp.NewRequestScopeMiddleware")
 	}
 
 	return func(next http.Handler) http.Handler {
