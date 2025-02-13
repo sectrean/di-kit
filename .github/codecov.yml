@@ -1,5 +1,3 @@
 ignore:
   - "examples"
-  - "internal/mocks/*.go"
-  - "internal/testtypes/*.go"
-  - "internal/testutils/*.go"
+  - "internal"
