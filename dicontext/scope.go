@@ -32,13 +32,13 @@ func Scope(ctx context.Context) di.Scope {
 func Resolve[Service any](ctx context.Context, opts ...di.ResolveOption) (Service, error) {
 	var val Service
 
-	scope := Scope(ctx)
-	if scope == nil {
+	s := Scope(ctx)
+	if s == nil {
 		return val, errors.Errorf("dicontext.Resolve %s: scope not found on context",
 			reflect.TypeFor[Service]())
 	}
 
-	anyVal, err := scope.Resolve(ctx, reflect.TypeFor[Service](), opts...)
+	anyVal, err := s.Resolve(ctx, reflect.TypeFor[Service](), opts...)
 	if anyVal != nil {
 		val = anyVal.(Service)
 	}
