@@ -56,11 +56,7 @@ type ContainerOption interface {
 
 func (c *Container) applyOptions(opts []ContainerOption) error {
 	// Flatten any modules before sorting and applying options
-	for i := range opts {
-		if mod, ok := opts[i].(Module); ok {
-			opts = slices.Insert(opts, i+1, mod...)
-		}
-	}
+	opts = flattenModules(opts)
 
 	// Sort options by precedence
 	// Use stable sort because the registration order of services matters
@@ -152,16 +148,13 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 
 	scope := &Container{
 		parent:   c,
+		services: make(map[serviceKey]service, len(c.services)),
 		resolved: make(map[serviceKey]resolveResult),
 	}
 
-	if len(opts) > 0 {
-		scope.services = make(map[serviceKey]service, len(opts))
-
-		err := scope.applyOptions(opts)
-		if err != nil {
-			return nil, errors.Wrap(err, "di.Container.NewScope")
-		}
+	err := scope.applyOptions(opts)
+	if err != nil {
+		return nil, errors.Wrap(err, "di.Container.NewScope")
 	}
 
 	return scope, nil
@@ -268,7 +261,7 @@ func resolve(
 	}
 
 	// Throw an error if we've already visited this service
-	if ok := visitor.Enter(key); !ok {
+	if !visitor.Enter(key) {
 		return nil, ErrDependencyCycle
 	}
 	defer visitor.Leave(key)
