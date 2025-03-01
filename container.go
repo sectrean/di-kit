@@ -56,7 +56,7 @@ type ContainerOption interface {
 
 func (c *Container) applyOptions(opts []ContainerOption) error {
 	// Flatten any modules before sorting and applying options
-	for i := 0; i < len(opts); i++ {
+	for i := range opts {
 		if mod, ok := opts[i].(Module); ok {
 			opts = slices.Insert(opts, i+1, mod...)
 		}

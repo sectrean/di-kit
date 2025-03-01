@@ -24,19 +24,19 @@ func Benchmark_NewContainer(b *testing.B) {
 	}
 
 	b.Run("func service one", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = di.NewContainer(optsOneService...)
 		}
 	})
 
 	b.Run("func service two", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = di.NewContainer(optsTwoServices...)
 		}
 	})
 
 	b.Run("value service one", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = di.NewContainer(optsOneServiceValue...)
 		}
 	})
@@ -52,7 +52,7 @@ func Benchmark_Container_NewScope(b *testing.B) {
 
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = root.NewScope()
 		}
 	})
@@ -69,7 +69,7 @@ func Benchmark_Container_NewScope(b *testing.B) {
 			di.WithService(&testtypes.StructA{}),
 		}
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = root.NewScope(opts...)
 		}
 	})
@@ -86,7 +86,7 @@ func Benchmark_Container_NewScope(b *testing.B) {
 			di.WithService(testtypes.NewInterfaceB),
 		}
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = root.NewScope(opts...)
 		}
 	})
@@ -101,7 +101,7 @@ func Benchmark_Container_Contains(b *testing.B) {
 
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = c.Contains(testtypes.TypeInterfaceA)
 		}
 	})
@@ -117,7 +117,7 @@ func Benchmark_Container_Contains(b *testing.B) {
 
 		tagOpt := di.WithTag("b")
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = c.Contains(testtypes.TypeInterfaceA, tagOpt)
 		}
 	})
@@ -130,7 +130,7 @@ func Benchmark_Container_Contains(b *testing.B) {
 
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = c.Contains(testtypes.TypeStructAPtr)
 		}
 	})
@@ -146,7 +146,7 @@ func Benchmark_Container_Contains(b *testing.B) {
 
 		tagOpt := di.WithTag("b")
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = c.Contains(testtypes.TypeStructAPtr, tagOpt)
 		}
 	})
@@ -162,7 +162,7 @@ func Benchmark_Container_Resolve(b *testing.B) {
 
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = c.Resolve(ctx, testtypes.TypeStructA)
 		}
 	})
@@ -176,7 +176,7 @@ func Benchmark_Container_Resolve(b *testing.B) {
 
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = c.Resolve(ctx, testtypes.TypeInterfaceA)
 		}
 	})
@@ -188,7 +188,7 @@ func Benchmark_Container_Resolve(b *testing.B) {
 
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = scope.Resolve(ctx, testtypes.TypeInterfaceA)
 		}
 	})
@@ -214,7 +214,7 @@ func Benchmark_Container_Resolve(b *testing.B) {
 		scopes := newChildScopes(b, parent)
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for i := range b.N {
 			_, _ = scopes[i].Resolve(ctx, testtypes.TypeInterfaceB)
 		}
 	})
@@ -225,7 +225,7 @@ func Benchmark_Container_Resolve(b *testing.B) {
 		scope, _ := parent.NewScope()
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = scope.Resolve(ctx, testtypes.TypeInterfaceA)
 		}
 	})
@@ -252,8 +252,8 @@ func Benchmark_Container_Resolve(b *testing.B) {
 
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
-			_, _ = c.Resolve(ctx, testtypes.TypeInterfaceC)
+		for range b.N {
+			_, _ = c.Resolve(ctx, testtypes.TypeInterfaceA)
 		}
 	})
 
@@ -283,7 +283,7 @@ func Benchmark_Container_Resolve(b *testing.B) {
 
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = c.Resolve(ctx, testtypes.TypeInterfaceB)
 		}
 	})
@@ -300,7 +300,7 @@ func newParent(b *testing.B) *di.Container {
 
 func newChildScopes(b *testing.B, parent *di.Container) []*di.Container {
 	scopes := make([]*di.Container, b.N)
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		scopes[i], _ = parent.NewScope()
 	}
 	return scopes
