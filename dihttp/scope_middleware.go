@@ -48,8 +48,10 @@ func NewRequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOpti
 	}
 
 	return func(next http.Handler) http.Handler {
-		mw.next = next
-		return mw
+		h := *mw
+		h.next = next
+
+		return h
 	}, nil
 }
 
@@ -61,11 +63,12 @@ type NewScopeErrorHandler = func(http.ResponseWriter, *http.Request, error)
 
 func defaultNewScopeErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
 	slog.ErrorContext(r.Context(),
-		"error creating new Container scope for HTTP request",
+		"error creating new di.Container scope for HTTP request",
 		"error", err,
 		"request", r,
 	)
-	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+
+	w.WriteHeader(http.StatusInternalServerError)
 }
 
 // ScopeCloseErrorHandler is a function that handles errors when closing the request-scoped [di.Container]
@@ -76,7 +79,7 @@ type ScopeCloseErrorHandler = func(*http.Request, error)
 
 func defaultScopeCloseErrorHandler(r *http.Request, err error) {
 	slog.ErrorContext(r.Context(),
-		"error closing Container scope for HTTP request",
+		"error closing di.Container scope for HTTP request",
 		"error", err,
 		"request", r,
 	)
@@ -90,10 +93,11 @@ type scopeMiddleware struct {
 	opts            []di.ContainerOption
 }
 
-func (m *scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Register the *http.Request with the new scope
-	//nolint:gocritic // appendAssign: we are intentionally assigning to a new slice
-	opts := append(m.opts, di.WithService(r))
+func (m scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Use provided options and also register the current HTTP request
+	opts := make([]di.ContainerOption, len(m.opts)+1)
+	copy(opts, m.opts)
+	opts[len(m.opts)] = di.WithService(r)
 
 	// Create child scope for the request
 	scope, err := m.parent.NewScope(opts...)
@@ -103,8 +107,9 @@ func (m *scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Add the scope to the request context
-	// Call the next handler with the new context
 	ctx := dicontext.WithScope(r.Context(), scope)
+
+	// Call the next handler with the new context
 	m.next.ServeHTTP(w, r.WithContext(ctx))
 
 	// Close the scope after the request has been processed

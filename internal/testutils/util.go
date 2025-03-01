@@ -25,6 +25,7 @@ func ContextWithTestValue(ctx context.Context, val any) context.Context {
 	return context.WithValue(ctx, ctxKey{}, val)
 }
 
+// RunParallel runs a function in parallel with the given concurrency.
 func RunParallel(concurrency int, f func(int)) {
 	wg := sync.WaitGroup{}
 	wg.Add(concurrency)
@@ -37,4 +38,15 @@ func RunParallel(concurrency int, f func(int)) {
 	}
 
 	wg.Wait()
+}
+
+// CollectChannel collects all values from a channel and returns them in a slice.
+func CollectChannel[V any](ch <-chan V) []V {
+	//nolint:prealloc // No way of knowing the number of values in the channel
+	var values []V
+	for v := range ch {
+		values = append(values, v)
+	}
+
+	return values
 }

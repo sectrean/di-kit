@@ -1,9 +1,9 @@
 package dihttp_test
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"sync/atomic"
 	"testing"
 
 	"github.com/sectrean/di-kit"
@@ -52,6 +52,25 @@ func Test_NewRequestScopeMiddleware(t *testing.T) {
 		assert.Nil(t, mw)
 		assert.EqualError(t, err, "dihttp.NewRequestScopeMiddleware: WithScopeCloseErrorHandler: h is nil")
 	})
+
+	t.Run("multiple middleware calls", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		mw, err := dihttp.NewRequestScopeMiddleware(c)
+		require.NoError(t, err)
+
+		handlerA := mw(http.NotFoundHandler())
+		handlerB := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(500)
+		}))
+
+		gotA := RunRequest(t, handlerA, "/")
+		assert.Equal(t, http.StatusNotFound, gotA)
+
+		gotB := RunRequest(t, handlerB, "/")
+		assert.Equal(t, http.StatusInternalServerError, gotB)
+	})
 }
 
 func Test_Middleware(t *testing.T) {
@@ -74,7 +93,7 @@ func Test_Middleware(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})
 
-		code := RunRequest(t, mw(handler))
+		code := RunRequest(t, mw(handler), "/")
 		assert.Equal(t, http.StatusOK, code)
 	})
 
@@ -97,7 +116,7 @@ func Test_Middleware(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})
 
-		code := RunRequest(t, mw(handler))
+		code := RunRequest(t, mw(handler), "/")
 		assert.Equal(t, http.StatusOK, code)
 	})
 
@@ -124,18 +143,20 @@ func Test_Middleware(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})
 
-		code := RunRequest(t, mw(handler))
+		code := RunRequest(t, mw(handler), "/")
 		assert.Equal(t, http.StatusOK, code)
 	})
 
 	t.Run("concurrent requests", func(t *testing.T) {
-		const concurrency = 20
-		i := atomic.Int32{}
+		// Run a number of concurrent requests and inject the *http.Request into
+		// a scoped service. Resolve the service and check that the injected request
+		// matches the request passed to the handler.
+		const concurrency = 1000
 
 		c, err := di.NewContainer(
-			di.WithService(func(*http.Request) testtypes.InterfaceA {
+			di.WithService(func(r *http.Request) *testtypes.StructA {
 				return &testtypes.StructA{
-					Tag: i.Add(1),
+					Tag: r.URL.Path,
 				}
 			}, di.ScopedLifetime),
 		)
@@ -144,32 +165,31 @@ func Test_Middleware(t *testing.T) {
 		mw, err := dihttp.NewRequestScopeMiddleware(c)
 		require.NoError(t, err)
 
-		results := make(chan testtypes.InterfaceA, concurrency)
+		tags := make(chan any, concurrency)
+		expectedTags := make(chan any, concurrency)
 
 		var handler http.Handler
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx := r.Context()
-			a, resolveErr := dicontext.Resolve[testtypes.InterfaceA](ctx)
+			a, resolveErr := dicontext.Resolve[*testtypes.StructA](r.Context())
 			assert.NotNil(t, a)
 			assert.NoError(t, resolveErr)
 
-			results <- a
-
-			w.WriteHeader(http.StatusOK)
+			assert.Equal(t, r.URL.Path, a.Tag)
+			tags <- a.Tag
 		})
 		handler = mw(handler)
 
-		testutils.RunParallel(concurrency, func(int) {
-			code := RunRequest(t, handler)
-			assert.Equal(t, http.StatusOK, code)
-		})
-		close(results)
+		testutils.RunParallel(concurrency, func(i int) {
+			path := fmt.Sprintf("/%d", i)
+			expectedTags <- path
 
-		var res testtypes.InterfaceA
-		for a := range results {
-			assert.NotEqual(t, res, a, "these should all be different instances")
-			res = a
-		}
+			RunRequest(t, handler, path)
+		})
+
+		close(tags)
+		close(expectedTags)
+
+		assert.ElementsMatch(t, testutils.CollectChannel(expectedTags), testutils.CollectChannel(tags))
 	})
 
 	t.Run("new scope error", func(t *testing.T) {
@@ -199,7 +219,7 @@ func Test_Middleware(t *testing.T) {
 			assert.Fail(t, "handler should not get called")
 		})
 
-		code := RunRequest(t, mw(handler))
+		code := RunRequest(t, mw(handler), "/")
 		assert.Equal(t, 599, code)
 
 		assert.True(t, called)
@@ -237,16 +257,16 @@ func Test_Middleware(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})
 
-		code := RunRequest(t, mw(handler))
+		code := RunRequest(t, mw(handler), "/")
 		assert.Equal(t, http.StatusOK, code)
 
 		assert.True(t, called)
 	})
 }
 
-func RunRequest(t *testing.T, h http.Handler) int {
+func RunRequest(t *testing.T, h http.Handler, path string) int {
 	res := httptest.NewRecorder()
-	req, err := http.NewRequest(http.MethodGet, "/", http.NoBody)
+	req, err := http.NewRequest(http.MethodGet, path, http.NoBody)
 	require.NoError(t, err)
 
 	h.ServeHTTP(res, req)
