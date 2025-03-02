@@ -313,10 +313,10 @@ func resolve(
 	if len(decorators) > 0 {
 		decoratorDeps = make([][]reflect.Value, len(decorators))
 
-		for i, d := range decorators {
-			decoratorDeps[i] = make([]reflect.Value, len(d.deps))
+		for i, dec := range decorators {
+			decoratorDeps[i] = make([]reflect.Value, len(dec.deps))
 
-			for j, depKey := range d.deps {
+			for j, depKey := range dec.deps {
 				var depVal any
 				var depErr error
 
@@ -340,7 +340,7 @@ func resolve(
 				}
 
 				if depErr != nil {
-					return nil, errors.Wrapf(depErr, "decorator %s: dependency %s", d, depKey)
+					return nil, errors.Wrapf(depErr, "decorator %s: dependency %s", dec, depKey)
 				}
 				decoratorDeps[i][j] = safeVal(depKey.Type, depVal)
 			}
@@ -372,15 +372,15 @@ func resolve(
 	}
 
 	// Apply decorators
-	for i, d := range decorators {
-		for j, depKey := range d.deps {
+	for i, dec := range decorators {
+		for j, depKey := range dec.deps {
 			if depKey == key {
 				// Inject the service being decorated
 				decoratorDeps[i][j] = safeVal(key.Type, val)
 			}
 		}
 
-		val = d.Decorate(decoratorDeps[i])
+		val = dec.Decorate(decoratorDeps[i])
 	}
 
 	// Add Closer for the service
