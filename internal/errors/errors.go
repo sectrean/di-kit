@@ -43,13 +43,5 @@ func Wrapf(err error, format string, a ...any) error {
 
 // Join multiple errors together.
 func Join(errs ...error) error {
-	switch len(errs) {
-	case 0:
-		return nil
-	case 1:
-		return errs[0]
-
-	default:
-		return stderrors.Join(errs...)
-	}
+	return stderrors.Join(errs...)
 }
