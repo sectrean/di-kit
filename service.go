@@ -61,9 +61,9 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 		var sc serviceConfig
 		var err error
 		if t.Kind() == reflect.Func {
-			sc, err = newFuncService(c, funcOrValue, opts...)
+			sc, err = newFuncService(funcOrValue, opts...)
 		} else {
-			sc, err = newValueService(c, funcOrValue, opts...)
+			sc, err = newValueService(funcOrValue, opts...)
 		}
 
 		if err != nil {
@@ -165,9 +165,6 @@ func (o serviceOption) applyServiceConfig(sc serviceConfig) error {
 type service interface {
 	// Key returns the key of the service.
 	Key() serviceKey
-
-	// Scope is the Container that the service is registered with.
-	Scope() *Container
 
 	// Lifetime returns the lifetime of the service.
 	Lifetime() Lifetime

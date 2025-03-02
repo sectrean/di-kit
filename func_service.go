@@ -8,7 +8,6 @@ import (
 
 type funcService struct {
 	key           serviceKey
-	scope         *Container
 	closerFactory func(any) Closer
 	fn            reflect.Value
 	deps          []serviceKey
@@ -16,7 +15,7 @@ type funcService struct {
 	lifetime      Lifetime
 }
 
-func newFuncService(scope *Container, fn any, opts ...ServiceOption) (*funcService, error) {
+func newFuncService(fn any, opts ...ServiceOption) (*funcService, error) {
 	fnType := reflect.TypeOf(fn)
 	fnVal := reflect.ValueOf(fn)
 
@@ -61,7 +60,6 @@ func newFuncService(scope *Container, fn any, opts ...ServiceOption) (*funcServi
 	}
 
 	svc := &funcService{
-		scope:         scope,
 		key:           serviceKey{Type: t},
 		fn:            fnVal,
 		deps:          deps,
@@ -84,10 +82,6 @@ func (s *funcService) Key() serviceKey {
 
 func (s *funcService) Type() reflect.Type {
 	return s.key.Type
-}
-
-func (s *funcService) Scope() *Container {
-	return s.scope
 }
 
 func (s *funcService) Lifetime() Lifetime {

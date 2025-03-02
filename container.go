@@ -117,7 +117,7 @@ func (c *Container) registerType(t reflect.Type, sc serviceConfig) {
 	sliceKey := serviceKey{Type: reflect.SliceOf(t)}
 	sliceSvc, ok := c.services[sliceKey].(*sliceService)
 	if !ok {
-		sliceSvc = newSliceService(c, t)
+		sliceSvc = newSliceService(t)
 		c.services[sliceKey] = sliceSvc
 	}
 
@@ -177,7 +177,7 @@ func (c *Container) Contains(t reflect.Type, opts ...ResolveOption) bool {
 		key = opt.applyServiceKey(key)
 	}
 
-	_, registered := getService(c, key)
+	_, _, registered := getService(c, key)
 	return registered
 }
 
@@ -218,15 +218,15 @@ func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...Resolve
 	return val, nil
 }
 
-func getService(scope *Container, key serviceKey) (service, bool) {
+func getService(scope *Container, key serviceKey) (service, *Container, bool) {
 	for ; scope != nil; scope = scope.parent {
 		svc, ok := scope.services[key]
 		if ok {
-			return svc, true
+			return svc, scope, true
 		}
 	}
 
-	return nil, false
+	return nil, nil, false
 }
 
 func resolve(
@@ -236,7 +236,7 @@ func resolve(
 	visitor resolveVisitor,
 ) (val any, err error) {
 	// Look up the service
-	svc, registered := getService(scope, key)
+	svc, svcScope, registered := getService(scope, key)
 	if !registered {
 		return nil, ErrServiceNotRegistered
 	}
@@ -250,8 +250,8 @@ func resolve(
 	// Otherwise, use the current scope.
 	lifetime := svc.Lifetime()
 	if lifetime == SingletonLifetime {
-		scope = svc.Scope()
-	} else if lifetime == ScopedLifetime && scope == svc.Scope() {
+		scope = svcScope
+	} else if lifetime == ScopedLifetime && scope == svcScope {
 		return nil, errors.New("scoped service must be resolved from a child scope")
 	}
 

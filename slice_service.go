@@ -4,9 +4,8 @@ import (
 	"reflect"
 )
 
-func newSliceService(scope *Container, t reflect.Type) *sliceService {
+func newSliceService(t reflect.Type) *sliceService {
 	return &sliceService{
-		scope: scope,
 		key: serviceKey{
 			Type: reflect.SliceOf(t),
 		},
@@ -14,16 +13,11 @@ func newSliceService(scope *Container, t reflect.Type) *sliceService {
 }
 
 type sliceService struct {
-	scope *Container
-	key   serviceKey
-	deps  []serviceKey
+	key  serviceKey
+	deps []serviceKey
 }
 
 var _ service = (*sliceService)(nil)
-
-func (s *sliceService) Scope() *Container {
-	return s.scope
-}
 
 func (s *sliceService) Key() serviceKey {
 	return s.key

@@ -8,13 +8,12 @@ import (
 
 type valueService struct {
 	key           serviceKey
-	val           any
-	scope         *Container
 	closerFactory func(any) Closer
+	val           any
 	assignables   []reflect.Type
 }
 
-func newValueService(scope *Container, val any, opts ...ServiceOption) (*valueService, error) {
+func newValueService(val any, opts ...ServiceOption) (*valueService, error) {
 	t := reflect.TypeOf(val)
 	v := reflect.ValueOf(val)
 
@@ -23,9 +22,8 @@ func newValueService(scope *Container, val any, opts ...ServiceOption) (*valueSe
 	}
 
 	svc := &valueService{
-		scope: scope,
-		key:   serviceKey{Type: t},
-		val:   v.Interface(),
+		key: serviceKey{Type: t},
+		val: v.Interface(),
 	}
 
 	err := applyOptions(opts, func(opt ServiceOption) error {
@@ -36,10 +34,6 @@ func newValueService(scope *Container, val any, opts ...ServiceOption) (*valueSe
 	}
 
 	return svc, nil
-}
-
-func (s *valueService) Scope() *Container {
-	return s.scope
 }
 
 func (s *valueService) Key() serviceKey {
