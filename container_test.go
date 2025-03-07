@@ -2,7 +2,6 @@ package di_test
 
 import (
 	"context"
-	stderrors "errors"
 	"math/rand"
 	"reflect"
 	"sync"
@@ -186,7 +185,7 @@ func Test_NewContainer(t *testing.T) {
 
 	t.Run("register error", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(func() error { return stderrors.New("test error") }),
+			di.WithService(func() error { return errors.New("test error") }),
 		)
 		testutils.LogError(t, err)
 
@@ -1122,7 +1121,7 @@ func Test_Container_Resolve(t *testing.T) {
 	t.Run("func error", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func() (testtypes.InterfaceA, error) {
-				return nil, stderrors.New("constructor error")
+				return nil, errors.New("constructor error")
 			}),
 			di.WithService(testtypes.NewInterfaceB),
 		)
@@ -1349,7 +1348,7 @@ func Test_Container_Resolve(t *testing.T) {
 	t.Run("decorator with error", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func() (testtypes.InterfaceA, error) {
-				return nil, stderrors.New("constructor error")
+				return nil, errors.New("constructor error")
 			}),
 			di.WithService(func() testtypes.InterfaceB {
 				return &testtypes.StructB{}
@@ -1872,7 +1871,7 @@ func Test_Container_Close(t *testing.T) {
 		aMock := mocks.NewInterfaceAMock(t)
 		aMock.EXPECT().
 			Close(ctx).
-			Return(stderrors.New("err a")).
+			Return(errors.New("err a")).
 			Once()
 		cMock := mocks.NewInterfaceCMock(t)
 		cMock.EXPECT().
@@ -1900,12 +1899,12 @@ func Test_Container_Close(t *testing.T) {
 		aMock := mocks.NewInterfaceAMock(t)
 		aMock.EXPECT().
 			Close(ctx).
-			Return(stderrors.New("err a")).
+			Return(errors.New("err a")).
 			Once()
 		cMock := mocks.NewInterfaceCMock(t)
 		cMock.EXPECT().
 			Close().
-			Return(stderrors.New("err c")).
+			Return(errors.New("err c")).
 			Once()
 
 		scope, err := di.NewContainer(
