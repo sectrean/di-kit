@@ -353,6 +353,65 @@ func Test_NewContainer(t *testing.T) {
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService: funcOrValue is nil")
 	})
+
+	t.Run("WithDependencyValidation", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(testtypes.NewInterfaceB),
+			di.WithDecorator(func(context.Context, di.Scope, testtypes.InterfaceA) testtypes.InterfaceA { return nil }),
+			di.WithDependencyValidation(),
+		)
+		assert.NotNil(t, c)
+		assert.NoError(t, err)
+	})
+
+	t.Run("WithDependencyValidation invalid service", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceB),
+			di.WithDependencyValidation(),
+		)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err,
+			"di.NewContainer: WithDependencyValidation: service testtypes.InterfaceB: dependency testtypes.InterfaceA: service not registered")
+	})
+
+	t.Run("WithDependencyValidation scoped service", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(testtypes.NewInterfaceC, di.ScopedLifetime),
+			di.WithDependencyValidation(),
+		)
+		assert.NotNil(t, c)
+		assert.NoError(t, err)
+	})
+
+	t.Run("WithDependencyValidation invalid decorator", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithDecorator(func(testtypes.InterfaceA, *testtypes.StructB) testtypes.InterfaceA { return nil }),
+			di.WithDependencyValidation(),
+		)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err,
+			"di.NewContainer: WithDependencyValidation: decorator func(testtypes.InterfaceA, *testtypes.StructB) testtypes.InterfaceA: dependency *testtypes.StructB: service not registered")
+	})
+
+	t.Run("WithDependencyValidation dependency cycle", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func(context.Context, testtypes.InterfaceC) testtypes.InterfaceB { return nil }),
+			di.WithService(func(testtypes.InterfaceB) testtypes.InterfaceC { return nil }),
+			di.WithDependencyValidation(),
+		)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.ErrorContains(t, err, "dependency cycle detected")
+	})
 }
 
 func Test_Container_NewScope(t *testing.T) {
@@ -422,7 +481,7 @@ func Test_Container_NewScope(t *testing.T) {
 		assert.EqualError(t, err, "di.Container.NewScope: WithDecorator: decorators cannot be registered with a child scope")
 	})
 
-	t.Run("parent container closed", func(t *testing.T) {
+	t.Run("parent closed", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 

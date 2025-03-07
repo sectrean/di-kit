@@ -3,8 +3,10 @@ package di
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/sectrean/di-kit/internal/errors"
@@ -126,6 +128,139 @@ func (c *Container) registerDecorator(d *decorator) {
 	}
 
 	c.decorators[d.Key()] = append(c.decorators[d.Key()], d)
+}
+
+// WithDependencyValidation validates registered services on [Container] creation.
+//
+// This will check that all dependencies are registered and that there are no dependency cycles.
+// It will return an error with details if any issues are found.
+//
+// Scoped services are not validated because depedencies may be registered with a child scope.
+func WithDependencyValidation() ContainerOption {
+	return newContainerOption(orderValidation, func(c *Container) error {
+		err := c.validateDependencies()
+		if err != nil {
+			return errors.Wrap(err, "WithDependencyValidation")
+		}
+
+		return nil
+	})
+}
+
+func (c *Container) validateDependencies() error {
+	var errs []error
+
+	// TODO: Validate scoped services on the parent container
+	// This is a bit tricky because we need to check the parent container for the service
+	// but we also need to check the child container for the dependencies.
+
+	validated := make(map[service]struct{})
+	svcProblems := make(map[serviceKey]string)
+
+	for _, svc := range c.services {
+		if _, ok := svc.(*sliceService); ok {
+			// Slice services are not validated
+			continue
+		}
+		if svc.Lifetime() == ScopedLifetime {
+			// Scoped services are not validated
+			continue
+		}
+		if _, ok := validated[svc]; ok {
+			// Skip services that have already been validated
+			continue
+		}
+
+		prob := c.validateService(svc, svcProblems, make(resolveVisitor))
+		if prob != "" {
+			errs = append(errs, errors.Errorf("service %s: %s", svc, prob))
+		}
+
+		validated[svc] = struct{}{}
+	}
+
+	for _, decs := range c.decorators {
+		for _, dec := range decs {
+			prob := c.validateDecorator(dec)
+			if prob != "" {
+				errs = append(errs, errors.Errorf("decorator %s: %s", dec, prob))
+			}
+		}
+	}
+
+	if err := errors.Join(errs...); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Container) validateService(svc service, svcProblems map[serviceKey]string, visitor resolveVisitor) string {
+	if prob, ok := svcProblems[svc.Key()]; ok {
+		return prob
+	}
+
+	deps := svc.Dependencies()
+	if len(deps) == 0 {
+		svcProblems[svc.Key()] = ""
+		return ""
+	}
+
+	if !visitor.Enter(svc.Key()) {
+		return ErrDependencyCycle.Error()
+	}
+	defer visitor.Leave(svc.Key())
+
+	var problems []string
+	for _, depKey := range deps {
+		if depKey.Type == typeContext || depKey.Type == typeScope {
+			continue
+		}
+
+		depSvc, ok := c.services[depKey]
+		if !ok {
+			prob := fmt.Sprintf("dependency %s: service not registered", depKey)
+			problems = append(problems, prob)
+			continue
+		}
+
+		prob := c.validateService(depSvc, svcProblems, visitor)
+		if prob != "" {
+			problems = append(problems, fmt.Sprintf("dependency %s: %s", depKey, prob))
+		}
+	}
+
+	if len(problems) > 0 {
+		probs := strings.Join(problems, "; ")
+		svcProblems[svc.Key()] = probs
+		return probs
+	}
+
+	return ""
+}
+
+func (c *Container) validateDecorator(dec *decorator) string {
+	var problems []string
+
+	// Should we validate that the decorator service is registered?
+	// It won't cause any issues if it's not, but it might be a mistake.
+
+	// Check that all dependencies are registered
+	for _, depKey := range dec.deps {
+		if depKey.Type == typeContext || depKey.Type == typeScope {
+			continue
+		}
+
+		if _, ok := c.services[depKey]; !ok {
+			problems = append(problems, fmt.Sprintf("dependency %s: service not registered", depKey))
+		}
+	}
+
+	if len(problems) > 0 {
+		return strings.Join(problems, "; ")
+	}
+
+	return ""
 }
 
 // NewScope creates a new [Container] with a child scope.
@@ -430,8 +565,9 @@ var (
 type optionOrder int8
 
 const (
-	orderService   optionOrder = iota
-	orderDecorator optionOrder = iota
+	orderService    optionOrder = iota
+	orderDecorator  optionOrder = iota
+	orderValidation optionOrder = iota
 )
 
 func newContainerOption(order optionOrder, fn func(*Container) error) ContainerOption {

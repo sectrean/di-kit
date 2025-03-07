@@ -150,5 +150,9 @@ func (s *funcService) SetCloserFactory(cf closerFactory) {
 	s.closerFactory = cf
 }
 
+func (s *funcService) String() string {
+	return s.Key().String()
+}
+
 var _ service = (*funcService)(nil)
 var _ serviceConfig = (*funcService)(nil)
