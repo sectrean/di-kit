@@ -19,7 +19,7 @@ import (
 )
 
 func Test_NewRequestScopeMiddleware(t *testing.T) {
-	t.Run("nil parent", func(t *testing.T) {
+	t.Run("parent nil", func(t *testing.T) {
 		mw, err := dihttp.NewRequestScopeMiddleware(nil)
 		testutils.LogError(t, err)
 
@@ -27,7 +27,7 @@ func Test_NewRequestScopeMiddleware(t *testing.T) {
 		assert.EqualError(t, err, "dihttp.NewRequestScopeMiddleware: parent is nil")
 	})
 
-	t.Run("with new scope error handler nil", func(t *testing.T) {
+	t.Run("WithNewScopeErrorHandler nil", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 
@@ -40,7 +40,7 @@ func Test_NewRequestScopeMiddleware(t *testing.T) {
 		assert.EqualError(t, err, "dihttp.NewRequestScopeMiddleware: WithNewScopeErrorHandler: h is nil")
 	})
 
-	t.Run("with scope close error handler nil", func(t *testing.T) {
+	t.Run("WithScopeCloseErrorHandler nil", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 
@@ -52,29 +52,10 @@ func Test_NewRequestScopeMiddleware(t *testing.T) {
 		assert.Nil(t, mw)
 		assert.EqualError(t, err, "dihttp.NewRequestScopeMiddleware: WithScopeCloseErrorHandler: h is nil")
 	})
-
-	t.Run("multiple middleware calls", func(t *testing.T) {
-		c, err := di.NewContainer()
-		require.NoError(t, err)
-
-		mw, err := dihttp.NewRequestScopeMiddleware(c)
-		require.NoError(t, err)
-
-		handlerA := mw(http.NotFoundHandler())
-		handlerB := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(500)
-		}))
-
-		gotA := RunRequest(t, handlerA, "/")
-		assert.Equal(t, http.StatusNotFound, gotA)
-
-		gotB := RunRequest(t, handlerB, "/")
-		assert.Equal(t, http.StatusInternalServerError, gotB)
-	})
 }
 
 func Test_Middleware(t *testing.T) {
-	t.Run("scoped service", func(t *testing.T) {
+	t.Run("Resolve scoped service", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 			di.WithService(testtypes.NewInterfaceB, di.ScopedLifetime),
@@ -97,7 +78,7 @@ func Test_Middleware(t *testing.T) {
 		assert.Equal(t, http.StatusOK, code)
 	})
 
-	t.Run("*http.Request service", func(t *testing.T) {
+	t.Run("Resolve *http.Request", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -120,7 +101,7 @@ func Test_Middleware(t *testing.T) {
 		assert.Equal(t, http.StatusOK, code)
 	})
 
-	t.Run("new service", func(t *testing.T) {
+	t.Run("Resolve new service on child scope", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -145,6 +126,25 @@ func Test_Middleware(t *testing.T) {
 
 		code := RunRequest(t, mw(handler), "/")
 		assert.Equal(t, http.StatusOK, code)
+	})
+
+	t.Run("middleware func reused", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		mw, err := dihttp.NewRequestScopeMiddleware(c)
+		require.NoError(t, err)
+
+		handlerA := mw(http.NotFoundHandler())
+		handlerB := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(500)
+		}))
+
+		gotA := RunRequest(t, handlerA, "/")
+		assert.Equal(t, http.StatusNotFound, gotA)
+
+		gotB := RunRequest(t, handlerB, "/")
+		assert.Equal(t, http.StatusInternalServerError, gotB)
 	})
 
 	t.Run("concurrent requests", func(t *testing.T) {
@@ -192,7 +192,7 @@ func Test_Middleware(t *testing.T) {
 		assert.ElementsMatch(t, testutils.CollectChannel(expectedTags), testutils.CollectChannel(tags))
 	})
 
-	t.Run("new scope error", func(t *testing.T) {
+	t.Run("NewScope error", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -225,7 +225,7 @@ func Test_Middleware(t *testing.T) {
 		assert.True(t, called)
 	})
 
-	t.Run("close error", func(t *testing.T) {
+	t.Run("Close error", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func() testtypes.InterfaceA {
 				a := mocks.NewInterfaceAMock(t)

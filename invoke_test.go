@@ -87,7 +87,7 @@ func Test_Invoke(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("resolve error", func(t *testing.T) {
+	t.Run("Resolve error", func(t *testing.T) {
 		c, err := di.NewContainer()
 
 		require.NoError(t, err)
@@ -99,7 +99,7 @@ func Test_Invoke(t *testing.T) {
 		assert.EqualError(t, err, "di.Invoke func(testtypes.InterfaceA): di.Container.Resolve testtypes.InterfaceA: service not registered")
 	})
 
-	t.Run("with context", func(t *testing.T) {
+	t.Run("context.Context dependency", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -113,7 +113,7 @@ func Test_Invoke(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("with context error", func(t *testing.T) {
+	t.Run("context canceled", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -129,7 +129,7 @@ func Test_Invoke(t *testing.T) {
 		assert.EqualError(t, err, "di.Invoke func(): context canceled")
 	})
 
-	t.Run("with context error during resolve", func(t *testing.T) {
+	t.Run("Resolve context canceled", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -145,7 +145,7 @@ func Test_Invoke(t *testing.T) {
 		assert.EqualError(t, err, "di.Invoke func(context.Context, testtypes.InterfaceA): di.Container.Resolve testtypes.InterfaceA: context canceled")
 	})
 
-	t.Run("with tagged", func(t *testing.T) {
+	t.Run("WithTagged", func(t *testing.T) {
 		a := &testtypes.StructA{}
 
 		c, err := di.NewContainer(
@@ -172,7 +172,7 @@ func Test_Invoke(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("with tagged dep not found", func(t *testing.T) {
+	t.Run("WithTagged parameter not found", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)

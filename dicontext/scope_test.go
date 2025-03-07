@@ -13,7 +13,7 @@ import (
 )
 
 func Test_Scope(t *testing.T) {
-	t.Run("with scope", func(t *testing.T) {
+	t.Run("found", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 
@@ -23,7 +23,7 @@ func Test_Scope(t *testing.T) {
 		assert.Same(t, c, scope)
 	})
 
-	t.Run("no scope", func(t *testing.T) {
+	t.Run("not found", func(t *testing.T) {
 		ctx := context.Background()
 		scope := dicontext.Scope(ctx)
 		assert.Nil(t, scope)
@@ -31,7 +31,7 @@ func Test_Scope(t *testing.T) {
 }
 
 func Test_Resolve(t *testing.T) {
-	t.Run("resolve", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -44,7 +44,7 @@ func Test_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("resolve with tag", func(t *testing.T) {
+	t.Run("WithTag", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),
 			di.WithService(func() testtypes.InterfaceA {
@@ -61,7 +61,7 @@ func Test_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("resolve error", func(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 
@@ -74,7 +74,7 @@ func Test_Resolve(t *testing.T) {
 			"dicontext.Resolve: di.Container.Resolve testtypes.InterfaceA: service not registered")
 	})
 
-	t.Run("no scope", func(t *testing.T) {
+	t.Run("scope not found", func(t *testing.T) {
 		ctx := context.Background()
 		got, err := dicontext.Resolve[testtypes.InterfaceA](ctx)
 		testutils.LogError(t, err)
@@ -86,7 +86,7 @@ func Test_Resolve(t *testing.T) {
 }
 
 func Test_MustResolve(t *testing.T) {
-	t.Run("resolve", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -98,7 +98,23 @@ func Test_MustResolve(t *testing.T) {
 		assert.Equal(t, &testtypes.StructA{}, got)
 	})
 
-	t.Run("no scope", func(t *testing.T) {
+	t.Run("WithTag", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),
+			di.WithService(func() testtypes.InterfaceA {
+				assert.Fail(t, "should not be called")
+				return nil
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := dicontext.WithScope(context.Background(), c)
+		got := dicontext.MustResolve[testtypes.InterfaceA](ctx, di.WithTag("tag"))
+
+		assert.Equal(t, &testtypes.StructA{}, got)
+	})
+
+	t.Run("scope not found", func(t *testing.T) {
 		ctx := context.Background()
 
 		assert.PanicsWithError(t, "dicontext.Resolve testtypes.InterfaceA: scope not found on context", func() {
@@ -106,7 +122,7 @@ func Test_MustResolve(t *testing.T) {
 		})
 	})
 
-	t.Run("resolve error", func(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 

@@ -11,7 +11,7 @@ import (
 )
 
 func Test_MustResolve(t *testing.T) {
-	t.Run("resolve", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -22,7 +22,7 @@ func Test_MustResolve(t *testing.T) {
 		assert.Equal(t, &testtypes.StructA{}, got)
 	})
 
-	t.Run("resolve with tag", func(t *testing.T) {
+	t.Run("WithTag", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),
 			di.WithService(func() testtypes.InterfaceA {
@@ -37,7 +37,7 @@ func Test_MustResolve(t *testing.T) {
 		assert.Equal(t, &testtypes.StructA{}, got)
 	})
 
-	t.Run("resolve error", func(t *testing.T) {
+	t.Run("error", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 
