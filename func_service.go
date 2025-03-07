@@ -112,6 +112,13 @@ func (s *funcService) SetTag(tag any) {
 	s.tag = tag
 }
 
+func (s *funcService) Key() serviceKey {
+	return serviceKey{
+		Type: s.t,
+		Tag:  s.tag,
+	}
+}
+
 func (s *funcService) Dependencies() []serviceKey {
 	return s.deps
 }
@@ -160,6 +167,10 @@ func (s *funcService) CloserFor(val any) Closer {
 
 func (s *funcService) SetCloserFactory(cf closerFactory) {
 	s.closerFactory = cf
+}
+
+func (s *funcService) String() string {
+	return s.Key().String()
 }
 
 var _ service = (*funcService)(nil)

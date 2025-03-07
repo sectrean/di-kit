@@ -270,6 +270,86 @@ func Test_NewContainer(t *testing.T) {
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService: funcOrValue is nil")
 	})
+
+	t.Run("WithDependencyValidation", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(testtypes.NewInterfaceB),
+			di.WithDependencyValidation(),
+		)
+		assert.NotNil(t, c)
+		assert.NoError(t, err)
+	})
+
+	t.Run("WithDependencyValidation invalid service", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceB),
+			di.WithDependencyValidation(),
+		)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err,
+			"di.NewContainer: WithDependencyValidation: service testtypes.InterfaceB: dependency testtypes.InterfaceA: service not registered")
+	})
+
+	t.Run("WithDependencyValidation scoped service", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(testtypes.NewInterfaceC, di.ScopedLifetime),
+			di.WithDependencyValidation(),
+		)
+		assert.NotNil(t, c)
+		assert.NoError(t, err)
+	})
+
+	t.Run("WithDependencyValidation dependency cycle", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func(context.Context, testtypes.InterfaceC) testtypes.InterfaceB { return nil }),
+			di.WithService(func(testtypes.InterfaceB) testtypes.InterfaceC { return nil }),
+			di.WithDependencyValidation(),
+		)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, c)
+		// The exact error message is non-deterministic because it depends on map iteration order
+		assert.ErrorContains(t, err, "dependency cycle detected")
+	})
+
+	t.Run("WithDependencyValidation slice dependency", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func([]testtypes.InterfaceA) testtypes.InterfaceB {
+				return testtypes.StructB{}
+			}),
+			di.WithService(func([]testtypes.InterfaceC) testtypes.InterfaceD {
+				return testtypes.StructD{}
+			}),
+			di.WithDependencyValidation(),
+		)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err,
+			"di.NewContainer: WithDependencyValidation: service testtypes.InterfaceD: dependency testtypes.InterfaceC: service not registered",
+		)
+	})
+
+	t.Run("WithDependencyValidation variadic dependency", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func(...testtypes.InterfaceA) testtypes.InterfaceB {
+				return testtypes.StructB{}
+			}),
+			di.WithService(func(...testtypes.InterfaceC) testtypes.InterfaceD {
+				return testtypes.StructD{}
+			}),
+			di.WithDependencyValidation(),
+		)
+		assert.NotNil(t, c)
+		assert.NoError(t, err)
+	})
 }
 
 func Test_Container_NewScope(t *testing.T) {
@@ -322,7 +402,7 @@ func Test_Container_NewScope(t *testing.T) {
 		assert.EqualError(t, err, "di.Container.NewScope: WithService di.Lifetime: invalid service type")
 	})
 
-	t.Run("parent container closed", func(t *testing.T) {
+	t.Run("parent closed", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 
@@ -335,6 +415,23 @@ func Test_Container_NewScope(t *testing.T) {
 
 		assert.Nil(t, scope)
 		assert.EqualError(t, err, "di.Container.NewScope: container closed")
+	})
+
+	t.Run("WithDependencyValidation", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(testtypes.NewInterfaceB, di.ScopedLifetime),
+			di.WithDependencyValidation(),
+		)
+		require.NoError(t, err)
+
+		scope, err := c.NewScope(
+			di.WithDependencyValidation(),
+		)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, scope)
+		assert.EqualError(t, err, "di.Container.NewScope: WithDependencyValidation: dependency validation on a child container not supported yet")
 	})
 }
 

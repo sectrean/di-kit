@@ -3,8 +3,10 @@ package di
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/sectrean/di-kit/internal/errors"
@@ -107,6 +109,107 @@ func (c *Container) registerType(t reflect.Type, sc serviceConfig) {
 		}
 		c.services[keyWithTag] = append(c.services[keyWithTag], sc)
 	}
+}
+
+// WithDependencyValidation validates registered services on [Container] creation.
+//
+// This will check that all dependencies are registered and that there are no dependency cycles.
+// It will return an error with details if any issues are found.
+//
+// Scoped services are not validated because depedencies may be registered with a child scope.
+func WithDependencyValidation() ContainerOption {
+	return newContainerOption(orderValidation, func(c *Container) error {
+		err := c.validateDependencies()
+		if err != nil {
+			return errors.Wrap(err, "WithDependencyValidation")
+		}
+
+		return nil
+	})
+}
+
+func (c *Container) validateDependencies() error {
+	if c.parent != nil {
+		// TODO: Validate scoped services on the parent container
+		// This is a bit tricky because we need to check the parent container for the service
+		// but we also need to check the child container for the dependencies.
+		return errors.New("dependency validation on a child container not supported yet")
+	}
+
+	var errs []error
+	svcProblems := make(map[service]string)
+
+	for _, svcs := range c.services {
+		for _, svc := range svcs {
+			if svc.Lifetime() == ScopedLifetime {
+				// Scoped services are not validated
+				continue
+			}
+
+			prob := c.validateService(svc, svcProblems, make(resolveVisitor))
+			if prob != "" {
+				errs = append(errs, errors.Errorf("service %s: %s", svc, prob))
+			}
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+func (c *Container) validateService(svc service, svcProblems map[service]string, visitor resolveVisitor) string {
+	if prob, ok := svcProblems[svc]; ok {
+		return prob
+	}
+
+	deps := svc.Dependencies()
+	if len(deps) == 0 {
+		svcProblems[svc] = ""
+		return ""
+	}
+
+	if !visitor.Enter(svc) {
+		return errDependencyCycle.Error()
+	}
+	defer visitor.Leave(svc)
+
+	var problems []string
+	for _, depKey := range deps {
+		if depKey.Type == typeContext || depKey.Type == typeScope {
+			continue
+		}
+
+		if depKey.Type.Kind() == reflect.Slice {
+			if svc.(*funcService).IsVariadic() {
+				// If the service is variadic, registration is optional
+				continue
+			}
+
+			// Check that the element type is registered
+			depKey.Type = depKey.Type.Elem()
+		}
+
+		depSvcs, ok := c.services[depKey]
+		if !ok {
+			prob := fmt.Sprintf("dependency %s: service not registered", depKey)
+			problems = append(problems, prob)
+			continue
+		}
+
+		for _, depSvc := range depSvcs {
+			prob := c.validateService(depSvc, svcProblems, visitor)
+			if prob != "" {
+				problems = append(problems, fmt.Sprintf("dependency %s: %s", depKey, prob))
+			}
+		}
+	}
+
+	if len(problems) > 0 {
+		probs := strings.Join(problems, "; ")
+		svcProblems[svc] = probs
+		return probs
+	}
+
+	return ""
 }
 
 // NewScope creates a new [Container] with a child scope.
@@ -420,7 +523,8 @@ var (
 type optionOrder int8
 
 const (
-	orderService optionOrder = iota
+	orderService    optionOrder = iota
+	orderValidation optionOrder = iota
 )
 
 func newContainerOption(order optionOrder, fn func(*Container) error) ContainerOption {
