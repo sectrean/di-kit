@@ -11,7 +11,7 @@ type valueService struct {
 	val           any
 	scope         *Container
 	closerFactory func(any) Closer
-	aliases       []reflect.Type
+	assignables   []reflect.Type
 }
 
 func newValueService(scope *Container, val any, opts ...ServiceOption) (*valueService, error) {
@@ -50,17 +50,12 @@ func (s *valueService) Type() reflect.Type {
 	return s.key.Type
 }
 
-func (s *valueService) Aliases() []reflect.Type {
-	return s.aliases
+func (s *valueService) Assignables() []reflect.Type {
+	return s.assignables
 }
 
-func (s *valueService) AddAlias(alias reflect.Type) error {
-	if !s.key.Type.AssignableTo(alias) {
-		return errors.Errorf("type %s not assignable to %s", s.key.Type, alias)
-	}
-
-	s.aliases = append(s.aliases, alias)
-	return nil
+func (s *valueService) SetAssignables(assignables []reflect.Type) {
+	s.assignables = assignables
 }
 
 func (s *valueService) Lifetime() Lifetime {

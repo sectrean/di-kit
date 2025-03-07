@@ -138,12 +138,13 @@ func validateDependencyType(t reflect.Type) bool {
 // This option will return an error if the service type is not assignable to type Service.
 func As[Service any]() ServiceOption {
 	return serviceOption(func(sc serviceConfig) error {
-		aliasType := reflect.TypeFor[Service]()
-
-		err := sc.AddAlias(aliasType)
-		if err != nil {
-			return errors.Wrapf(err, "As %s", aliasType)
+		t := reflect.TypeFor[Service]()
+		if !sc.Type().AssignableTo(t) {
+			return errors.Errorf("As %s: type %s not assignable to %s", t, sc.Type(), t)
 		}
+
+		assignables := append(sc.Assignables(), t)
+		sc.SetAssignables(assignables)
 
 		return nil
 	})
@@ -196,9 +197,9 @@ type serviceConfig interface {
 	Lifetime() Lifetime
 	SetLifetime(Lifetime)
 
-	// Aliases returns the types that this service can be resolved as.
-	Aliases() []reflect.Type
-	AddAlias(reflect.Type) error
+	// Assignables returns the types that this service can be resolved as.
+	Assignables() []reflect.Type
+	SetAssignables([]reflect.Type)
 
 	SetCloserFactory(closerFactory)
 }

@@ -12,7 +12,7 @@ type funcService struct {
 	closerFactory func(any) Closer
 	fn            reflect.Value
 	deps          []serviceKey
-	aliases       []reflect.Type
+	assignables   []reflect.Type
 	lifetime      Lifetime
 }
 
@@ -98,17 +98,12 @@ func (s *funcService) SetLifetime(l Lifetime) {
 	s.lifetime = l
 }
 
-func (s *funcService) Aliases() []reflect.Type {
-	return s.aliases
+func (s *funcService) Assignables() []reflect.Type {
+	return s.assignables
 }
 
-func (s *funcService) AddAlias(alias reflect.Type) error {
-	if !s.key.Type.AssignableTo(alias) {
-		return errors.Errorf("type %s not assignable to %s", s.key.Type, alias)
-	}
-
-	s.aliases = append(s.aliases, alias)
-	return nil
+func (s *funcService) SetAssignables(assignables []reflect.Type) {
+	s.assignables = assignables
 }
 
 func (s *funcService) Tag() any {

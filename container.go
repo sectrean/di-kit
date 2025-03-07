@@ -80,11 +80,11 @@ func (c *Container) applyOptions(opts []ContainerOption) error {
 }
 
 func (c *Container) register(sc serviceConfig) {
-	if len(sc.Aliases()) == 0 {
+	if len(sc.Assignables()) == 0 {
 		c.registerType(sc.Type(), sc)
 	} else {
-		for _, alias := range sc.Aliases() {
-			c.registerType(alias, sc)
+		for _, assignable := range sc.Assignables() {
+			c.registerType(assignable, sc)
 		}
 	}
 
