@@ -306,7 +306,7 @@ c, err := di.NewContainer(
 svc, err := di.Resolve[service.Interface](ctx, c)
 ```
 
-If you register multiple decorators for a service, they will be applied in the order they are registered. Value services cannot be decorated.
+If you register multiple decorators for a service, they will be applied in the order they are registered.
 
 ### Modules
 

@@ -84,11 +84,9 @@ func (c *Container) register(sc serviceConfig) {
 		}
 	}
 
-	// Pre-resolve value services and add closer
+	// Add closers for value services
 	// We don't need to take locks here because this is only called when creating a new Container
 	if vs, ok := sc.(*valueService); ok {
-		c.resolved[sc.Key()] = resolveResult{val: vs.val}
-
 		if closer := sc.CloserFor(vs.val); closer != nil {
 			c.closers = append(c.closers, closer)
 		}

@@ -1204,16 +1204,14 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("decorator", func(t *testing.T) {
-		a1 := &testtypes.StructA{}
-		calls := 0
+	t.Run("decorator func service", func(t *testing.T) {
+		a1 := &testtypes.StructA{Tag: "original"}
 
 		c, err := di.NewContainer(
 			di.WithService(func() *testtypes.StructA { return a1 }),
 			di.WithDecorator(func(a *testtypes.StructA) *testtypes.StructA {
-				calls++
-				a.Tag = "decorated"
-				return a
+				assert.Same(t, a1, a)
+				return &testtypes.StructA{Tag: "decorated"}
 			}),
 		)
 		require.NoError(t, err)
@@ -1221,27 +1219,28 @@ func Test_Container_Resolve(t *testing.T) {
 		ctx := context.Background()
 		got, err := di.Resolve[*testtypes.StructA](ctx, c)
 
-		assert.Same(t, a1, got)
 		assert.Equal(t, &testtypes.StructA{Tag: "decorated"}, got)
+		assert.NotSame(t, a1, got)
 		assert.NoError(t, err)
-		assert.Equal(t, 1, calls)
 	})
 
 	t.Run("decorator value service", func(t *testing.T) {
-		a := &testtypes.StructA{Tag: "original"}
+		a1 := &testtypes.StructA{Tag: "original"}
 
 		c, err := di.NewContainer(
-			di.WithService(a, di.As[testtypes.InterfaceA]()),
-			di.WithDecorator(func(testtypes.InterfaceA) testtypes.InterfaceA {
-				assert.Fail(t, "decorator should not be called")
-				return nil
+			di.WithService(a1),
+			di.WithDecorator(func(a *testtypes.StructA) *testtypes.StructA {
+				assert.Same(t, a1, a)
+				return &testtypes.StructA{Tag: "decorated"}
 			}),
 		)
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		assert.Same(t, a, got, "value services cannot be decorated")
+		got, err := di.Resolve[*testtypes.StructA](ctx, c)
+
+		assert.Equal(t, &testtypes.StructA{Tag: "decorated"}, got)
+		assert.NotSame(t, a1, got)
 		assert.NoError(t, err)
 	})
 
