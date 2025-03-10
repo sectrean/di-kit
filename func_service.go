@@ -88,8 +88,9 @@ func (s *funcService) Lifetime() Lifetime {
 	return s.lifetime
 }
 
-func (s *funcService) SetLifetime(l Lifetime) {
+func (s *funcService) SetLifetime(l Lifetime) error {
 	s.lifetime = l
+	return nil
 }
 
 func (s *funcService) Assignables() []reflect.Type {

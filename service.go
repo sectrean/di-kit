@@ -192,7 +192,7 @@ type serviceConfig interface {
 
 	// Lifetime returns the lifetime of the service.
 	Lifetime() Lifetime
-	SetLifetime(Lifetime)
+	SetLifetime(Lifetime) error
 
 	// Assignables returns the types that this service can be resolved as.
 	Assignables() []reflect.Type

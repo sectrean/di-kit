@@ -56,8 +56,13 @@ func (s *valueService) Lifetime() Lifetime {
 	return SingletonLifetime
 }
 
-func (s *valueService) SetLifetime(Lifetime) {
+func (s *valueService) SetLifetime(l Lifetime) error {
 	// Values are always singletons.
+	if l == SingletonLifetime {
+		return nil
+	}
+
+	return errors.New("invalid lifetime for value service")
 }
 
 func (s *valueService) Tag() any {

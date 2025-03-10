@@ -125,6 +125,24 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "di.NewContainer: WithService func() testtypes.InterfaceA: As *testtypes.StructA: type testtypes.InterfaceA not assignable to *testtypes.StructA")
 	})
 
+	t.Run("WithService SingletonLifetime value service", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(&testtypes.StructA{}, di.SingletonLifetime),
+		)
+		assert.NotNil(t, c)
+		assert.NoError(t, err)
+	})
+
+	t.Run("WithService TransientLifetime value service", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(&testtypes.StructA{}, di.TransientLifetime),
+		)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: WithService *testtypes.StructA: Lifetime Transient: invalid lifetime for value service")
+	})
+
 	t.Run("WithService As interface not assignable", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(&testtypes.StructA{}, di.As[testtypes.InterfaceB]()),

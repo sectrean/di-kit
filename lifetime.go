@@ -1,6 +1,10 @@
 package di
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/sectrean/di-kit/internal/errors"
+)
 
 // Lifetime specifies how services are created when resolved.
 //
@@ -33,7 +37,11 @@ const (
 )
 
 func (l Lifetime) applyServiceConfig(sc serviceConfig) error {
-	sc.SetLifetime(l)
+	err := sc.SetLifetime(l)
+	if err != nil {
+		return errors.Wrapf(err, "Lifetime %s", l)
+	}
+
 	return nil
 }
 
