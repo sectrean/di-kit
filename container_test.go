@@ -153,7 +153,7 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "di.NewContainer: WithService *testtypes.StructA: As testtypes.InterfaceB: type *testtypes.StructA not assignable to testtypes.InterfaceB")
 	})
 
-	t.Run("WithTagged with tagged not found", func(t *testing.T) {
+	t.Run("WithService WithTagged parameter not found", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA,
 				di.WithTagged[testtypes.InterfaceB]("tag"),
@@ -292,7 +292,7 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "di.NewContainer: WithDecorator func(testtypes.InterfaceA) error: invalid service type")
 	})
 
-	t.Run("WithDecorator WithTagged parameternot found", func(t *testing.T) {
+	t.Run("WithDecorator WithTagged parameter not found", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 			di.WithDecorator(func(testtypes.InterfaceA) testtypes.InterfaceA {
@@ -403,6 +403,23 @@ func Test_Container_NewScope(t *testing.T) {
 
 		assert.Nil(t, scope)
 		assert.EqualError(t, err, "di.Container.NewScope: WithService di.Lifetime: invalid service type")
+	})
+
+	t.Run("WithDecorator", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		scope, err := c.NewScope(
+			di.WithDecorator(func(testtypes.InterfaceA) testtypes.InterfaceA {
+				panic("should not be called")
+			}),
+		)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, scope)
+		assert.EqualError(t, err, "di.Container.NewScope: WithDecorator: decorators cannot be registered with a child scope")
 	})
 
 	t.Run("parent container closed", func(t *testing.T) {
@@ -1401,36 +1418,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
-	t.Run("decorator with tag", func(t *testing.T) {
-		const tag = "decorate me"
-
-		a := &testtypes.StructA{Tag: tag}
-		calls := 0
-
-		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA),
-			di.WithService(func() testtypes.InterfaceA { return a },
-				di.As[testtypes.InterfaceA](),
-				di.WithTag(tag),
-			),
-			di.WithDecorator(func(aa testtypes.InterfaceA) testtypes.InterfaceA {
-				assert.Same(t, a, aa)
-				calls++
-				return nil
-			}, di.WithTag(tag)),
-		)
-		require.NoError(t, err)
-
-		ctx := context.Background()
-		got, err := di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag(tag))
-
-		assert.Nil(t, got)
-		assert.NotSame(t, a, got)
-		assert.NoError(t, err)
-		assert.Equal(t, 1, calls)
-	})
-
-	t.Run("decorator with tagged", func(t *testing.T) {
+	t.Run("WithDecorator WithTagged", func(t *testing.T) {
 		const tag = "decorate me"
 
 		a := &testtypes.StructA{Tag: tag}

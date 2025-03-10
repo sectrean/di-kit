@@ -123,19 +123,6 @@ func (d *decorator) Key() serviceKey {
 	return d.key
 }
 
-func (d *decorator) SetTag(tag any) error {
-	d.key.Tag = tag
-
-	for i, dep := range d.deps {
-		if dep.Type == d.key.Type && dep.Tag == nil {
-			d.deps[i].Tag = tag
-			return nil
-		}
-	}
-
-	return errors.New("dependency not found")
-}
-
 func (d *decorator) Decorate(deps []reflect.Value) any {
 	out := d.fn.Call(deps)
 	return out[0].Interface()

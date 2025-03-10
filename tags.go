@@ -23,7 +23,6 @@ func WithTag(tag any) ServiceTagOption {
 type ServiceTagOption interface {
 	ServiceOption
 	ResolveOption
-	DecoratorOption
 }
 
 // WithTagged is used to specify a tag for a service dependency when calling
@@ -87,10 +86,6 @@ func (o tagOption) applyServiceKey(key serviceKey) serviceKey {
 		Type: key.Type,
 		Tag:  o.tag,
 	}
-}
-
-func (o tagOption) applyDecorator(d *decorator) error {
-	return d.SetTag(o.tag)
 }
 
 var _ ServiceTagOption = tagOption{}
