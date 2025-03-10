@@ -23,4 +23,5 @@ tasks:
 
   lint:
     cmds:
+      - golangci-lint config verify
       - golangci-lint run -v

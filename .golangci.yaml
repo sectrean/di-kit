@@ -38,7 +38,6 @@ linters-settings:
       - G404
 
   revive:
-    enable-all: true
     rules:
       - name: exported
         arguments:
