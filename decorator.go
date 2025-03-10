@@ -56,10 +56,6 @@ func newDecorator(fn any, opts []DecoratorOption) (*decorator, error) {
 		return nil, errors.New("invalid decorator type")
 	}
 
-	if fnType.PkgPath() == typeScope.PkgPath() {
-		return nil, errors.New("invalid decorator type")
-	}
-
 	// Validate fn has one return value
 	if fnType.NumOut() != 1 {
 		return nil, errors.New("function must return Service")
