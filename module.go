@@ -14,8 +14,8 @@ import "slices"
 //	}
 type Module []ContainerOption
 
-func (Module) applyContainer(c *Container) error { return nil }
-func (Module) order() optionOrder                { return 0 }
+func (Module) applyContainer(*Container) error { return nil }
+func (Module) order() optionOrder              { return 0 }
 
 // WithModule applies the options in a module [Module] when calling [NewContainer] or [Container.NewScope].
 //
