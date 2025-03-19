@@ -22,7 +22,7 @@ It's designed to be easy-to-use, lightweight, and full-featured.
 ```go
 // 1. Create the Container and register services using values and constructor functions.
 c, err := di.NewContainer(
-	di.WithService(logger),             // var logger *slog.Logger
+	di.WithService(logger), // var logger *slog.Logger
 	di.WithService(storage.NewDBStore, // NewDBStore(context.Context) (*storage.DBStore, error)
 		di.As[storage.Store](),
 	),
@@ -53,11 +53,11 @@ go get github.com/sectrean/di-kit
 
 ### Create the Container
 
-Use `NewContainer` on application startup to create a `Container`. Register services using `di.WithService()` [functional options](https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis) with a *value* or *constructor function*.
+Use `di.NewContainer()` on application startup to create a `Container`. Register services using `di.WithService()` [functional options](https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis) with a *value* or *constructor function*.
 
-A *value* can be a struct or a pointer to a struct. When the value type is requested from the `Container`, this value will be returned. The service will be registered as the value's actual type, even if the variable is declared as an interface. A service registered with a value is referred to as a *value service*.
+A *value* can be a struct or a pointer to a struct. The service will be registered as the value's actual type, (even if the variable is declared as an interface). When the type is resolved from the `Container`, this value will be returned. A service registered with a value is referred to as a *value service*.
 
-A *constructor function* may accept any parameters. The function must return a service, and may also return an error. When the service is requested from the `Container`, the function is called with the parameters resolved from the container. The service will be registered as the function's return type, which can be a struct, a pointer to a struct, or an interface. A service registered with a function is referred to as a *function service*.
+A *constructor function* may accept any parameters. The function must return a service, and may also return an error. The service will be registered as the function's return type, which can be a struct, a pointer to a struct, or an interface. When the service type is requested from the `Container`, the function is called with the parameters resolved from the container. A service registered with a function is referred to as a *function service*.
 
 ```go
 logger := slog.New(/*...*/)
@@ -72,41 +72,46 @@ c, err := di.NewContainer(
 )
 ```
 
-Any errors from registering services will be [joined](https://pkg.go.dev/errors#Join) together.
+Any errors with registering services will be [joined](https://pkg.go.dev/errors#Join) together.
 
 ### Resolve services
 
-Use `Resolve` to get a service from the `Container` by type. If a requested service is not registered with the `Container`, or a dependency cycle is detected, an error will be returned.
+Use `di.Resolve()` or `di.MustResolve()` to get a service from the `Container` by type. If a requested service is not registered with the `Container`, or a dependency cycle is detected, an error will be returned.
 
 ```go
-svc, _ := di.Resolve[*service.Service](ctx, c)
+svc, err := di.Resolve[*service.Service](ctx, c)
+if err != nil {
+	return err
+}
+
 svc.Run(ctx)
 ```
 
-Use `Invoke` to invoke a function using parameters resolved from the `Container`.
+```go
+svc := di.MustResolve[*service.Service](ctx, c)
+svc.Run(ctx)
+```
+
+Use `di.Invoke()` to invoke a function using parameters resolved from the `Container`.
 
 ```go
-// var c *di.Container
-err = di.Invoke(ctx, c, runService)
-```
-```go
-func runService(ctx context.Context, svc *service.Service) error {
+err = di.Invoke(ctx, c, func (ctx context.Context, svc *service.Service) error {
 	err := svc.Start(ctx)
 	if err != nil {
 		return err
 	}
 
-	// Wait ...
+	// Wait...
 
 	return svc.Stop(ctx)	
-}
+})
 ```
 
 ### Close the Container
 
 Services often need to do some clean up when they're done being used. The `Container` can handle this for registered services.
 
-On application shutdown, use `Container.Close` to clean up services. By default, the `Container` will call a `Close` method on all services that is has created. Any errors returned from closing services will be [joined](https://pkg.go.dev/errors#Join) together.
+On application shutdown, use `Container.Close()` to clean up services. By default, the `Container` will call a `Close` method on any services that is has created. Any errors returned from closing services will be [joined](https://pkg.go.dev/errors#Join) together.
 See [Closing](#closing) for more.
 
 ## Features
@@ -120,9 +125,9 @@ Use the `di.As[Service]()` option to register a service as an interface that it 
 
 ```go
 c, err := di.NewContainer(
-	di.WithService(storage.NewDBStore,	// NewDBStore() *storage.DBStore
-		di.As[storage.Store](),	// Register the service as implemented interface
-		di.As[*storage.DBStore](),	// Add this if you also want to use the function return type
+	di.WithService(storage.NewDBStore, // NewDBStore() *storage.DBStore
+		di.As[storage.Store](), // Register the service as implemented interface
+		di.As[*storage.DBStore](), // Add this if you also want to use the function return type
 	),
 	di.WithService(service.NewService), // NewService(storage.Store) *service.Service
 )
@@ -189,33 +194,33 @@ Use `di.WithTagged[Dependency]()` when registering a dependent service to specif
 
 ```go
 c, err := di.NewContainer(
-	di.WithService(db.NewPrimaryDB, // NewPrimaryDB(context.Context) (*db.DB, error)
+	di.WithService(db.NewPrimaryDB, // NewPrimaryDB(context.Context) (*sql.DB, error)
 		di.WithTag(db.Primary),
 	),
-	di.WithService(db.NewReplicaDB, // NewReplicaDB(context.Context) (*db.DB, error)
+	di.WithService(db.NewReplicaDB, // NewReplicaDB(context.Context) (*sql.DB, error)
 		di.WithTag(db.Replica),
 	),
-	di.WithService(storage.NewReadWriteStore, // NewReadWriteStore(*db.DB) *storage.ReadWriteStore
-		di.WithTagged[*db.DB](db.Primary),
+	di.WithService(storage.NewReadWriteStore, // NewReadWriteStore(*sql.DB) *storage.ReadWriteStore
+		di.WithTagged[*sql.DB](db.Primary),
 	),
-	di.WithService(storage.NewReadOnlyStore, // NewReadOnlyStore(*db.DB) *storage.ReadOnlyStore
-		di.WithTagged[*db.DB](db.Replica),
+	di.WithService(storage.NewReadOnlyStore, // NewReadOnlyStore(*sql.DB) *storage.ReadOnlyStore
+		di.WithTagged[*sql.DB](db.Replica),
 	),
 )
 ```
 
 ```go
-// The *db.DB service tagged with db.Primary will be injected
+// The *sql.DB service tagged with db.Primary will be injected
 rwStore, err := di.Resolve[*storage.ReadWriteStore](ctx, c)
 
-// The *db.DB service tagged with db.Replica will be injected
+// The *sql.DB service tagged with db.Replica will be injected
 roStore, err := di.Resolve[*storage.ReadOnlyStore](ctx, c)
 ```
 
 Use `di.WithTag()` to specify a tag when resolving a service directly from a container.
 
 ```go
-primary, err := di.Resolve[*db.DB](ctx, c, di.WithTag(db.Primary))
+primary, err := di.Resolve[*sql.DB](ctx, c, di.WithTag(db.Primary))
 ```
 
 ### Lifetimes
@@ -288,7 +293,7 @@ func (f *DBFactory) NewDB(ctx context.Context, dbName string) *DB {
 
 ### Decorators
 
-It's often useful to "wrap" or "decorate" a *service* to add some functionality.
+It's often useful to "decorate" or "wrap" a *service* to add some functionality.
 
 Use `di.WithDecorator()` when creating a `Container` to register a decorator function.
 A decorator function must accept and return a *service*. It may also accept other parameters which will be resolved from the container.
@@ -310,7 +315,7 @@ If you register multiple decorators for a service, they will be applied in the o
 
 ### Modules
 
-Modules allow you to export a collection of container options (services, decorators, etc.) that can be re-used for different containers.
+Modules allow you to export a collection of container options (services, decorators, etc.), that can be re-used for different containers.
 
 ```go
 var DependencyModule = di.Module{
@@ -322,7 +327,7 @@ var DependencyModule = di.Module{
 ```go
 c, err := di.NewContainer(
 	di.WithModule(DependencyModule), // var DependencyModule di.Module
-	di.WithService(NewService), // NewService(*slog.Logger) *service.Service
+	di.WithService(service.NewService), // NewService(*slog.Logger) *service.Service
 )
 ```
 
@@ -361,7 +366,7 @@ handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 })
 
 // Create and apply the middleware
-scopeMiddleware := dihttp.RequestScopeMiddleware(c)
+scopeMiddleware, err := dihttp.NewRequestScopeMiddleware(c)
 handler = scopeMiddleware(handler)
 // ...
 ```
@@ -370,13 +375,6 @@ handler = scopeMiddleware(handler)
 
 - Use `di.Lazy[Service any]` to inject a lazily-resolvable service.
 	Can be used to avoid creation if service is never needed. Or to get around dependency cycles in a simpler way than injecting `di.Scope`.
-- Add `dicontext.WithoutScope(context.Context)` to remove/hide a scope from child contexts. 
-- Track child scopes to make sure all child scopes have been closed. 
-	What do we do in this case? Close the child container(s)? Return an error? 
-- Allow retrying `Resolve` if an error was returned. Normally the first error would be cached for singleton or scoped dependencies. Subsequent attempts to resolve the service will return the error. However, there may be some cases where you would want to be able to retry the constructor function.
-- Implement additional Container options:
-	- Validate services: make sure all types are resolvable, with no cycles.
-		(Will need to exclude scoped services in the root container since they may have dependencies registered in child scopes.) 
+- Allow retrying `Resolve` if an error was returned. Normally the first error would be cached for singleton or scoped dependencies. Subsequent attempts to resolve the service will return the error. However, if there is a transient error, you may want to retry the constructor function. One could also argue that you should avoid calls from constructor functions that can result in transient errors.
 - Automatically call `Shutdown` methods to close services.
 - Enable error stacktraces optionally.
-- Logging with `slog`.
