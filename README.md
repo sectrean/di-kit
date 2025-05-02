@@ -345,6 +345,9 @@ ctx = dicontext.WithScope(ctx, c)
 // Resolve services from the scope on the context
 svc, err := dicontext.Resolve[*service.Service](ctx)
 ```
+```go
+svc := dicontext.MustResolve[*service.Service](ctx)
+```
 
 ## `dihttp`
 
