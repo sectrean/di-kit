@@ -14,9 +14,9 @@ import (
 // It is used to resolve services by first resolving their dependencies.
 type Container struct {
 	parent     *Container
-	services   map[serviceKey]service
+	services   map[serviceKey][]service
 	decorators map[serviceKey][]*decorator
-	resolved   map[serviceKey]resolveResult
+	resolved   map[service]resolveResult
 	closers    []Closer
 	resolvedMu sync.RWMutex
 	closedMu   sync.RWMutex
@@ -33,10 +33,8 @@ var _ Scope = (*Container)(nil)
 //   - [WithDecorator] registers a decorator function.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
-		// Pre-allocate space for services. This will not be accurate if modules or decorators are
-		// used, but it's a probably better than the default starting size.
-		services: make(map[serviceKey]service, len(opts)),
-		resolved: make(map[serviceKey]resolveResult),
+		services: make(map[serviceKey][]service),
+		resolved: make(map[service]resolveResult),
 	}
 
 	err := c.applyOptions(opts)
@@ -76,6 +74,10 @@ func (c *Container) applyOptions(opts []ContainerOption) error {
 }
 
 func (c *Container) register(sc serviceConfig) {
+	if c.services == nil {
+		c.services = make(map[serviceKey][]service)
+	}
+
 	if len(sc.Assignables()) == 0 {
 		c.registerType(sc.Type(), sc)
 	} else {
@@ -94,9 +96,10 @@ func (c *Container) register(sc serviceConfig) {
 }
 
 func (c *Container) registerType(t reflect.Type, sc serviceConfig) {
-	// The last service registered for a type will win
-	key := serviceKey{Type: t}
-	c.services[key] = sc
+	key := serviceKey{
+		Type: t,
+	}
+	c.services[key] = append(c.services[key], sc)
 
 	// Register the service with a tag if it has one
 	if sc.Tag() != nil {
@@ -104,19 +107,8 @@ func (c *Container) registerType(t reflect.Type, sc serviceConfig) {
 			Type: t,
 			Tag:  sc.Tag(),
 		}
-		c.services[keyWithTag] = sc
+		c.services[keyWithTag] = append(c.services[keyWithTag], sc)
 	}
-
-	// Add the service to a slice service
-	sliceKey := serviceKey{Type: reflect.SliceOf(t)}
-	sliceSvc, ok := c.services[sliceKey].(*sliceService)
-	if !ok {
-		sliceSvc = newSliceService(t)
-		c.services[sliceKey] = sliceSvc
-	}
-
-	itemKey := sliceSvc.NextItemKey()
-	c.services[itemKey] = sc
 }
 
 func (c *Container) registerDecorator(d *decorator) {
@@ -146,8 +138,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 
 	scope := &Container{
 		parent:   c,
-		services: make(map[serviceKey]service, len(c.services)),
-		resolved: make(map[serviceKey]resolveResult),
+		resolved: make(map[service]resolveResult),
 	}
 
 	err := scope.applyOptions(opts)
@@ -163,13 +154,23 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 // Available options:
 //   - [WithTag] specifies a key associated with the service.
 func (c *Container) Contains(t reflect.Type, opts ...ResolveOption) bool {
+	// Check if the type is a slice, look for the element type
+	if t.Kind() == reflect.Slice {
+		t = t.Elem()
+	}
+
 	key := serviceKey{Type: t}
 	for _, opt := range opts {
 		key = opt.applyServiceKey(key)
 	}
 
-	_, _, registered := getService(c, key)
-	return registered
+	for s := c; s != nil; s = s.parent {
+		if _, found := s.services[key]; found {
+			return true
+		}
+	}
+
+	return false
 }
 
 // ResolveOption can be used when calling [Resolve], [MustResolve],
@@ -201,7 +202,7 @@ func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...Resolve
 		return nil, errors.Wrapf(ErrContainerClosed, "di.Container.Resolve %s", key)
 	}
 
-	val, err := resolve(ctx, c, key, make(resolveVisitor))
+	val, err := resolveKey(ctx, c, key, make(resolveVisitor))
 	if err != nil {
 		return val, errors.Wrapf(err, "di.Container.Resolve %s", key)
 	}
@@ -209,29 +210,75 @@ func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...Resolve
 	return val, nil
 }
 
-func getService(scope *Container, key serviceKey) (service, *Container, bool) {
-	for ; scope != nil; scope = scope.parent {
-		svc, ok := scope.services[key]
-		if ok {
-			return svc, scope, true
-		}
-	}
-
-	return nil, nil, false
-}
-
-func resolve(
+func resolveKey(
 	ctx context.Context,
 	scope *Container,
 	key serviceKey,
 	visitor resolveVisitor,
-) (val any, err error) {
+) (any, error) {
+	if key.Type.Kind() == reflect.Slice {
+		return resolveSliceKey(ctx, scope, key, visitor)
+	}
+
 	// Look up the service
-	svc, svcScope, registered := getService(scope, key)
-	if !registered {
+	var svc service
+	for s := scope; s != nil; s = s.parent {
+		svcs, ok := s.services[key]
+		if ok {
+			// The last service registered for a type will win
+			svc = svcs[len(svcs)-1]
+			break
+		}
+	}
+
+	if svc == nil {
 		return nil, ErrServiceNotRegistered
 	}
 
+	return resolveService(ctx, scope, key, svc, visitor)
+}
+
+func resolveSliceKey(
+	ctx context.Context,
+	scope *Container,
+	key serviceKey,
+	visitor resolveVisitor,
+) (any, error) {
+	sliceVal := reflect.MakeSlice(key.Type, 0, 0)
+	elementKey := serviceKey{
+		Type: key.Type.Elem(),
+		Tag:  key.Tag,
+	}
+	found := false
+
+	for s := scope; s != nil; s = s.parent {
+		for _, svc := range s.services[elementKey] {
+			val, err := resolveService(ctx, scope, elementKey, svc, visitor)
+			if err != nil {
+				return nil, err
+			}
+			if val != nil {
+				sliceVal = reflect.Append(sliceVal, reflect.ValueOf(val))
+			}
+
+			found = true
+		}
+	}
+
+	if !found {
+		return nil, ErrServiceNotRegistered
+	}
+
+	return sliceVal.Interface(), nil
+}
+
+func resolveService(
+	ctx context.Context,
+	scope *Container,
+	key serviceKey,
+	svc service,
+	visitor resolveVisitor,
+) (val any, err error) {
 	// Check context for errors
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -241,8 +288,8 @@ func resolve(
 	// Otherwise, use the current scope.
 	lifetime := svc.Lifetime()
 	if lifetime == SingletonLifetime {
-		scope = svcScope
-	} else if lifetime == ScopedLifetime && scope == svcScope {
+		scope = svc.Scope()
+	} else if lifetime == ScopedLifetime && scope == svc.Scope() {
 		return nil, errors.New("scoped service must be resolved from a child scope")
 	}
 
@@ -250,7 +297,7 @@ func resolve(
 	// See if this service has already been resolved.
 	if lifetime != TransientLifetime {
 		scope.resolvedMu.RLock()
-		res, exists := scope.resolved[svc.Key()]
+		res, exists := scope.resolved[svc]
 		scope.resolvedMu.RUnlock()
 
 		if exists {
@@ -259,10 +306,10 @@ func resolve(
 	}
 
 	// Throw an error if we've already visited this service
-	if !visitor.Enter(key) {
+	if !visitor.Enter(svc) {
 		return nil, ErrDependencyCycle
 	}
-	defer visitor.Leave(key)
+	defer visitor.Leave(svc)
 
 	// Recursively resolve dependencies
 	var depVals []reflect.Value
@@ -286,14 +333,14 @@ func resolve(
 
 			default:
 				// Recursive call
-				depVal, depErr = resolve(ctx, scope, depKey, visitor)
+				depVal, depErr = resolveKey(ctx, scope, depKey, visitor)
 			}
 
 			if depErr != nil {
 				// Stop at the first error
 				return nil, errors.Wrapf(depErr, "dependency %s", depKey)
 			}
-			depVals[i] = safeVal(depKey.Type, depVal)
+			depVals[i] = safeReflectValue(depKey.Type, depVal)
 		}
 	}
 
@@ -327,13 +374,13 @@ func resolve(
 
 				default:
 					// Recursive call
-					depVal, depErr = resolve(ctx, scope, depKey, visitor)
+					depVal, depErr = resolveKey(ctx, scope, depKey, visitor)
 				}
 
 				if depErr != nil {
 					return nil, errors.Wrapf(depErr, "decorator %s: dependency %s", dec, depKey)
 				}
-				decoratorDeps[i][j] = safeVal(depKey.Type, depVal)
+				decoratorDeps[i][j] = safeReflectValue(depKey.Type, depVal)
 			}
 		}
 	}
@@ -344,13 +391,13 @@ func resolve(
 		defer scope.resolvedMu.Unlock()
 
 		// Check if another goroutine resolved the service since the last check
-		if res, exists := scope.resolved[svc.Key()]; exists {
+		if res, exists := scope.resolved[svc]; exists {
 			return res.val, res.err
 		}
 
 		defer func() {
 			// Store the result
-			scope.resolved[svc.Key()] = resolveResult{val, err}
+			scope.resolved[svc] = resolveResult{val, err}
 		}()
 	}
 
@@ -367,7 +414,7 @@ func resolve(
 		for j, depKey := range dec.deps {
 			if depKey == key {
 				// Inject the service being decorated
-				decoratorDeps[i][j] = safeVal(key.Type, val)
+				decoratorDeps[i][j] = safeReflectValue(key.Type, val)
 			}
 		}
 
@@ -456,17 +503,17 @@ type resolveResult struct {
 	err error
 }
 
-type resolveVisitor map[serviceKey]struct{}
+type resolveVisitor map[service]struct{}
 
-func (v resolveVisitor) Enter(key serviceKey) bool {
-	if _, exists := v[key]; exists {
+func (v resolveVisitor) Enter(s service) bool {
+	if _, exists := v[s]; exists {
 		return false
 	}
 
-	v[key] = struct{}{}
+	v[s] = struct{}{}
 	return true
 }
 
-func (v resolveVisitor) Leave(key serviceKey) {
-	delete(v, key)
+func (v resolveVisitor) Leave(s service) {
+	delete(v, s)
 }

@@ -7,13 +7,15 @@ import (
 )
 
 type valueService struct {
-	key           serviceKey
-	closerFactory func(any) Closer
+	scope         *Container
 	val           any
+	t             reflect.Type
+	tag           any
+	closerFactory func(any) Closer
 	assignables   []reflect.Type
 }
 
-func newValueService(val any, opts ...ServiceOption) (*valueService, error) {
+func newValueService(c *Container, val any, opts ...ServiceOption) (*valueService, error) {
 	t := reflect.TypeOf(val)
 	v := reflect.ValueOf(val)
 
@@ -22,8 +24,9 @@ func newValueService(val any, opts ...ServiceOption) (*valueService, error) {
 	}
 
 	svc := &valueService{
-		key: serviceKey{Type: t},
-		val: v.Interface(),
+		scope: c,
+		val:   safeAnyValue(v),
+		t:     t,
 	}
 
 	err := applyOptions(opts, func(opt ServiceOption) error {
@@ -36,12 +39,12 @@ func newValueService(val any, opts ...ServiceOption) (*valueService, error) {
 	return svc, nil
 }
 
-func (s *valueService) Key() serviceKey {
-	return s.key
+func (s *valueService) Scope() *Container {
+	return s.scope
 }
 
 func (s *valueService) Type() reflect.Type {
-	return s.key.Type
+	return s.t
 }
 
 func (s *valueService) Assignables() []reflect.Type {
@@ -66,11 +69,11 @@ func (s *valueService) SetLifetime(l Lifetime) error {
 }
 
 func (s *valueService) Tag() any {
-	return s.key.Tag
+	return s.tag
 }
 
 func (s *valueService) SetTag(tag any) {
-	s.key.Tag = tag
+	s.tag = tag
 }
 
 func (*valueService) Dependencies() []serviceKey {

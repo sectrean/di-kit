@@ -14,12 +14,23 @@ var (
 	typeScope   = reflect.TypeFor[Scope]()
 )
 
-func safeVal(t reflect.Type, val any) reflect.Value {
+func safeReflectValue(t reflect.Type, val any) reflect.Value {
 	if val == nil {
 		return reflect.Zero(t)
 	}
 
 	return reflect.ValueOf(val)
+}
+
+func safeAnyValue(v reflect.Value) any {
+	switch v.Kind() {
+	case reflect.Ptr, reflect.Interface:
+		if v.IsNil() {
+			return nil
+		}
+	}
+
+	return v.Interface()
 }
 
 // Apply functional options and join any errors together.

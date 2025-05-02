@@ -7,15 +7,17 @@ import (
 )
 
 type funcService struct {
-	key           serviceKey
-	closerFactory func(any) Closer
+	scope         *Container
 	fn            reflect.Value
+	t             reflect.Type
+	tag           any
+	closerFactory func(any) Closer
 	deps          []serviceKey
 	assignables   []reflect.Type
 	lifetime      Lifetime
 }
 
-func newFuncService(fn any, opts ...ServiceOption) (*funcService, error) {
+func newFuncService(c *Container, fn any, opts ...ServiceOption) (*funcService, error) {
 	fnType := reflect.TypeOf(fn)
 	fnVal := reflect.ValueOf(fn)
 
@@ -60,8 +62,9 @@ func newFuncService(fn any, opts ...ServiceOption) (*funcService, error) {
 	}
 
 	svc := &funcService{
-		key:           serviceKey{Type: t},
+		scope:         c,
 		fn:            fnVal,
+		t:             t,
 		deps:          deps,
 		closerFactory: getCloser,
 	}
@@ -76,12 +79,12 @@ func newFuncService(fn any, opts ...ServiceOption) (*funcService, error) {
 	return svc, nil
 }
 
-func (s *funcService) Key() serviceKey {
-	return s.key
+func (s *funcService) Scope() *Container {
+	return s.scope
 }
 
 func (s *funcService) Type() reflect.Type {
-	return s.key.Type
+	return s.t
 }
 
 func (s *funcService) Lifetime() Lifetime {
@@ -102,11 +105,11 @@ func (s *funcService) SetAssignables(assignables []reflect.Type) {
 }
 
 func (s *funcService) Tag() any {
-	return s.key.Tag
+	return s.tag
 }
 
 func (s *funcService) SetTag(tag any) {
-	s.key.Tag = tag
+	s.tag = tag
 }
 
 func (s *funcService) Dependencies() []serviceKey {
@@ -124,7 +127,7 @@ func (s *funcService) New(deps []reflect.Value) (any, error) {
 	}
 
 	// Extract the return value and error, if any
-	val := out[0].Interface()
+	val := safeAnyValue(out[0])
 
 	var err error
 	if len(out) == 2 {

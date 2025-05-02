@@ -62,7 +62,7 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 			// Stop at the first error
 			return errors.Wrapf(depErr, "di.Invoke %T", fn)
 		}
-		in[i] = safeVal(dep.Type, depVal)
+		in[i] = safeReflectValue(dep.Type, depVal)
 	}
 
 	// Check for a context error before we invoke the function

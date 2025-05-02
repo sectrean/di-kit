@@ -1,25 +1,34 @@
 package testtypes
 
-import (
-	"context"
+type Factory struct {
+	count int
+}
 
-	"github.com/sectrean/di-kit"
-)
-
-func NewTestFactory[T any](scope di.Scope, fn factoryFunc[T]) *TestFactory[T] {
-	return &TestFactory[T]{
-		scope: scope,
-		fn:    fn,
+func (f *Factory) NewStructA() *StructA {
+	a := &StructA{
+		Tag: f.count,
 	}
+	f.count++
+
+	return a
 }
 
-type factoryFunc[T any] func(context.Context, di.Scope) (T, error)
-
-type TestFactory[T any] struct {
-	scope di.Scope
-	fn    factoryFunc[T]
+func (f *Factory) NewInterfaceA() InterfaceA {
+	return f.NewStructA()
 }
 
-func (f *TestFactory[T]) Build(ctx context.Context) (T, error) {
-	return f.fn(ctx, f.scope)
+func ExpectStructA(count int) []*StructA {
+	var s []*StructA
+	for i := range count {
+		s = append(s, &StructA{Tag: i})
+	}
+	return s
+}
+
+func ExpectInterfaceA(count int) []InterfaceA {
+	var s []InterfaceA
+	for i := range count {
+		s = append(s, &StructA{Tag: i})
+	}
+	return s
 }

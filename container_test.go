@@ -19,8 +19,6 @@ import (
 
 // TODO: Add tests for the following:
 // - dependencies on scoped services
-// - slices with scopes
-// - slices with scoped services
 // - decorators registered on child scopes
 // - decorator on parent scope with scoped dependency
 // - more tests around the resolve locking
@@ -491,6 +489,39 @@ func Test_Container_Contains(t *testing.T) {
 		has = scope.Contains(reflect.TypeFor[testtypes.InterfaceB]())
 		assert.True(t, has)
 	})
+
+	t.Run("slice service", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		has := c.Contains(reflect.TypeFor[[]testtypes.InterfaceA]())
+		assert.True(t, has)
+	})
+
+	t.Run("slice service not registered", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		has := c.Contains(reflect.TypeFor[[]testtypes.InterfaceB]())
+		assert.False(t, has)
+	})
+
+	t.Run("WithTag slice service", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA, di.WithTag(1)),
+		)
+		require.NoError(t, err)
+
+		has := c.Contains(reflect.TypeFor[[]testtypes.InterfaceA]())
+		assert.True(t, has)
+
+		has = c.Contains(reflect.TypeFor[[]testtypes.InterfaceA](), di.WithTag(1))
+		assert.True(t, has)
+	})
 }
 
 func Test_Container_Resolve(t *testing.T) {
@@ -523,7 +554,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("constructor func returns nil", func(t *testing.T) {
+	t.Run("func nil interface", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func() testtypes.InterfaceA {
 				return nil
@@ -533,7 +564,100 @@ func Test_Container_Resolve(t *testing.T) {
 
 		ctx := context.Background()
 		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+
 		assert.Nil(t, got)
+		assert.True(t, got == nil)
+		assert.NoError(t, err)
+	})
+
+	t.Run("func nil pointer", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func() *testtypes.StructA {
+				return nil
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[*testtypes.StructA](ctx, c)
+
+		assert.Nil(t, got)
+		assert.True(t, got == nil)
+		assert.NoError(t, err)
+	})
+
+	t.Run("value nil pointer", func(t *testing.T) {
+		var a *testtypes.StructA = nil
+		c, err := di.NewContainer(
+			di.WithService(a),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[*testtypes.StructA](ctx, c)
+
+		assert.Nil(t, got)
+		assert.True(t, got == nil)
+		assert.NoError(t, err)
+	})
+
+	t.Run("value struct", func(t *testing.T) {
+		a1 := testtypes.StructA{Tag: 1}
+
+		c, err := di.NewContainer(
+			di.WithService(a1),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.StructA](ctx, c)
+		assert.Equal(t, a1, got)
+		assert.NoError(t, err)
+	})
+
+	t.Run("func struct", func(t *testing.T) {
+		a1 := testtypes.StructA{Tag: 1}
+
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.StructA { return a1 }),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.StructA](ctx, c)
+		assert.Equal(t, a1, got)
+		assert.NoError(t, err)
+	})
+
+	t.Run("As value nil pointer", func(t *testing.T) {
+		var a *testtypes.StructA = nil
+		c, err := di.NewContainer(
+			di.WithService(a, di.As[testtypes.InterfaceA]()),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+
+		assert.Nil(t, got)
+		assert.True(t, got == nil)
+		assert.NoError(t, err)
+	})
+
+	t.Run("As func nil pointer", func(t *testing.T) {
+		var a *testtypes.StructA = nil
+		c, err := di.NewContainer(
+			di.WithService(func() *testtypes.StructA { return a },
+				di.As[testtypes.InterfaceA](),
+			),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+
+		assert.Nil(t, got)
+		assert.True(t, got == nil)
 		assert.NoError(t, err)
 	})
 
@@ -564,6 +688,7 @@ func Test_Container_Resolve(t *testing.T) {
 		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
+		assert.True(t, got == nil)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: container closed")
 	})
 
@@ -845,52 +970,47 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("slice service", func(t *testing.T) {
+		f := &testtypes.Factory{}
+
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA),
-			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(f.NewInterfaceA),
+			di.WithService(f.NewInterfaceA),
 		)
 		require.NoError(t, err)
 
 		ctx := context.Background()
 		got, err := di.Resolve[[]testtypes.InterfaceA](ctx, c)
 
-		want := []testtypes.InterfaceA{
-			&testtypes.StructA{},
-			&testtypes.StructA{},
-		}
-		assert.Equal(t, want, got)
+		want := testtypes.ExpectInterfaceA(2)
+		assert.ElementsMatch(t, want, got)
 		assert.NoError(t, err)
 	})
 
 	t.Run("slice service values", func(t *testing.T) {
-		a1 := &testtypes.StructA{}
-		a2 := &testtypes.StructA{}
-		want := []*testtypes.StructA{a1, a2}
+		f := &testtypes.Factory{}
 
 		c, err := di.NewContainer(
-			di.WithService(a1),
-			di.WithService(a2),
+			di.WithService(f.NewStructA()),
+			di.WithService(f.NewStructA()),
 		)
 		require.NoError(t, err)
 
 		ctx := context.Background()
 		got, err := di.Resolve[[]*testtypes.StructA](ctx, c)
 
-		assert.Exactly(t, want, got)
+		want := testtypes.ExpectStructA(2)
+		assert.ElementsMatch(t, want, got)
 		assert.NoError(t, err)
 	})
 
 	t.Run("slice service dependency", func(t *testing.T) {
-		want := []testtypes.InterfaceA{
-			&testtypes.StructA{},
-			&testtypes.StructA{},
-		}
+		f := &testtypes.Factory{}
 
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA),
-			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(f.NewInterfaceA),
+			di.WithService(f.NewInterfaceA),
 			di.WithService(func(aa []testtypes.InterfaceA) testtypes.InterfaceB {
-				assert.Equal(t, want, aa)
+				assert.Equal(t, testtypes.ExpectInterfaceA(2), aa)
 				return &testtypes.StructB{}
 			}),
 		)
@@ -922,18 +1042,16 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("slice service variadic", func(t *testing.T) {
-		want := []testtypes.InterfaceA{
-			&testtypes.StructA{},
-			&testtypes.StructA{},
-		}
+		f := &testtypes.Factory{}
+		want := testtypes.ExpectInterfaceA(2)
 
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA),
-			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(f.NewInterfaceA),
+			di.WithService(f.NewInterfaceA),
 			di.WithService(testtypes.NewInterfaceB),
 			di.WithService(func(b testtypes.InterfaceB, aa ...testtypes.InterfaceA) testtypes.InterfaceD {
 				assert.Equal(t, &testtypes.StructB{}, b)
-				assert.Equal(t, want, aa)
+				assert.ElementsMatch(t, want, aa)
 				return &testtypes.StructD{}
 			}),
 		)
@@ -943,6 +1061,114 @@ func Test_Container_Resolve(t *testing.T) {
 		d, err := di.Resolve[testtypes.InterfaceD](ctx, c)
 		assert.Equal(t, &testtypes.StructD{}, d)
 		assert.NoError(t, err)
+	})
+
+	t.Run("slice service across scopes", func(t *testing.T) {
+		f := &testtypes.Factory{}
+
+		c, err := di.NewContainer(
+			di.WithService(f.NewStructA),
+			di.WithService(f.NewStructA),
+		)
+		require.NoError(t, err)
+
+		scope, err := c.NewScope(
+			di.WithService(f.NewStructA),
+			di.WithService(f.NewStructA),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[[]*testtypes.StructA](ctx, scope)
+
+		want := testtypes.ExpectStructA(4)
+		assert.ElementsMatch(t, want, got)
+		assert.NoError(t, err)
+	})
+
+	t.Run("slice service error", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func() (testtypes.InterfaceA, error) {
+				return nil, errors.New("test error")
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[[]testtypes.InterfaceA](ctx, c)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, got)
+		assert.EqualError(t, err, "di.Container.Resolve []testtypes.InterfaceA: test error")
+	})
+
+	t.Run("WithTag slice service", func(t *testing.T) {
+		f := &testtypes.Factory{}
+
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA {
+				assert.Fail(t, "should not be called")
+				return &testtypes.StructA{}
+			}),
+			di.WithService(f.NewInterfaceA, di.WithTag(1)),
+			di.WithService(f.NewInterfaceA, di.WithTag(1)),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[[]testtypes.InterfaceA](ctx, c, di.WithTag(1))
+
+		want := testtypes.ExpectInterfaceA(2)
+		assert.Equal(t, want, got)
+		assert.NoError(t, err)
+	})
+
+	t.Run("slice service nil service", func(t *testing.T) {
+		a1 := &testtypes.StructA{Tag: 1}
+
+		c, err := di.NewContainer(
+			di.WithService(func() *testtypes.StructA {
+				return nil
+			}),
+			di.WithService(a1),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[[]*testtypes.StructA](ctx, c)
+
+		want := []*testtypes.StructA{a1}
+		assert.Equal(t, want, got, "nil service should not be included in the slice")
+		assert.NoError(t, err)
+	})
+
+	t.Run("slice service not registered", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[[]testtypes.InterfaceA](ctx, c)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, got)
+		assert.EqualError(t, err, "di.Container.Resolve []testtypes.InterfaceA: service not registered")
+		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
+	})
+
+	t.Run("WithTag slice service not registered", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[[]testtypes.InterfaceA](ctx, c, di.WithTag(1))
+		testutils.LogError(t, err)
+
+		assert.Nil(t, got)
+		assert.EqualError(t, err, "di.Container.Resolve []testtypes.InterfaceA (Tag 1): service not registered")
+		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
 	t.Run("as override type", func(t *testing.T) {
@@ -965,7 +1191,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
-	t.Run("as same instance", func(t *testing.T) {
+	t.Run("As", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(
 				func() *testtypes.StructA {
@@ -1190,7 +1416,7 @@ func Test_Container_Resolve(t *testing.T) {
 	t.Run("dependency di.Scope", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
-			di.WithService(func(ctx context.Context, scope di.Scope) *testtypes.TestFactory[testtypes.InterfaceA] {
+			di.WithService(func(ctx context.Context, scope di.Scope) *ScopeFactory[testtypes.InterfaceA] {
 				// We cannot call Resolve on the scope here.
 				a, err := di.Resolve[testtypes.InterfaceA](ctx, scope)
 				testutils.LogError(t, err)
@@ -1269,7 +1495,7 @@ func Test_Container_Resolve(t *testing.T) {
 		calls2 := 0
 
 		c, err := di.NewContainer(
-			di.WithService(func() testtypes.InterfaceA { return a1 }),
+			di.WithService(a1, di.As[testtypes.InterfaceA]()),
 			di.WithDecorator(func(a testtypes.InterfaceA) testtypes.InterfaceA {
 				assert.Same(t, a1, a)
 				calls1++
