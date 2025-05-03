@@ -71,3 +71,6 @@ issues:
       linters:
         - revive
       text: "^exported"
+    - path: internal/...
+      linters:
+        - prealloc

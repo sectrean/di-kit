@@ -42,7 +42,6 @@ func RunParallel(concurrency int, f func(int)) {
 
 // CollectChannel collects all values from a channel and returns them in a slice.
 func CollectChannel[V any](ch <-chan V) []V {
-	//nolint:prealloc // No way of knowing the number of values in the channel
 	var values []V
 	for v := range ch {
 		values = append(values, v)
