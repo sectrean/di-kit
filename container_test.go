@@ -1205,7 +1205,7 @@ func Test_Container_Resolve(t *testing.T) {
 				assert.True(t, hasA)
 
 				// We have to store it and we can call Resolve later.
-				return testtypes.NewTestFactory(scope, func(ctx context.Context, s di.Scope) (testtypes.InterfaceA, error) {
+				return NewScopeFactory(scope, func(ctx context.Context, s di.Scope) (testtypes.InterfaceA, error) {
 					return di.Resolve[testtypes.InterfaceA](ctx, s)
 				})
 			}),
@@ -1213,7 +1213,7 @@ func Test_Container_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		factory, err := di.Resolve[*testtypes.TestFactory[testtypes.InterfaceA]](ctx, c)
+		factory, err := di.Resolve[*ScopeFactory[testtypes.InterfaceA]](ctx, c)
 		require.NoError(t, err)
 
 		a, err := factory.Build(ctx)
