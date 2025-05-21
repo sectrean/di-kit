@@ -1171,7 +1171,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
-	t.Run("as override type", func(t *testing.T) {
+	t.Run("As", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(&testtypes.StructA{},
 				di.As[testtypes.InterfaceA](),
@@ -1191,7 +1191,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
-	t.Run("As", func(t *testing.T) {
+	t.Run("As original type", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(
 				func() *testtypes.StructA {
@@ -1308,7 +1308,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
-	t.Run("tagged dependency", func(t *testing.T) {
+	t.Run("WithTagged", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA,
 				di.WithTag("A1"),
@@ -1330,7 +1330,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("tagged multiple", func(t *testing.T) {
+	t.Run("WithTagged multiple", func(t *testing.T) {
 		a1 := &testtypes.StructA{Tag: 1}
 		a2 := &testtypes.StructA{Tag: 2}
 
@@ -1447,14 +1447,13 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("decorator func service", func(t *testing.T) {
-		a1 := &testtypes.StructA{Tag: "original"}
+	t.Run("WithDecorator func service", func(t *testing.T) {
+		a1 := &testtypes.StructA{Tag: 1}
 
 		c, err := di.NewContainer(
 			di.WithService(func() *testtypes.StructA { return a1 }),
 			di.WithDecorator(func(a *testtypes.StructA) *testtypes.StructA {
-				assert.Same(t, a1, a)
-				return &testtypes.StructA{Tag: "decorated"}
+				return &testtypes.StructA{Tag: a}
 			}),
 		)
 		require.NoError(t, err)
@@ -1462,19 +1461,17 @@ func Test_Container_Resolve(t *testing.T) {
 		ctx := context.Background()
 		got, err := di.Resolve[*testtypes.StructA](ctx, c)
 
-		assert.Equal(t, &testtypes.StructA{Tag: "decorated"}, got)
-		assert.NotSame(t, a1, got)
+		assert.Equal(t, a1, got.Tag)
 		assert.NoError(t, err)
 	})
 
-	t.Run("decorator value service", func(t *testing.T) {
-		a1 := &testtypes.StructA{Tag: "original"}
+	t.Run("WithDecorator value service", func(t *testing.T) {
+		a1 := &testtypes.StructA{Tag: 1}
 
 		c, err := di.NewContainer(
 			di.WithService(a1),
 			di.WithDecorator(func(a *testtypes.StructA) *testtypes.StructA {
-				assert.Same(t, a1, a)
-				return &testtypes.StructA{Tag: "decorated"}
+				return &testtypes.StructA{Tag: a}
 			}),
 		)
 		require.NoError(t, err)
@@ -1482,12 +1479,11 @@ func Test_Container_Resolve(t *testing.T) {
 		ctx := context.Background()
 		got, err := di.Resolve[*testtypes.StructA](ctx, c)
 
-		assert.Equal(t, &testtypes.StructA{Tag: "decorated"}, got)
-		assert.NotSame(t, a1, got)
+		assert.Equal(t, a1, got.Tag)
 		assert.NoError(t, err)
 	})
 
-	t.Run("decorators multiple", func(t *testing.T) {
+	t.Run("WithDecorator multiple", func(t *testing.T) {
 		a1 := &testtypes.StructA{Tag: 1}
 		a2 := &testtypes.StructA{Tag: 2}
 		a3 := &testtypes.StructA{Tag: 3}
@@ -1518,7 +1514,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls2)
 	})
 
-	t.Run("decorator with context", func(t *testing.T) {
+	t.Run("WithDecorator context.Context dependency", func(t *testing.T) {
 		calls := 0
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
@@ -1537,7 +1533,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
-	t.Run("decorator with dependency", func(t *testing.T) {
+	t.Run("WithDecorator dependencies", func(t *testing.T) {
 		calls := 0
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
@@ -1558,7 +1554,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
-	t.Run("decorator with di.Scope dependency", func(t *testing.T) {
+	t.Run("WithDecorator di.Scope dependency", func(t *testing.T) {
 		calls := 0
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
@@ -1581,7 +1577,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
-	t.Run("decorator with error", func(t *testing.T) {
+	t.Run("WithDecorator returns error", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func() (testtypes.InterfaceA, error) {
 				return nil, errors.New("constructor error")
@@ -1604,7 +1600,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceB: decorator func(testtypes.InterfaceB, testtypes.InterfaceA) testtypes.InterfaceB: dependency testtypes.InterfaceA: constructor error")
 	})
 
-	t.Run("decorator with nil service", func(t *testing.T) {
+	t.Run("WithDecorator nil service", func(t *testing.T) {
 		calls := 0
 		c, err := di.NewContainer(
 			di.WithService(func() testtypes.InterfaceA { return nil }),
@@ -1623,7 +1619,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
-	t.Run("decorator function dependency returns nil", func(t *testing.T) {
+	t.Run("WithDecorator function dependency returns nil", func(t *testing.T) {
 		calls := 0
 		c, err := di.NewContainer(
 			di.WithService(func() testtypes.InterfaceA { return nil }),
@@ -1673,7 +1669,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
-	t.Run("with module", func(t *testing.T) {
+	t.Run("WithModule", func(t *testing.T) {
 		// The module service should be registered first since the module is added before the
 		// other service registrations.
 		a1 := &testtypes.StructA{Tag: 1}
