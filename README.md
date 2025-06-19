@@ -76,7 +76,7 @@ Any errors with registering services will be [joined](https://pkg.go.dev/errors#
 
 ### Resolve services
 
-Use `di.Resolve()` or `di.MustResolve()` to get a service from the `Container` by type. If a requested service is not registered with the `Container`, or a dependency cycle is detected, an error will be returned.
+Use `di.Resolve[Service]()` or `di.MustResolve[Service]()` to get a service from the `Container` by type. If a requested service is not registered with the `Container`, or a dependency cycle is detected, an error will be returned.
 
 ```go
 svc, err := di.Resolve[*service.Service](ctx, c)
@@ -190,7 +190,7 @@ c, err := di.NewContainer(
 
 If you want to register multiple services as the same type, but be able to differentiate them when resolving, use `di.WithTag()` when registering the service.
 
-Use `di.WithTagged[Dependency]()` when registering a dependent service to specify a tag for a dependency.
+Use `di.WithTagged[Dependency]()` when registering a service to specify a tag to use when resolving a dependency.
 
 ```go
 c, err := di.NewContainer(
@@ -273,9 +273,9 @@ scope, err := c.NewScope(
 
 A couple services are provided directly by the container and cannot be registered.
 
-`context.Context` - When a service is resolved, the context passed into `Resolve` will be injected into constructor functions as a dependency. You should avoid resolving resolving singleton services from a request-scoped context that may be canceled. 
+`context.Context` - When a service is resolved, the context passed into `Resolve` will be injected into constructor functions as a dependency. (You should avoid resolving resolving singleton services from a request-scoped context that may be canceled.)
 
-`di.Scope` - The current `Container` can be injected into a service as `di.Scope`. This allows a service to resolve other services. The scope must be stored and only used *after* the constructor function returns.
+`di.Scope` - The current container scope can be injected into a service as `di.Scope`. This allows you to create a "factory" service that can resolve dependencies from the container scope. The scope must be stored and only used *after* the constructor function returns.
 
 ```go
 func NewDBFactory(scope di.Scope) *DBFactory {
@@ -376,6 +376,7 @@ handler = scopeMiddleware(handler)
 
 ## Feature Ideas
 
+- Rename `UseClose` and `UseCloseFunc`.
 - Use `di.Lazy[Service any]` to inject a lazily-resolvable service.
 	Can be used to avoid creation if service is never needed. Or to get around dependency cycles in a simpler way than injecting `di.Scope`.
 - Allow retrying `Resolve` if an error was returned. Normally the first error would be cached for singleton or scoped dependencies. Subsequent attempts to resolve the service will return the error. However, if there is a transient error, you may want to retry the constructor function. One could also argue that you should avoid calls from constructor functions that can result in transient errors.
