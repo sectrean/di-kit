@@ -69,7 +69,6 @@ func WithTagged[Dependency any](tag any) DependencyOption {
 type DependencyOption interface {
 	ServiceOption
 	InvokeOption
-	DecoratorOption
 }
 
 type tagOption struct {
@@ -94,10 +93,6 @@ type dependencyOption func(deps []serviceKey) error
 
 func (o dependencyOption) applyServiceConfig(sc serviceConfig) error {
 	return o(sc.Dependencies())
-}
-
-func (o dependencyOption) applyDecorator(d *decorator) error {
-	return o(d.deps)
 }
 
 func (o dependencyOption) applyInvokeConfig(c *invokeConfig) error {

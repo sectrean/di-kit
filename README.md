@@ -291,31 +291,9 @@ func (f *DBFactory) NewDB(ctx context.Context, dbName string) *DB {
 }
 ```
 
-### Decorators
-
-It's often useful to "decorate" or "wrap" a *service* to add some functionality.
-
-Use `di.WithDecorator()` when creating a `Container` to register a decorator function.
-A decorator function must accept and return a *service*. It may also accept other parameters which will be resolved from the container.
-
-```go
-c, err := di.NewContainer(
-	di.WithService(logger), // var logger *slog.Logger
-	di.WithService(service.NewService, // NewService() *service.Service
-		di.As[service.Interface](),
-	),
-	di.WithDecorator(service.NewLoggedService), // NewLoggedService(service.Interface, *slog.Logger) service.Interface
-)
-// ...
-
-svc, err := di.Resolve[service.Interface](ctx, c)
-```
-
-If you register multiple decorators for a service, they will be applied in the order they are registered.
-
 ### Modules
 
-Modules allow you to export a collection of container options (services, decorators, etc.), that can be re-used for different containers.
+Modules allow you to export a collection of container options (service registrations) that can be re-used for different containers.
 
 ```go
 var DependencyModule = di.Module{

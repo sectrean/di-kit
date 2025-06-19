@@ -15,7 +15,6 @@ import (
 type Container struct {
 	parent     *Container
 	services   map[serviceKey][]service
-	decorators map[serviceKey][]*decorator
 	resolved   map[service]resolveResult
 	closers    []Closer
 	resolvedMu sync.RWMutex
@@ -30,7 +29,6 @@ var _ Scope = (*Container)(nil)
 //
 // Available options:
 //   - [WithService] registers a service with a value or constructor function.
-//   - [WithDecorator] registers a decorator function.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		services: make(map[serviceKey][]service),
@@ -109,15 +107,6 @@ func (c *Container) registerType(t reflect.Type, sc serviceConfig) {
 		}
 		c.services[keyWithTag] = append(c.services[keyWithTag], sc)
 	}
-}
-
-func (c *Container) registerDecorator(d *decorator) {
-	// Create this map lazily since decorators aren't always used
-	if c.decorators == nil {
-		c.decorators = make(map[serviceKey][]*decorator)
-	}
-
-	c.decorators[d.Key()] = append(c.decorators[d.Key()], d)
 }
 
 // NewScope creates a new [Container] with a child scope.
@@ -344,47 +333,6 @@ func resolveService(
 		}
 	}
 
-	// Get decorator dependencies ready
-	// decorators will be applied after the service is created
-	var decoratorDeps [][]reflect.Value
-	decorators := scope.decorators[key]
-	if len(decorators) > 0 {
-		decoratorDeps = make([][]reflect.Value, len(decorators))
-
-		for i, dec := range decorators {
-			decoratorDeps[i] = make([]reflect.Value, len(dec.deps))
-
-			for j, depKey := range dec.deps {
-				var depVal any
-				var depErr error
-
-				switch {
-				case depKey == key:
-					// We need to set this after the service is created
-					continue
-
-				case depKey.Type == typeContext:
-					// Pass along the context
-					depVal = ctx
-
-				case depKey.Type == typeScope:
-					var ready func()
-					depVal, ready = newInjectedScope(scope, key)
-					defer ready()
-
-				default:
-					// Recursive call
-					depVal, depErr = resolveKey(ctx, scope, depKey, visitor)
-				}
-
-				if depErr != nil {
-					return nil, errors.Wrapf(depErr, "decorator %s: dependency %s", dec, depKey)
-				}
-				decoratorDeps[i][j] = safeReflectValue(depKey.Type, depVal)
-			}
-		}
-	}
-
 	if svc.Lifetime() != TransientLifetime {
 		// We need to lock before we create the service to make sure we don't create it twice
 		scope.resolvedMu.Lock()
@@ -407,18 +355,6 @@ func resolveService(
 	// Skip the rest if there was an error
 	if err != nil {
 		return val, err
-	}
-
-	// Apply decorators
-	for i, dec := range decorators {
-		for j, depKey := range dec.deps {
-			if depKey == key {
-				// Inject the service being decorated
-				decoratorDeps[i][j] = safeReflectValue(key.Type, val)
-			}
-		}
-
-		val = dec.Decorate(decoratorDeps[i])
 	}
 
 	// Add Closer for the service
@@ -472,8 +408,7 @@ var (
 type optionOrder int8
 
 const (
-	orderService   optionOrder = iota
-	orderDecorator optionOrder = iota
+	orderService optionOrder = iota
 )
 
 func newContainerOption(order optionOrder, fn func(*Container) error) ContainerOption {
