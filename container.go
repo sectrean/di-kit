@@ -133,7 +133,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 	defer c.closedMu.RUnlock()
 
 	if c.closed {
-		return nil, errors.Wrap(ErrContainerClosed, "di.Container.NewScope")
+		return nil, errors.Wrap(errContainerClosed, "di.Container.NewScope")
 	}
 
 	scope := &Container{
@@ -199,7 +199,7 @@ func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...Resolve
 	defer c.closedMu.RUnlock()
 
 	if c.closed {
-		return nil, errors.Wrapf(ErrContainerClosed, "di.Container.Resolve %s", key)
+		return nil, errors.Wrapf(errContainerClosed, "di.Container.Resolve %s", key)
 	}
 
 	val, err := resolveKey(ctx, c, key, make(resolveVisitor))
@@ -232,7 +232,7 @@ func resolveKey(
 	}
 
 	if svc == nil {
-		return nil, ErrServiceNotRegistered
+		return nil, errServiceNotRegistered
 	}
 
 	return resolveService(ctx, scope, key, svc, visitor)
@@ -266,7 +266,7 @@ func resolveSliceKey(
 	}
 
 	if !found {
-		return nil, ErrServiceNotRegistered
+		return nil, errServiceNotRegistered
 	}
 
 	return sliceVal.Interface(), nil
@@ -307,7 +307,7 @@ func resolveService(
 
 	// Throw an error if we've already visited this service
 	if !visitor.Enter(svc) {
-		return nil, ErrDependencyCycle
+		return nil, errDependencyCycle
 	}
 	defer visitor.Leave(svc)
 
@@ -442,7 +442,7 @@ func (c *Container) Close(ctx context.Context) error {
 	defer c.closedMu.Unlock()
 
 	if c.closed {
-		return errors.Wrap(ErrContainerClosed, "di.Container.Close: closed already")
+		return errors.Wrap(errContainerClosed, "di.Container.Close: closed already")
 	}
 	c.closed = true
 
@@ -464,14 +464,9 @@ func (c *Container) Close(ctx context.Context) error {
 }
 
 var (
-	// ErrServiceNotRegistered is returned when a service is not registered.
-	ErrServiceNotRegistered = errors.New("service not registered")
-
-	// ErrDependencyCycle is returned when a dependency cycle is detected.
-	ErrDependencyCycle = errors.New("dependency cycle detected")
-
-	// ErrContainerClosed is returned when the container is closed.
-	ErrContainerClosed = errors.New("container closed")
+	errServiceNotRegistered = errors.New("service not registered")
+	errDependencyCycle      = errors.New("dependency cycle detected")
+	errContainerClosed      = errors.New("container closed")
 )
 
 type optionOrder int8

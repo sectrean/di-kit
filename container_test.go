@@ -433,7 +433,6 @@ func Test_Container_NewScope(t *testing.T) {
 
 		assert.Nil(t, scope)
 		assert.EqualError(t, err, "di.Container.NewScope: container closed")
-		assert.ErrorIs(t, err, di.ErrContainerClosed)
 	})
 }
 
@@ -736,7 +735,6 @@ func Test_Container_Resolve(t *testing.T) {
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: service not registered")
-		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
 	t.Run("not registered di.Scope", func(t *testing.T) {
@@ -749,7 +747,6 @@ func Test_Container_Resolve(t *testing.T) {
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve di.Scope: service not registered")
-		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
 	t.Run("not registered context.Context", func(t *testing.T) {
@@ -762,7 +759,6 @@ func Test_Container_Resolve(t *testing.T) {
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve context.Context: service not registered")
-		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
 	t.Run("dependency not registered", func(t *testing.T) {
@@ -777,7 +773,6 @@ func Test_Container_Resolve(t *testing.T) {
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceB: dependency testtypes.InterfaceA: service not registered")
-		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
 	t.Run("dependency cycle", func(t *testing.T) {
@@ -793,7 +788,6 @@ func Test_Container_Resolve(t *testing.T) {
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: dependency testtypes.InterfaceB: dependency testtypes.InterfaceA: dependency cycle detected")
-		assert.ErrorIs(t, err, di.ErrDependencyCycle)
 	})
 
 	t.Run("lifetime singleton", func(t *testing.T) {
@@ -1153,7 +1147,6 @@ func Test_Container_Resolve(t *testing.T) {
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve []testtypes.InterfaceA: service not registered")
-		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
 	t.Run("WithTag slice service not registered", func(t *testing.T) {
@@ -1168,7 +1161,6 @@ func Test_Container_Resolve(t *testing.T) {
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve []testtypes.InterfaceA (Tag 1): service not registered")
-		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
 	t.Run("As", func(t *testing.T) {
@@ -1188,7 +1180,6 @@ func Test_Container_Resolve(t *testing.T) {
 		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
-		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
 	t.Run("As original type", func(t *testing.T) {
@@ -1305,7 +1296,6 @@ func Test_Container_Resolve(t *testing.T) {
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA (Tag other): service not registered")
-		assert.ErrorIs(t, err, di.ErrServiceNotRegistered)
 	})
 
 	t.Run("WithTagged", func(t *testing.T) {
@@ -1946,7 +1936,6 @@ func Test_Container_Close(t *testing.T) {
 		testutils.LogError(t, err)
 
 		assert.EqualError(t, err, "di.Container.Close: closed already: container closed")
-		assert.ErrorIs(t, err, di.ErrContainerClosed)
 	})
 
 	t.Run("all close funcs", func(t *testing.T) {
@@ -2213,24 +2202,25 @@ func Test_Container_Close(t *testing.T) {
 	})
 
 	t.Run("concurrent with Close", func(t *testing.T) {
+		const concurrency = 10
+
 		c, err := di.NewContainer()
 		require.NoError(t, err)
-
-		const concurrency = 10
-		expectedErr := errors.Wrap(di.ErrContainerClosed, "di.Container.Close: closed already")
-
-		// Only one call should return a nil error
-		expected := make([]error, concurrency)
-		for i := range concurrency - 1 {
-			expected[i] = expectedErr
-		}
 
 		results := make([]error, concurrency)
 		testutils.RunParallel(concurrency, func(i int) {
 			results[i] = c.Close(context.Background())
 		})
 
-		assert.ElementsMatch(t, expected, results)
+		numErrors := 0
+		for _, err := range results {
+			if err != nil {
+				assert.EqualError(t, err, "di.Container.Close: closed already: container closed")
+				numErrors++
+			}
+		}
+
+		assert.Equal(t, concurrency-1, numErrors, "only one call should return a nil error")
 	})
 
 	t.Run("concurrent with Resolve", func(t *testing.T) {
