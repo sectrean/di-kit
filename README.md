@@ -109,7 +109,7 @@ err = di.Invoke(ctx, c, func (ctx context.Context, svc *service.Service) error {
 
 ### Close the Container
 
-Services often need to do some clean up when they're done being used. The `Container` can handle this for registered services.
+Services often need to do some clean up when they're done being used. The `Container` can handle this for the services it manages.
 
 On application shutdown, use `Container.Close()` to clean up services. By default, the `Container` will call a `Close` method on any services that is has created. Any errors returned from closing services will be [joined](https://pkg.go.dev/errors#Join) together.
 See [Closing](#closing) for more.
@@ -135,39 +135,39 @@ c, err := di.NewContainer(
 
 ### Closing
 
-By default, *function services* are closed with the `Container` if they implement one the following `Close` method signatures:
+By default, resolved *function services* are closed with the `Container` if they implement one the following `Close` method signatures:
 
 - `Close(context.Context) error`
 - `Close(context.Context)`
 - `Close() error`
 - `Close()`
 
-The default behavior can be disabled using the `di.IgnoreClose()` option when registering the service:
+The default behavior can be disabled using the `di.IgnoreCloser()` option when registering the service:
 
 ```go
 c, err := di.NewContainer(
 	di.WithService(logger),
 	di.WithService(service.NewService,
 		// We don't want the container to automatically call Close
-		di.IgnoreClose(),
+		di.IgnoreCloser(),
 	),
 )
 ```
 
-If a service uses another method to clean up, a custom close function can be configured using the `di.WithCloseFunc()` option:
+If a service uses another method to clean up, a custom close function can be configured using the `di.UseCloseFunc()` option:
 
 ``` go
 c, err := di.NewContainer(
 	di.WithService(logger),
 	di.WithService(service.NewService,
-		di.WithCloseFunc(func (ctx context.Context, svc *service.Service) error {
+		di.UseCloseFunc(func (ctx context.Context, svc *service.Service) error {
 			return svc.Shutdown(ctx)
 		}),
 	),
 )
 ```
 
-*Value services* are not closed by default since they are not created by the `Container`. If you want to have the `Container` close a value service, use the `di.WithClose()` option to call a supported `Close` method. Or use the `di.WithCloseFunc()` option to specify a custom close function.
+*Value services* are not closed by default since they are not created by the `Container`. If you want to have the `Container` close a value service, use the `di.UseCloser()` option to call a supported `Close` method. Or use the `di.UseCloseFunc()` option to specify a custom close function.
 
 ### Slice Services
 
@@ -354,7 +354,6 @@ handler = scopeMiddleware(handler)
 
 ## Feature Ideas
 
-- Rename `UseClose` and `UseCloseFunc`.
 - Use `di.Lazy[Service any]` to inject a lazily-resolvable service.
 	Can be used to avoid creation if service is never needed. Or to get around dependency cycles in a simpler way than injecting `di.Scope`.
 - Allow retrying `Resolve` if an error was returned. Normally the first error would be cached for singleton or scoped dependencies. Subsequent attempts to resolve the service will return the error. However, if there is a transient error, you may want to retry the constructor function. One could also argue that you should avoid calls from constructor functions that can result in transient errors.

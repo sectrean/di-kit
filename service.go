@@ -35,10 +35,10 @@ import (
 //   - [As] overrides the type a service is registered as.
 //   - [WithTag] specifies a tag differentiate between services of the same type.
 //   - [WithTagged] specifies a tag for a service dependency.
-//   - [WithCloseFunc] specifies a function to be called when the service is closed.
-//   - [IgnoreClose] specifies that the service should not be closed by the Container.
+//   - [UseCloseFunc] specifies a function to be called when the service is closed.
+//   - [IgnoreCloser] specifies that the service should not be closed by the Container.
 //     Function services are closed by default if they implement [Closer] or a compatible function signature.
-//   - [WithClose] specifies that the service should be closed by the Container if it implements [Closer] or a compatible function signature.
+//   - [UseCloser] specifies that the service should be closed by the Container if it implements [Closer] or a compatible function signature.
 //     This is the default for function services. Value services will not be closed by default.
 func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 	// Use a single WithService function for both function and value services
@@ -200,6 +200,8 @@ type serviceConfig interface {
 
 	SetCloserFactory(closerFactory)
 }
+
+type closerFactory func(val any) Closer
 
 type serviceKey struct {
 	Type reflect.Type

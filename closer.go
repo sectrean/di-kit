@@ -20,70 +20,59 @@ import (
 //
 // This is the default behavior for function services.
 // When the [Container] creates a service, it will be responsible for closing it.
-// Use the [IgnoreClose] option to ignore a Close method for a service.
+// Use the [IgnoreCloser] option to ignore a Close method for a service.
 //
 // Value services are not closed by default.
 // Since value services are not created by the [Container], it is assumed that
-// their lifetime will be managed outside of the [Container].
-// Use the [WithClose] option to automatically close a value service when the [Container] is closed.
+// the code that creates them is responsible for closing them.
+// Use the [UseCloser] option to automatically close a value service when the [Container] is closed.
 //
-// Use the [WithCloseFunc] option to specify a custom function to close a service.
+// Use the [UseCloseFunc] option to specify a custom function to close a service.
 type Closer interface {
 	// Close resources owned by the service.
 	Close(ctx context.Context) error
 }
 
-// WithClose is used to close a value service when the [Container] is closed.
+// IgnoreCloser configures the [Container] to ignore if the service has a Close method when closing the Container.
 //
-// If a function service implements [Closer], or a compatible Close function signature,
-// it will be called when the [Container] is closed.
-//
-// Value services are not closed by default.
-// Use this option if you want the [Container] to call Close on a value service.
-//
-// See Closer for more information.
-func WithClose() ServiceOption {
-	return serviceOption(func(sc serviceConfig) error {
-		sc.SetCloserFactory(getCloser)
-		return nil
-	})
-}
-
-// IgnoreClose will not close the service when the [Container] is closed.
-// This is useful when you want to manage the lifecycle of a service outside of the [Container].
-//
-// Function services are closed by default.
-// Use this option if you do not want a function service to be closed by the [Container].
-// This is the default behavior for value services.
-//
+// Use this option if a function service has a Close method, but you don't want the Container to call it.
 // See [Closer] for more information.
-func IgnoreClose() ServiceOption {
+func IgnoreCloser() ServiceOption {
 	return serviceOption(func(sc serviceConfig) error {
 		sc.SetCloserFactory(nil)
 		return nil
 	})
 }
 
-type closerFactory func(val any) Closer
+// UseCloser configures the [Container] to call Close on this service when the Container is closed.
+//
+// Use this option if you want the [Container] to call Close on a value service.
+// See [Closer] for more information.
+func UseCloser() ServiceOption {
+	return serviceOption(func(sc serviceConfig) error {
+		sc.SetCloserFactory(getCloser)
+		return nil
+	})
+}
 
-// WithCloseFunc configures a custom function to call to close the service when the [Container] is closed.
+// UseCloseFunc configures a custom function to call to close the service when the [Container] is closed.
 //
 // This is useful if a service has a method called Shutdown or Stop instead of Close that should be
 // used to close the service.
 //
 // Example:
 //
-//	di.WithCloseFunc(func(ctx context.Context, s *http.Server) error {
+//	di.UseCloseFunc(func(ctx context.Context, s *http.Server) error {
 //		return s.Shutdown(ctx)
 //	})
 //
 // See [Closer] for more information.
 //
 // This option will return an error if the service type is not assignable to Service.
-func WithCloseFunc[Service any](f func(context.Context, Service) error) ServiceOption {
+func UseCloseFunc[Service any](f func(context.Context, Service) error) ServiceOption {
 	return serviceOption(func(sc serviceConfig) error {
 		if !sc.Type().AssignableTo(reflect.TypeFor[Service]()) {
-			return errors.Errorf("WithCloseFunc: service type %s is not assignable to %s",
+			return errors.Errorf("UseCloseFunc: service type %s is not assignable to %s",
 				sc.Type(), reflect.TypeFor[Service]())
 		}
 

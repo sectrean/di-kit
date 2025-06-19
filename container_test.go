@@ -161,16 +161,16 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "di.NewContainer: WithService func() testtypes.InterfaceA: WithTagged testtypes.InterfaceB: parameter not found")
 	})
 
-	t.Run("WithService WithCloseFunc not assignable", func(t *testing.T) {
+	t.Run("WithService UseCloseFunc not assignable", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA,
-				di.WithCloseFunc(func(context.Context, *testtypes.StructA) error { return nil }),
+				di.UseCloseFunc(func(context.Context, *testtypes.StructA) error { return nil }),
 			),
 		)
 		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "di.NewContainer: WithService func() testtypes.InterfaceA: WithCloseFunc: service type testtypes.InterfaceA is not assignable to *testtypes.StructA")
+		assert.EqualError(t, err, "di.NewContainer: WithService func() testtypes.InterfaceA: UseCloseFunc: service type testtypes.InterfaceA is not assignable to *testtypes.StructA")
 	})
 
 	t.Run("WithService unsupported func signature", func(t *testing.T) {
@@ -1782,12 +1782,12 @@ func Test_Container_Close(t *testing.T) {
 		assert.EqualError(t, err, "di.Container.Close: err c\nerr a")
 	})
 
-	t.Run("func ignore close", func(t *testing.T) {
+	t.Run("IgnoreCloser func service", func(t *testing.T) {
 		aMock := mocks.NewInterfaceAMock(t)
 
 		scope, err := di.NewContainer(
 			di.WithService(func() testtypes.InterfaceA { return aMock },
-				di.IgnoreClose(),
+				di.IgnoreCloser(),
 			),
 		)
 		require.NoError(t, err)
@@ -1800,7 +1800,7 @@ func Test_Container_Close(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("value with close", func(t *testing.T) {
+	t.Run("UseCloser value service", func(t *testing.T) {
 		ctx := context.Background()
 
 		aMock := mocks.NewInterfaceAMock(t)
@@ -1812,7 +1812,7 @@ func Test_Container_Close(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(aMock,
 				di.As[testtypes.InterfaceA](),
-				di.WithClose(),
+				di.UseCloser(),
 			),
 		)
 		require.NoError(t, err)
@@ -1822,7 +1822,7 @@ func Test_Container_Close(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("func with close func", func(t *testing.T) {
+	t.Run("UseCloseFunc func service", func(t *testing.T) {
 		ctx := context.Background()
 
 		aMock := mocks.NewInterfaceAMock(t)
@@ -1830,7 +1830,7 @@ func Test_Container_Close(t *testing.T) {
 
 		c, err := di.NewContainer(
 			di.WithService(func() testtypes.InterfaceA { return aMock },
-				di.WithCloseFunc(func(context.Context, testtypes.InterfaceA) error {
+				di.UseCloseFunc(func(context.Context, testtypes.InterfaceA) error {
 					aClosed = true
 					return nil
 				}),
@@ -1847,7 +1847,7 @@ func Test_Container_Close(t *testing.T) {
 		assert.True(t, aClosed)
 	})
 
-	t.Run("value with close func", func(t *testing.T) {
+	t.Run("UseCloseFunc value service", func(t *testing.T) {
 		ctx := context.Background()
 
 		aMock := mocks.NewInterfaceAMock(t)
@@ -1856,7 +1856,7 @@ func Test_Container_Close(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(aMock,
 				di.As[testtypes.InterfaceA](),
-				di.WithCloseFunc(func(context.Context, testtypes.InterfaceA) error {
+				di.UseCloseFunc(func(context.Context, testtypes.InterfaceA) error {
 					aClosed = true
 					return nil
 				}),
