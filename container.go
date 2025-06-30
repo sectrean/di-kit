@@ -191,7 +191,7 @@ func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...Resolve
 		return nil, errors.Wrapf(errContainerClosed, "di.Container.Resolve %s", key)
 	}
 
-	val, err := resolveKey(ctx, c, key, make(resolveVisitor))
+	val, err := resolveKey(ctx, c, key, make(resolveVisitor), false)
 	if err != nil {
 		return val, errors.Wrapf(err, "di.Container.Resolve %s", key)
 	}
@@ -204,9 +204,10 @@ func resolveKey(
 	scope *Container,
 	key serviceKey,
 	visitor resolveVisitor,
+	optional bool,
 ) (any, error) {
 	if key.Type.Kind() == reflect.Slice {
-		return resolveSliceKey(ctx, scope, key, visitor)
+		return resolveSliceKey(ctx, scope, key, visitor, optional)
 	}
 
 	// Look up the service
@@ -221,6 +222,12 @@ func resolveKey(
 	}
 
 	if svc == nil {
+		if optional {
+			// If the service is optional, return the zero value instead of an error
+			zero := reflect.Zero(key.Type)
+			return zero.Interface(), nil
+		}
+		// If the service is not found, return an error
 		return nil, errServiceNotRegistered
 	}
 
@@ -232,6 +239,7 @@ func resolveSliceKey(
 	scope *Container,
 	key serviceKey,
 	visitor resolveVisitor,
+	optional bool,
 ) (any, error) {
 	sliceVal := reflect.MakeSlice(key.Type, 0, 0)
 	elementKey := serviceKey{
@@ -254,7 +262,8 @@ func resolveSliceKey(
 		}
 	}
 
-	if !found {
+	if !found && !optional {
+		// If the service is not found, return an error
 		return nil, errServiceNotRegistered
 	}
 
@@ -321,8 +330,14 @@ func resolveService(
 				defer ready()
 
 			default:
+				optional := false
+				if i == len(deps)-1 && svc.(*funcService).IsVariadic() {
+					// If this is the last arg and the service is variadic, we treat it as optional.
+					optional = true
+				}
+
 				// Recursive call
-				depVal, depErr = resolveKey(ctx, scope, depKey, visitor)
+				depVal, depErr = resolveKey(ctx, scope, depKey, visitor, optional)
 			}
 
 			if depErr != nil {

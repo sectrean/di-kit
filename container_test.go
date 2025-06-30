@@ -978,6 +978,21 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("slice service variadic optional", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func(aa ...testtypes.InterfaceA) testtypes.InterfaceB {
+				assert.Empty(t, aa)
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		d, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+		assert.Equal(t, &testtypes.StructB{}, d)
+		assert.NoError(t, err)
+	})
+
 	t.Run("slice service across scopes", func(t *testing.T) {
 		f := &testtypes.Factory{}
 

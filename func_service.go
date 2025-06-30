@@ -116,10 +116,14 @@ func (s *funcService) Dependencies() []serviceKey {
 	return s.deps
 }
 
+func (s *funcService) IsVariadic() bool {
+	return s.fn.Type().IsVariadic()
+}
+
 func (s *funcService) New(deps []reflect.Value) (val any, err error) {
 	// Call the function
 	var out []reflect.Value
-	if s.fn.Type().IsVariadic() {
+	if s.IsVariadic() {
 		out = s.fn.CallSlice(deps)
 	} else {
 		out = s.fn.Call(deps)

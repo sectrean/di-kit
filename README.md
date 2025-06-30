@@ -171,7 +171,7 @@ c, err := di.NewContainer(
 
 ### Slice Services
 
-If you register multiple services as the same type, you can inject all of them as a slice, or a variadic parameter.
+If a function service has a slice parameter, all services registered as the element type will be injected as a slice. An error will occur if no services are registered as the element type.
 
 ```go
 c, err := di.NewContainer(
@@ -185,6 +185,8 @@ c, err := di.NewContainer(
 	di.WithService(healthcheck.NewHealthHandler), // NewHealthHandler([]HealthChecker) *HealthHandler
 )
 ```
+
+Variadic parameters can also be used, but the dependency is considered optional. If no services are registered as the parameter type is not registered, the function will be called with an empty variadic argument.
 
 ### Tagged Services
 
