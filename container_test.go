@@ -49,8 +49,19 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "di.NewContainer: WithService int: invalid service type")
 	})
 
-	t.Run("WithService nil", func(t *testing.T) {
-		var a testtypes.InterfaceA
+	t.Run("WithService interface nil", func(t *testing.T) {
+		var a testtypes.InterfaceA = nil
+		c, err := di.NewContainer(
+			di.WithService(a),
+		)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: WithService: funcOrValue is nil")
+	})
+
+	t.Run("WithService pointer nil", func(t *testing.T) {
+		var a *testtypes.StructA = nil
 		c, err := di.NewContainer(
 			di.WithService(a),
 		)
@@ -444,7 +455,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("func nil interface", func(t *testing.T) {
+	t.Run("func interface nil", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func() testtypes.InterfaceA {
 				return nil
@@ -460,7 +471,24 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("func nil pointer", func(t *testing.T) {
+	t.Run("func interface typed nil", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA {
+				var a *testtypes.StructA = nil
+				return a
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+
+		assert.Nil(t, got)
+		assert.True(t, got == nil)
+		assert.NoError(t, err)
+	})
+
+	t.Run("func pointer nil", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func() *testtypes.StructA {
 				return nil
@@ -476,18 +504,36 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("value nil pointer", func(t *testing.T) {
-		var a *testtypes.StructA = nil
+	t.Run("func error nil", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(a),
+			di.WithService(func() (testtypes.InterfaceA, error) {
+				return &testtypes.StructA{}, nil
+			}),
 		)
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		got, err := di.Resolve[*testtypes.StructA](ctx, c)
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
 
-		assert.Nil(t, got)
-		assert.True(t, got == nil)
+		assert.Equal(t, &testtypes.StructA{}, got)
+		assert.True(t, err == nil)
+		assert.NoError(t, err)
+	})
+
+	t.Run("func error typed nil", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func() (testtypes.InterfaceA, error) {
+				var svcErr *testtypes.CustomError = nil
+				return &testtypes.StructA{}, svcErr
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+
+		assert.Equal(t, &testtypes.StructA{}, got)
+		assert.True(t, err == nil)
 		assert.NoError(t, err)
 	})
 
@@ -519,25 +565,9 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("As value nil pointer", func(t *testing.T) {
-		var a *testtypes.StructA = nil
+	t.Run("As func pointer nil", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(a, di.As[testtypes.InterfaceA]()),
-		)
-		require.NoError(t, err)
-
-		ctx := context.Background()
-		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-
-		assert.Nil(t, got)
-		assert.True(t, got == nil)
-		assert.NoError(t, err)
-	})
-
-	t.Run("As func nil pointer", func(t *testing.T) {
-		var a *testtypes.StructA = nil
-		c, err := di.NewContainer(
-			di.WithService(func() *testtypes.StructA { return a },
+			di.WithService(func() *testtypes.StructA { return nil },
 				di.As[testtypes.InterfaceA](),
 			),
 		)

@@ -65,6 +65,12 @@ type StructD struct{}
 func (StructD) D()     {}
 func (StructD) Close() {}
 
+type CustomError struct{}
+
+func (e *CustomError) Error() string {
+	return "custom error"
+}
+
 func NewInterfaceA() InterfaceA {
 	return &StructA{}
 }

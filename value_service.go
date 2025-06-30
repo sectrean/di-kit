@@ -17,15 +17,13 @@ type valueService struct {
 
 func newValueService(c *Container, val any, opts ...ServiceOption) (*valueService, error) {
 	t := reflect.TypeOf(val)
-	v := reflect.ValueOf(val)
-
 	if ok := validateServiceType(t); !ok {
 		return nil, errors.New("invalid service type")
 	}
 
 	svc := &valueService{
 		scope: c,
-		val:   safeAnyValue(v),
+		val:   val,
 		t:     t,
 	}
 

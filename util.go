@@ -22,15 +22,18 @@ func safeReflectValue(t reflect.Type, val any) reflect.Value {
 	return reflect.ValueOf(val)
 }
 
-func safeAnyValue(v reflect.Value) any {
-	switch v.Kind() {
-	case reflect.Ptr, reflect.Interface:
-		if v.IsNil() {
-			return nil
-		}
+func isNil(v any) bool {
+	if v == nil {
+		return true
 	}
 
-	return v.Interface()
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Ptr, reflect.Interface:
+		return rv.IsNil()
+	default:
+		return false
+	}
 }
 
 // Apply functional options and join any errors together.

@@ -116,22 +116,27 @@ func (s *funcService) Dependencies() []serviceKey {
 	return s.deps
 }
 
-func (s *funcService) New(deps []reflect.Value) (any, error) {
-	var out []reflect.Value
-
+func (s *funcService) New(deps []reflect.Value) (val any, err error) {
 	// Call the function
+	var out []reflect.Value
 	if s.fn.Type().IsVariadic() {
 		out = s.fn.CallSlice(deps)
 	} else {
 		out = s.fn.Call(deps)
 	}
 
-	// Extract the return value and error, if any
-	val := safeAnyValue(out[0])
-
-	var err error
+	// Get the return value and error, if any
+	val = out[0].Interface()
 	if len(out) == 2 {
-		err = out[1].Interface().(error)
+		err, _ = out[1].Interface().(error)
+	}
+
+	// We have to also account for typed nils
+	if isNil(val) {
+		val = nil
+	}
+	if isNil(err) {
+		err = nil
 	}
 
 	return val, err
