@@ -222,12 +222,8 @@ func resolveKey(
 	}
 
 	if svc == nil {
-		if optional {
-			// If the service is optional, return the zero value instead of an error
-			zero := reflect.Zero(key.Type)
-			return zero.Interface(), nil
-		}
 		// If the service is not found, return an error
+		// TODO: Support optional dependencies?
 		return nil, errServiceNotRegistered
 	}
 
@@ -332,7 +328,8 @@ func resolveService(
 			default:
 				optional := false
 				if i == len(deps)-1 && svc.(*funcService).IsVariadic() {
-					// If this is the last arg and the service is variadic, we treat it as optional.
+					// If this is the last arg and the constructor function is variadic,
+					// we treat it as optional.
 					optional = true
 				}
 
