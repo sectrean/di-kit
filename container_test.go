@@ -35,7 +35,7 @@ func Test_NewContainer(t *testing.T) {
 		assert.NotNil(t, c)
 		assert.NoError(t, err)
 
-		has := c.Contains(reflect.TypeFor[testtypes.InterfaceA]())
+		has := di.Contains[testtypes.InterfaceA](c)
 		assert.True(t, has)
 	})
 
@@ -364,8 +364,8 @@ func Test_Container_NewScope(t *testing.T) {
 		assert.NotNil(t, scope)
 		assert.NoError(t, err)
 
-		assert.True(t, scope.Contains(reflect.TypeFor[testtypes.InterfaceA]()))
-		assert.True(t, scope.Contains(reflect.TypeFor[testtypes.InterfaceB]()))
+		assert.True(t, di.Contains[testtypes.InterfaceA](scope))
+		assert.True(t, di.Contains[testtypes.InterfaceB](scope))
 	})
 
 	t.Run("WithService", func(t *testing.T) {
@@ -380,11 +380,11 @@ func Test_Container_NewScope(t *testing.T) {
 		assert.NotNil(t, scope)
 		assert.NoError(t, err)
 
-		assert.True(t, c.Contains(reflect.TypeFor[testtypes.InterfaceA]()))
-		assert.False(t, c.Contains(reflect.TypeFor[testtypes.InterfaceB]()))
+		assert.True(t, di.Contains[testtypes.InterfaceA](c))
+		assert.False(t, di.Contains[testtypes.InterfaceB](c))
 
-		assert.True(t, scope.Contains(reflect.TypeFor[testtypes.InterfaceA]()))
-		assert.True(t, scope.Contains(reflect.TypeFor[testtypes.InterfaceB]()))
+		assert.True(t, di.Contains[testtypes.InterfaceA](scope))
+		assert.True(t, di.Contains[testtypes.InterfaceB](scope))
 	})
 
 	t.Run("WithService invalid type di.Lifetime", func(t *testing.T) {
@@ -1450,8 +1450,7 @@ func Test_Container_Resolve(t *testing.T) {
 						"not supported within service constructor function")
 
 				// Contains can be called though
-				hasA := scope.Contains(reflect.TypeFor[testtypes.InterfaceA]())
-				assert.True(t, hasA)
+				assert.True(t, di.Contains[testtypes.InterfaceA](scope))
 
 				// We have to store it and we can call Resolve later.
 				return NewScopeFactory(scope, func(ctx context.Context, s di.Scope) (testtypes.InterfaceA, error) {

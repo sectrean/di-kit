@@ -68,6 +68,13 @@ func MustResolve[Service any](ctx context.Context, s Scope, opts ...ResolveOptio
 	return val
 }
 
+// Contains returns true if the Scope can resolve a service of type Service.
+//
+// See [Container.Contains] for more information.
+func Contains[Service any](s Scope, opts ...ResolveOption) bool {
+	return s.Contains(reflect.TypeFor[Service](), opts...)
+}
+
 func newInjectedScope(s Scope, key serviceKey) (scope *injectedScope, ready func()) {
 	wrapper := &injectedScope{
 		scope: s,
