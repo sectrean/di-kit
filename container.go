@@ -31,6 +31,7 @@ var _ Scope = (*Container)(nil)
 //
 // Available options:
 //   - [WithService] registers a service with a value or constructor function.
+//   - [WithDependencyValidation] validates service dependencies.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		services: make(map[serviceKey][]service),
@@ -234,6 +235,7 @@ func (c *Container) lookupService(key serviceKey) service {
 //
 // Available options:
 //   - [WithService] registers a service with a value or a function.
+//   - [WithDependencyValidation] validates service dependencies.
 func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 	c.closedMu.RLock()
 	defer c.closedMu.RUnlock()
