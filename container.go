@@ -121,13 +121,6 @@ func WithDependencyValidation() ContainerOption {
 }
 
 func (c *Container) validateDependencies() error {
-	if c.parent != nil {
-		// TODO: Validate scoped services on the parent container
-		// This is a bit tricky because we need to check the parent container for the service
-		// but we also need to check the child container for the dependencies.
-		return errors.New("dependency validation on a child container not supported yet")
-	}
-
 	var errs []error
 	svcProblems := make(map[service]string)
 
@@ -141,6 +134,23 @@ func (c *Container) validateDependencies() error {
 			prob := c.validateService(svc, svcProblems, make(resolveVisitor))
 			if prob != "" {
 				errs = append(errs, errors.Errorf("service %s: %s", svc, prob))
+			}
+		}
+	}
+
+	if c.parent != nil {
+		// Validate scoped services on the parent Container
+		for _, svcs := range c.parent.services {
+			for _, svc := range svcs {
+				if svc.Lifetime() != ScopedLifetime {
+					// Now we only want the scoped services
+					continue
+				}
+
+				prob := c.validateService(svc, svcProblems, make(resolveVisitor))
+				if prob != "" {
+					errs = append(errs, errors.Errorf("service %s: %s", svc, prob))
+				}
 			}
 		}
 	}

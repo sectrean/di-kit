@@ -18,7 +18,6 @@ import (
 )
 
 // TODO: Add tests for the following:
-// - dependencies on scoped services
 // - more tests around the resolve locking
 
 func Test_NewContainer(t *testing.T) {
@@ -317,6 +316,17 @@ func Test_NewContainer(t *testing.T) {
 		assert.ErrorContains(t, err, "dependency cycle detected")
 	})
 
+	t.Run("WithDependencyValidation dependency cycle single type", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func(context.Context, testtypes.InterfaceA) testtypes.InterfaceA { return nil }),
+			di.WithDependencyValidation(),
+		)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: WithDependencyValidation: service testtypes.InterfaceA: dependency testtypes.InterfaceA: dependency cycle detected")
+	})
+
 	t.Run("WithDependencyValidation slice dependency", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
@@ -425,13 +435,45 @@ func Test_Container_NewScope(t *testing.T) {
 		)
 		require.NoError(t, err)
 
+		_, err = c.NewScope(
+			di.WithDependencyValidation(),
+		)
+		assert.NoError(t, err)
+	})
+
+	t.Run("WithDependencyValidation service not registered", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceB, di.ScopedLifetime),
+			di.WithDependencyValidation(),
+		)
+		require.NoError(t, err)
+
 		scope, err := c.NewScope(
 			di.WithDependencyValidation(),
 		)
 		testutils.LogError(t, err)
 
 		assert.Nil(t, scope)
-		assert.EqualError(t, err, "di.Container.NewScope: WithDependencyValidation: dependency validation on a child container not supported yet")
+		assert.EqualError(t, err, "di.Container.NewScope: WithDependencyValidation: service testtypes.InterfaceB: dependency testtypes.InterfaceA: service not registered")
+	})
+
+	t.Run("WithDependencyValidation dependency cycle", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func(testtypes.InterfaceB) testtypes.InterfaceC { return nil }, di.ScopedLifetime),
+			di.WithDependencyValidation(),
+		)
+		require.NoError(t, err)
+
+		scope, err := c.NewScope(
+			di.WithService(func(testtypes.InterfaceC) testtypes.InterfaceB { return nil }),
+			di.WithDependencyValidation(),
+		)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, scope)
+		// The exact error message is non-deterministic because it depends on map iteration order
+		assert.ErrorContains(t, err, "dependency cycle detected")
 	})
 }
 
@@ -1369,6 +1411,26 @@ func Test_Container_Resolve(t *testing.T) {
 
 		b, err := di.Resolve[testtypes.InterfaceB](ctx, c)
 		assert.Equal(t, &testtypes.StructB{}, b)
+		assert.NoError(t, err)
+	})
+
+	t.Run("WithTagged decorator", func(t *testing.T) {
+		a1 := &testtypes.StructA{Tag: 1}
+		a2 := &testtypes.StructA{Tag: 2}
+
+		c, err := di.NewContainer(
+			di.WithService(func(a testtypes.InterfaceA) testtypes.InterfaceA {
+				assert.Same(t, a1, a)
+				return a2
+			}, di.WithTagged[testtypes.InterfaceA]("decorate me")),
+			di.WithService(a1, di.As[testtypes.InterfaceA](), di.WithTag("decorate me")),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+		assert.Same(t, a2, got)
 		assert.NoError(t, err)
 	})
 
