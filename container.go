@@ -98,17 +98,9 @@ func (c *Container) register(sc serviceConfig) {
 func (c *Container) registerType(t reflect.Type, sc serviceConfig) {
 	key := serviceKey{
 		Type: t,
+		Tag:  sc.Tag(),
 	}
 	c.services[key] = append(c.services[key], sc)
-
-	// Register the service with a tag if it has one
-	if sc.Tag() != nil {
-		keyWithTag := serviceKey{
-			Type: t,
-			Tag:  sc.Tag(),
-		}
-		c.services[keyWithTag] = append(c.services[keyWithTag], sc)
-	}
 }
 
 // WithDependencyValidation validates registered services on [Container] creation.
@@ -188,18 +180,16 @@ func (c *Container) validateService(svc service, svcProblems map[service]string,
 			depKey.Type = depKey.Type.Elem()
 		}
 
-		depSvcs, ok := c.services[depKey]
-		if !ok {
+		depSvc := c.lookupService(depKey)
+		if depSvc == nil {
 			prob := fmt.Sprintf("dependency %s: service not registered", depKey)
 			problems = append(problems, prob)
 			continue
 		}
 
-		for _, depSvc := range depSvcs {
-			prob := c.validateService(depSvc, svcProblems, visitor)
-			if prob != "" {
-				problems = append(problems, fmt.Sprintf("dependency %s: %s", depKey, prob))
-			}
+		prob := c.validateService(depSvc, svcProblems, visitor)
+		if prob != "" {
+			problems = append(problems, fmt.Sprintf("dependency %s: %s", depKey, prob))
 		}
 	}
 
@@ -210,6 +200,20 @@ func (c *Container) validateService(svc service, svcProblems map[service]string,
 	}
 
 	return ""
+}
+
+func (c *Container) lookupService(key serviceKey) service {
+	for scope := c; scope != nil; scope = scope.parent {
+		svcs, ok := scope.services[key]
+		if !ok {
+			continue
+		}
+
+		// Return the last registered service for this key
+		return svcs[len(svcs)-1]
+	}
+
+	return nil
 }
 
 // NewScope creates a new [Container] with a child scope.
@@ -256,8 +260,8 @@ func (c *Container) Contains(t reflect.Type, opts ...ResolveOption) bool {
 		key = opt.applyServiceKey(key)
 	}
 
-	for s := c; s != nil; s = s.parent {
-		if _, found := s.services[key]; found {
+	for scope := c; scope != nil; scope = scope.parent {
+		if _, found := scope.services[key]; found {
 			return true
 		}
 	}
@@ -314,16 +318,7 @@ func resolveKey(
 	}
 
 	// Look up the service
-	var svc service
-	for s := scope; s != nil; s = s.parent {
-		svcs, ok := s.services[key]
-		if ok {
-			// The last service registered for a type will win
-			svc = svcs[len(svcs)-1]
-			break
-		}
-	}
-
+	svc := scope.lookupService(key)
 	if svc == nil {
 		// If the service is not found, return an error
 		// TODO: Support optional dependencies?

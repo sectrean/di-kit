@@ -464,7 +464,7 @@ func Test_Container_Contains(t *testing.T) {
 		assert.True(t, has)
 
 		has = c.Contains(reflect.TypeFor[testtypes.InterfaceA]())
-		assert.True(t, has)
+		assert.False(t, has)
 
 		has = c.Contains(reflect.TypeFor[testtypes.InterfaceA](), di.WithTag("other"))
 		assert.False(t, has)
@@ -515,7 +515,7 @@ func Test_Container_Contains(t *testing.T) {
 		require.NoError(t, err)
 
 		has := c.Contains(reflect.TypeFor[[]testtypes.InterfaceA]())
-		assert.True(t, has)
+		assert.False(t, has)
 
 		has = c.Contains(reflect.TypeFor[[]testtypes.InterfaceA](), di.WithTag(1))
 		assert.True(t, has)
@@ -1256,9 +1256,8 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 
 		a2, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		assert.NotNil(t, a2)
-		assert.NoError(t, err)
-		assert.Same(t, a1, a2)
+		assert.Nil(t, a2)
+		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: service not registered")
 	})
 
 	t.Run("WithTag value service", func(t *testing.T) {
@@ -1290,8 +1289,8 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 
 		got, err = di.Resolve[testtypes.InterfaceA](ctx, c)
-		assert.NotNil(t, got)
-		assert.NoError(t, err)
+		assert.Nil(t, got)
+		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: service not registered")
 	})
 
 	t.Run("WithTag mixed", func(t *testing.T) {
@@ -1304,12 +1303,9 @@ func Test_Container_Resolve(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		// Should we make it so that the service registered with
-		// no tag takes precedence if when requesting the service with no tag?
-
 		ctx := context.Background()
 		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
-		assert.Same(t, a2, got, "should get a2 because it was registered last")
+		assert.Same(t, a1, got)
 		assert.NoError(t, err)
 
 		got, err = di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag(2))
