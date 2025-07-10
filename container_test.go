@@ -808,7 +808,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: dependency testtypes.InterfaceB: dependency testtypes.InterfaceA: dependency cycle detected")
 	})
 
-	t.Run("lifetime singleton", func(t *testing.T) {
+	t.Run("SingletonLifetime", func(t *testing.T) {
 		calls := 0
 
 		c, err := di.NewContainer(
@@ -834,7 +834,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
-	t.Run("lifetime singleton from child scope", func(t *testing.T) {
+	t.Run("SingletonLifetime from child scope", func(t *testing.T) {
 		calls := 0
 
 		c, err := di.NewContainer(
@@ -863,7 +863,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
-	t.Run("lifetime transient", func(t *testing.T) {
+	t.Run("TransientLifetime", func(t *testing.T) {
 		calls := 0
 
 		c, err := di.NewContainer(
@@ -889,7 +889,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 2, calls)
 	})
 
-	t.Run("lifetime scoped", func(t *testing.T) {
+	t.Run("ScopedLifetime", func(t *testing.T) {
 		calls := 0
 
 		c, err := di.NewContainer(
@@ -925,7 +925,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Equal(t, 3, calls)
 	})
 
-	t.Run("lifetime scoped resolve from root", func(t *testing.T) {
+	t.Run("ScopedLifetime resolve from root", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 			di.WithService(testtypes.NewInterfaceB, di.ScopedLifetime),
@@ -940,7 +940,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceB: scoped service must be resolved from a child scope")
 	})
 
-	t.Run("lifetime scoped multi level", func(t *testing.T) {
+	t.Run("ScopedLifetime multi level", func(t *testing.T) {
 		root, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -966,7 +966,30 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("lifetime scoped captive dependency", func(t *testing.T) {
+	t.Run("ScopedLifetime dependencies", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA, di.SingletonLifetime),
+			di.WithService(testtypes.NewInterfaceC, di.ScopedLifetime),
+		)
+		require.NoError(t, err)
+
+		scope, err := c.NewScope(
+			di.WithService(testtypes.NewInterfaceB),
+			di.WithService(testtypes.NewInterfaceD),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		gotC, err := di.Resolve[testtypes.InterfaceC](ctx, scope)
+		assert.NotNil(t, gotC)
+		assert.NoError(t, err)
+
+		gotD, err := di.Resolve[testtypes.InterfaceD](ctx, scope)
+		assert.NotNil(t, gotD)
+		assert.NoError(t, err)
+	})
+
+	t.Run("ScopedLifetime captive dependency", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA, di.ScopedLifetime),
 			di.WithService(testtypes.NewInterfaceB, di.SingletonLifetime),
