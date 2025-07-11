@@ -2,6 +2,7 @@ package testtypes
 
 import (
 	"context"
+	"net/http"
 	"reflect"
 )
 
@@ -70,6 +71,18 @@ type CustomError struct{}
 func (e *CustomError) Error() string {
 	return "custom error"
 }
+
+type HTTPMiddleware func(http.Handler) http.Handler
+
+func NewMiddleware() HTTPMiddleware {
+	return func(next http.Handler) http.Handler { return next }
+}
+
+type CustomMap map[string]any
+
+type CustomStringCollection []string
+
+type CustomString string
 
 func NewInterfaceA() InterfaceA {
 	return &StructA{}

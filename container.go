@@ -181,7 +181,7 @@ func (c *Container) validateService(svc service, svcProblems map[service]string,
 			continue
 		}
 
-		if depKey.Type.Kind() == reflect.Slice {
+		if isUnnamedSliceType(depKey.Type) {
 			if svc.(*funcService).IsVariadic() {
 				// If the service is variadic, registration is optional
 				continue
@@ -263,7 +263,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 //   - [WithTag] specifies a key associated with the service.
 func (c *Container) Contains(t reflect.Type, opts ...ResolveOption) bool {
 	// Check if the type is a slice, look for the element type
-	if t.Kind() == reflect.Slice {
+	if isUnnamedSliceType(t) {
 		t = t.Elem()
 	}
 
@@ -325,7 +325,7 @@ func resolveKey(
 	visitor resolveVisitor,
 	optional bool,
 ) (any, error) {
-	if key.Type.Kind() == reflect.Slice {
+	if isUnnamedSliceType(key.Type) {
 		return resolveSliceKey(ctx, scope, key, visitor, optional)
 	}
 

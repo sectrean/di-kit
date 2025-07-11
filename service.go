@@ -27,8 +27,10 @@ import (
 // it will be closed when the Container is closed.
 //
 // If a value is provided, it will be returned as the service when resolved.
-// The value can be a struct or a pointer to a struct.
 // (It will be registered as the actual type even if the variable was declared as an interface.)
+//
+// A service can be almost any named type including structs, interfaces, basic types, functions, or a pointer to a named type.
+// Some types like [error] and [context.Context] are reserved and cannot be registered as services.
 //
 // Available options:
 //   - [Lifetime] is used to specify how services are created when resolved.
@@ -60,7 +62,7 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 
 		var sc serviceConfig
 		var err error
-		if t.Kind() == reflect.Func {
+		if t.Kind() == reflect.Func && t.Name() == "" {
 			sc, err = newFuncService(c, funcOrValue, opts...)
 		} else {
 			sc, err = newValueService(c, funcOrValue, opts...)
@@ -93,11 +95,8 @@ func validateServiceType(t reflect.Type) bool {
 		return false
 	}
 
-	if t.Kind() == reflect.Interface || t.Kind() == reflect.Struct {
-		return true
-	}
-
-	return false
+	// Don't allow registering unnamed basic types as services.
+	return t.PkgPath() != "" && t.Name() != ""
 }
 
 func validateDependencyType(t reflect.Type) bool {
@@ -109,7 +108,7 @@ func validateDependencyType(t reflect.Type) bool {
 		return true
 	}
 
-	if t.Kind() == reflect.Slice {
+	if isUnnamedSliceType(t) {
 		t = t.Elem()
 	}
 
@@ -139,6 +138,10 @@ func validateDependencyType(t reflect.Type) bool {
 func As[Service any]() ServiceOption {
 	return serviceOption(func(sc serviceConfig) error {
 		t := reflect.TypeFor[Service]()
+
+		if ok := validateServiceType(t); !ok {
+			return errors.Errorf("As %s: invalid service type", t)
+		}
 		if !sc.Type().AssignableTo(t) {
 			return errors.Errorf("As %s: type %s not assignable to %s", t, sc.Type(), t)
 		}

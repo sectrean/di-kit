@@ -3,6 +3,7 @@ package di_test
 import (
 	"context"
 	"math/rand"
+	"net/http"
 	"reflect"
 	"sync"
 	"testing"
@@ -100,6 +101,16 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "di.NewContainer: WithService func() *int: invalid service type")
 	})
 
+	t.Run("WithService func returns unnamed func", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func() func(http.Handler) http.Handler { return nil }),
+		)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: WithService func() func(http.Handler) http.Handler: invalid service type")
+	})
+
 	t.Run("WithService invalid dependency type", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func(int) testtypes.InterfaceA { return nil }),
@@ -129,6 +140,16 @@ func Test_NewContainer(t *testing.T) {
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: WithService func() testtypes.InterfaceA: As *testtypes.StructA: type testtypes.InterfaceA not assignable to *testtypes.StructA")
+	})
+
+	t.Run("WithService As invalid service type map", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.CustomMap{}, di.As[map[string]any]()),
+		)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: WithService testtypes.CustomMap: As map[string]interface {}: invalid service type")
 	})
 
 	t.Run("WithService SingletonLifetime value service", func(t *testing.T) {
@@ -214,6 +235,19 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "di.NewContainer: WithService func() context.Context: invalid service type")
 	})
 
+	t.Run("WithService invalid basic types", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService([]int{}),
+			di.WithService(map[string]int{}),
+		)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: WithService []int: invalid service type\n"+
+			"WithService map[string]int: invalid service type",
+		)
+	})
+
 	t.Run("multiple errors", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService([]testtypes.InterfaceA{}),
@@ -244,12 +278,12 @@ func Test_NewContainer(t *testing.T) {
 		)
 	})
 
-	t.Run("WithModule", func(t *testing.T) {
+	t.Run("Module", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithModule(di.Module{
+			di.Module{
 				di.WithService(testtypes.NewInterfaceA),
 				di.WithService(testtypes.NewInterfaceB),
-			}),
+			},
 			di.WithService(testtypes.NewInterfaceC),
 		)
 		assert.NotNil(t, c)
@@ -701,6 +735,51 @@ func Test_Container_Resolve(t *testing.T) {
 		ctx := context.Background()
 		got, err := di.Resolve[testtypes.StructA](ctx, c)
 		assert.Equal(t, a1, got)
+		assert.NoError(t, err)
+	})
+
+	t.Run("named basic types", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.CustomString("test")),
+			di.WithService(func(s testtypes.CustomString) testtypes.CustomStringCollection {
+				return testtypes.CustomStringCollection{
+					string(s) + "1",
+					string(s) + "2",
+				}
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.CustomStringCollection](ctx, c)
+
+		assert.NoError(t, err)
+		assert.Equal(t, testtypes.CustomStringCollection{"test1", "test2"}, got)
+	})
+
+	t.Run("func service named func type", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewMiddleware),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.HTTPMiddleware](ctx, c)
+
+		assert.NotNil(t, got)
+		assert.NoError(t, err)
+	})
+
+	t.Run("value service named func type", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewMiddleware()),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.HTTPMiddleware](ctx, c)
+
+		assert.NotNil(t, got)
 		assert.NoError(t, err)
 	})
 

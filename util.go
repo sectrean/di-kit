@@ -49,3 +49,7 @@ func applyOptions[O any](opts []O, f func(O) error) error {
 
 	return errors.Join(errs...)
 }
+
+func isUnnamedSliceType(t reflect.Type) bool {
+	return t.Kind() == reflect.Slice && t.PkgPath() == "" && t.Name() == ""
+}

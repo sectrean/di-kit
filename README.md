@@ -55,9 +55,11 @@ go get github.com/sectrean/di-kit
 
 Use `di.NewContainer()` on application startup to create a `Container`. Register services using `di.WithService()` [functional options](https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis) with a *value* or *constructor function*.
 
-A *value* can be a struct or a pointer to a struct. The service will be registered as the value's actual type, (even if the variable is declared as an interface). When the type is resolved from the `Container`, this value will be returned. A service registered with a value is referred to as a *value service*.
+A *value* can be provided to the container. The service will be registered as the value's actual type (even if the variable is declared as an interface). When the type is resolved from the `Container`, this value will be returned. A service registered with a value is referred to as a *value service*.
 
-A *constructor function* may accept any parameters. The function must return a service, and may also return an error. The service will be registered as the function's return type, which can be a struct, a pointer to a struct, or an interface. When the service type is requested from the `Container`, the function is called with the parameters resolved from the container. A service registered with a function is referred to as a *function service*.
+A *constructor function* may accept any parameters. The function must return a service, and may also return an error. The service will be registered as the function's return type. When the service type is requested from the `Container`, the function is called with the parameters resolved from the container. A service registered with a function is referred to as a *function service*.
+
+A service can be almost any named type (or pointer to a named type) including structs, interfaces, functions, or basic types. Some types like `error` and `context.Context` are reserved.
 
 ```go
 logger := slog.New(/*...*/)
