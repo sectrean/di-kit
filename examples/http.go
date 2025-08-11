@@ -31,11 +31,7 @@ func HTTP_Example() {
 		svc.HandleRequest(r, w)
 	})
 
-	scopeMiddleware, err := dihttp.NewRequestScopeMiddleware(c)
-	if err != nil {
-		logger.Error("error creating scope middleware", "error", err)
-		return
-	}
+	scopeMiddleware := dihttp.NewRequestScopeMiddleware(c)
 
 	mux := http.NewServeMux()
 	mux.Handle("/", scopeMiddleware(handler))

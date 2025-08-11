@@ -6,7 +6,6 @@ import (
 
 	"github.com/sectrean/di-kit"
 	"github.com/sectrean/di-kit/dicontext"
-	"github.com/sectrean/di-kit/internal/errors"
 )
 
 // Middleware is a function that wraps an HTTP handler.
@@ -25,9 +24,9 @@ type Middleware = func(http.Handler) http.Handler
 //   - WithScopeCloseErrorHandler: Set the error handler for when there is an error closing the scope.
 //
 // This will panic if parent is nil.
-func NewRequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOption) (Middleware, error) {
+func NewRequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOption) Middleware {
 	if parent == nil {
-		return nil, errors.New("dihttp.NewRequestScopeMiddleware: parent is nil")
+		panic("dihttp.NewRequestScopeMiddleware: parent is nil")
 	}
 
 	mw := &scopeMiddleware{
@@ -36,15 +35,8 @@ func NewRequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOpti
 		closeHandler:    defaultScopeCloseErrorHandler,
 	}
 
-	var errs []error
 	for _, opt := range opts {
-		err := opt.applyScopeMiddleware(mw)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-	if err := errors.Join(errs...); err != nil {
-		return nil, errors.Wrap(err, "dihttp.NewRequestScopeMiddleware")
+		opt.applyScopeMiddleware(mw)
 	}
 
 	return func(next http.Handler) http.Handler {
@@ -52,7 +44,7 @@ func NewRequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOpti
 		h.next = next
 
 		return h
-	}, nil
+	}
 }
 
 // NewScopeErrorHandler is a function that writes an error response to the client.

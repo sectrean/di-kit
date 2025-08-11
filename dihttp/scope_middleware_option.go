@@ -1,42 +1,35 @@
 package dihttp
 
 import (
-	"errors"
-
 	"github.com/sectrean/di-kit"
 )
 
 // ScopeMiddlewareOption is an option used to configure the scope middleware when calling [NewRequestScopeMiddleware].
 type ScopeMiddlewareOption interface {
-	applyScopeMiddleware(*scopeMiddleware) error
+	applyScopeMiddleware(*scopeMiddleware)
 }
 
-type scopeMiddlewareOption func(*scopeMiddleware) error
+type scopeMiddlewareOption func(*scopeMiddleware)
 
-func (o scopeMiddlewareOption) applyScopeMiddleware(m *scopeMiddleware) error {
-	return o(m)
+func (o scopeMiddlewareOption) applyScopeMiddleware(m *scopeMiddleware) {
+	o(m)
 }
 
 // WithContainerOptions sets the options to use when calling [di.Container.NewScope] for each request.
 func WithContainerOptions(opts ...di.ContainerOption) ScopeMiddlewareOption {
-	return scopeMiddlewareOption(func(m *scopeMiddleware) error {
+	return scopeMiddlewareOption(func(m *scopeMiddleware) {
 		m.opts = append(m.opts, opts...)
-		return nil
 	})
 }
 
 // WithNewScopeErrorHandler sets the error handler for when there is an error creating a new scope.
 //
 // The default handler logs the error to [slog.Default] and writes a "500 Internal Server Error" response.
-// This will panic if h is nil.
 func WithNewScopeErrorHandler(h NewScopeErrorHandler) ScopeMiddlewareOption {
-	return scopeMiddlewareOption(func(m *scopeMiddleware) error {
-		if h == nil {
-			return errors.New("WithNewScopeErrorHandler: h is nil")
+	return scopeMiddlewareOption(func(m *scopeMiddleware) {
+		if h != nil {
+			m.newScopeHandler = h
 		}
-
-		m.newScopeHandler = h
-		return nil
 	})
 }
 
@@ -44,14 +37,10 @@ func WithNewScopeErrorHandler(h NewScopeErrorHandler) ScopeMiddlewareOption {
 // request-scoped [di.Container] after the request has completed.
 //
 // The default handler logs the error to [slog.Default].
-// This will panic if h is nil.
 func WithScopeCloseErrorHandler(h ScopeCloseErrorHandler) ScopeMiddlewareOption {
-	return scopeMiddlewareOption(func(m *scopeMiddleware) error {
-		if h == nil {
-			return errors.New("WithScopeCloseErrorHandler: h is nil")
+	return scopeMiddlewareOption(func(m *scopeMiddleware) {
+		if h != nil {
+			m.closeHandler = h
 		}
-
-		m.closeHandler = h
-		return nil
 	})
 }

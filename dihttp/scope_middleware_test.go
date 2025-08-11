@@ -20,37 +20,27 @@ import (
 
 func Test_NewRequestScopeMiddleware(t *testing.T) {
 	t.Run("parent nil", func(t *testing.T) {
-		mw, err := dihttp.NewRequestScopeMiddleware(nil)
-		testutils.LogError(t, err)
-
-		assert.Nil(t, mw)
-		assert.EqualError(t, err, "dihttp.NewRequestScopeMiddleware: parent is nil")
+		assert.PanicsWithValue(t, "dihttp.NewRequestScopeMiddleware: parent is nil", func() {
+			dihttp.NewRequestScopeMiddleware(nil)
+		})
 	})
 
 	t.Run("WithNewScopeErrorHandler nil", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 
-		mw, err := dihttp.NewRequestScopeMiddleware(c,
+		_ = dihttp.NewRequestScopeMiddleware(c,
 			dihttp.WithNewScopeErrorHandler(nil),
 		)
-		testutils.LogError(t, err)
-
-		assert.Nil(t, mw)
-		assert.EqualError(t, err, "dihttp.NewRequestScopeMiddleware: WithNewScopeErrorHandler: h is nil")
 	})
 
 	t.Run("WithScopeCloseErrorHandler nil", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 
-		mw, err := dihttp.NewRequestScopeMiddleware(c,
+		_ = dihttp.NewRequestScopeMiddleware(c,
 			dihttp.WithScopeCloseErrorHandler(nil),
 		)
-		testutils.LogError(t, err)
-
-		assert.Nil(t, mw)
-		assert.EqualError(t, err, "dihttp.NewRequestScopeMiddleware: WithScopeCloseErrorHandler: h is nil")
 	})
 }
 
@@ -62,8 +52,7 @@ func Test_Middleware(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		mw, err := dihttp.NewRequestScopeMiddleware(c)
-		require.NoError(t, err)
+		mw := dihttp.NewRequestScopeMiddleware(c)
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -84,8 +73,7 @@ func Test_Middleware(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		mw, err := dihttp.NewRequestScopeMiddleware(c)
-		require.NoError(t, err)
+		mw := dihttp.NewRequestScopeMiddleware(c)
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -107,12 +95,11 @@ func Test_Middleware(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		mw, err := dihttp.NewRequestScopeMiddleware(c,
+		mw := dihttp.NewRequestScopeMiddleware(c,
 			dihttp.WithContainerOptions(
 				di.WithService(testtypes.NewInterfaceB),
 			),
 		)
-		require.NoError(t, err)
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -132,8 +119,7 @@ func Test_Middleware(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 
-		mw, err := dihttp.NewRequestScopeMiddleware(c)
-		require.NoError(t, err)
+		mw := dihttp.NewRequestScopeMiddleware(c)
 
 		handlerA := mw(http.NotFoundHandler())
 		handlerB := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -162,8 +148,7 @@ func Test_Middleware(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		mw, err := dihttp.NewRequestScopeMiddleware(c)
-		require.NoError(t, err)
+		mw := dihttp.NewRequestScopeMiddleware(c)
 
 		tags := make(chan any, concurrency)
 		expectedTags := make(chan any, concurrency)
@@ -200,7 +185,7 @@ func Test_Middleware(t *testing.T) {
 
 		called := false
 
-		mw, err := dihttp.NewRequestScopeMiddleware(c,
+		mw := dihttp.NewRequestScopeMiddleware(c,
 			dihttp.WithContainerOptions(
 				di.WithService(nil),
 			),
@@ -213,7 +198,6 @@ func Test_Middleware(t *testing.T) {
 				w.WriteHeader(599)
 			}),
 		)
-		require.NoError(t, err)
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Fail(t, "handler should not get called")
@@ -223,6 +207,25 @@ func Test_Middleware(t *testing.T) {
 		assert.Equal(t, 599, code)
 
 		assert.True(t, called)
+	})
+
+	t.Run("NewScope error default handler", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		mw := dihttp.NewRequestScopeMiddleware(c,
+			dihttp.WithContainerOptions(
+				di.WithService(nil),
+			),
+		)
+
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Fail(t, "handler should not get called")
+		})
+
+		code := RunRequest(t, mw(handler), "/")
+		assert.Equal(t, 500, code)
+		// TODO: Assert log output
 	})
 
 	t.Run("Close error", func(t *testing.T) {
@@ -240,20 +243,16 @@ func Test_Middleware(t *testing.T) {
 
 		called := false
 
-		mw, err := dihttp.NewRequestScopeMiddleware(c,
+		mw := dihttp.NewRequestScopeMiddleware(c,
 			dihttp.WithScopeCloseErrorHandler(func(r *http.Request, err error) {
 				assert.NotNil(t, r)
 				assert.EqualError(t, err, "di.Container.Close: close error")
 				called = true
 			}),
 		)
-		require.NoError(t, err)
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			a, resolveErr := dicontext.Resolve[testtypes.InterfaceA](r.Context())
-			assert.NotNil(t, a)
-			assert.NoError(t, resolveErr)
-
+			_ = dicontext.MustResolve[testtypes.InterfaceA](r.Context())
 			w.WriteHeader(http.StatusOK)
 		})
 
@@ -261,6 +260,31 @@ func Test_Middleware(t *testing.T) {
 		assert.Equal(t, http.StatusOK, code)
 
 		assert.True(t, called)
+	})
+
+	t.Run("Close error default handler", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA {
+				a := mocks.NewInterfaceAMock(t)
+				a.EXPECT().
+					Close(mock.Anything).
+					Return(errors.New("close error"))
+
+				return a
+			}, di.TransientLifetime),
+		)
+		require.NoError(t, err)
+
+		mw := dihttp.NewRequestScopeMiddleware(c)
+
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_ = dicontext.MustResolve[testtypes.InterfaceA](r.Context())
+			w.WriteHeader(http.StatusOK)
+		})
+
+		code := RunRequest(t, mw(handler), "/")
+		assert.Equal(t, http.StatusOK, code)
+		// TODO: Assert log output
 	})
 }
 
