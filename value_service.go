@@ -11,7 +11,7 @@ type valueService struct {
 	val           any
 	t             reflect.Type
 	tag           any
-	closerFactory func(any) Closer
+	closerFactory closerFactory
 	assignables   []reflect.Type
 }
 

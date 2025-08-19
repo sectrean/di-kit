@@ -176,10 +176,10 @@ type service interface {
 	Dependencies() []serviceKey
 
 	// New uses the dependencies to create a new instance of the service.
-	New(deps []reflect.Value) (any, error)
+	New([]reflect.Value) (any, error)
 
 	// CloserFor returns a Closer for the service.
-	CloserFor(val any) Closer
+	CloserFor(any) Closer
 }
 
 // serviceConfig provides information to register a service with a Container.
@@ -204,7 +204,7 @@ type serviceConfig interface {
 	SetCloserFactory(closerFactory)
 }
 
-type closerFactory func(val any) Closer
+type closerFactory = func(any) Closer
 
 type serviceKey struct {
 	Type reflect.Type

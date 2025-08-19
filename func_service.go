@@ -11,7 +11,7 @@ type funcService struct {
 	fn            reflect.Value
 	t             reflect.Type
 	tag           any
-	closerFactory func(any) Closer
+	closerFactory closerFactory
 	deps          []serviceKey
 	assignables   []reflect.Type
 	lifetime      Lifetime
