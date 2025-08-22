@@ -351,7 +351,7 @@ handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 })
 
 // Create and apply the middleware
-scopeMiddleware, err := dihttp.NewRequestScopeMiddleware(c)
+scopeMiddleware := dihttp.NewRequestScopeMiddleware(c)
 handler = scopeMiddleware(handler)
 // ...
 ```

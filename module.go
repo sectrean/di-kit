@@ -1,7 +1,5 @@
 package di
 
-import "slices"
-
 // A Module is a collection of container options.
 // It can be used to export a re-usable group of related services.
 //
@@ -14,8 +12,11 @@ import "slices"
 //	}
 type Module []ContainerOption
 
-func (Module) applyContainer(*Container) error { return nil }
-func (Module) order() optionOrder              { return 0 }
+func (m Module) applyContainer(c *Container) error {
+	return applyOptions(m, func(o ContainerOption) error {
+		return o.applyContainer(c)
+	})
+}
 
 // WithModule applies the options in a module [Module] when calling [NewContainer] or [Container.NewScope].
 //
@@ -27,14 +28,4 @@ func (Module) order() optionOrder              { return 0 }
 //	)
 func WithModule(m Module) ContainerOption {
 	return m
-}
-
-func flattenModules(opts []ContainerOption) []ContainerOption {
-	for i, opt := range opts {
-		if mod, ok := opt.(Module); ok {
-			opts = slices.Insert(opts, i+1, mod...)
-		}
-	}
-
-	return opts
 }

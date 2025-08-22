@@ -1309,8 +1309,8 @@ func Test_Container_Resolve(t *testing.T) {
 		ctx := context.Background()
 		got, err := di.Resolve[[]*testtypes.StructA](ctx, c)
 
-		want := []*testtypes.StructA{a1}
-		assert.Equal(t, want, got, "nil service should not be included in the slice")
+		want := []*testtypes.StructA{nil, a1}
+		assert.Equal(t, want, got, "nil service should be included in the slice")
 		assert.NoError(t, err)
 	})
 

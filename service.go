@@ -53,7 +53,7 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 	// WithService(NewService) // This works as a func
 	// WithService(NewService()) // This works as a value
 
-	return newContainerOption(orderService, func(c *Container) error {
+	return containerOption(func(c *Container) error {
 		if isNil(funcOrValue) {
 			return errors.Errorf("WithService: funcOrValue is nil")
 		}

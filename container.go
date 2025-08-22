@@ -1,11 +1,9 @@
 package di
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 	"reflect"
-	"slices"
 	"strings"
 	"sync"
 
@@ -23,6 +21,7 @@ type Container struct {
 	closedMu   sync.RWMutex
 	closersMu  sync.Mutex
 	closed     bool
+	validate   bool
 }
 
 var _ Scope = (*Container)(nil)
@@ -49,29 +48,31 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 // ContainerOption is used to configure a new [Container] when calling [NewContainer]
 // or [Container.NewScope].
 type ContainerOption interface {
-	order() optionOrder
 	applyContainer(*Container) error
 }
 
+type containerOption func(*Container) error
+
+func (o containerOption) applyContainer(c *Container) error {
+	return o(c)
+}
+
 func (c *Container) applyOptions(opts []ContainerOption) error {
-	// Flatten any modules before sorting and applying options
-	opts = flattenModules(opts)
-
-	// Sort options by precedence
-	// Use stable sort because the registration order of services matters
-	slices.SortStableFunc(opts, func(a, b ContainerOption) int {
-		return cmp.Compare(a.order(), b.order())
+	err := applyOptions(opts, func(o ContainerOption) error {
+		return o.applyContainer(c)
 	})
+	if err != nil {
+		return err
+	}
 
-	var errs []error
-	for _, o := range opts {
-		err := o.applyContainer(c)
+	if c.validate {
+		err := c.validateDependencies()
 		if err != nil {
-			errs = append(errs, err)
+			return errors.Wrap(err, "WithDependencyValidation")
 		}
 	}
 
-	return errors.Join(errs...)
+	return nil
 }
 
 func (c *Container) register(sc serviceConfig) {
@@ -111,12 +112,8 @@ func (c *Container) registerType(t reflect.Type, sc serviceConfig) {
 //
 // Scoped services are not validated because depedencies may be registered with a child scope.
 func WithDependencyValidation() ContainerOption {
-	return newContainerOption(orderValidation, func(c *Container) error {
-		err := c.validateDependencies()
-		if err != nil {
-			return errors.Wrap(err, "WithDependencyValidation")
-		}
-
+	return containerOption(func(c *Container) error {
+		c.validate = true
 		return nil
 	})
 }
@@ -230,7 +227,10 @@ func (c *Container) lookupService(key serviceKey) service {
 // NewScope creates a new [Container] with a child scope.
 //
 // Services registered with the parent [Container] will be inherited by the child [Container].
-// Additional services can be registered with the new scope if needed and they will be isolated from
+// For services registered with [ScopedLifetime], each child container will create it's own instance
+// when the service is resolved.
+//
+// Additional services can be registered when creating the new scope if needed and they will be isolated from
 // the parent and sibling containers.
 //
 // Available options:
@@ -348,22 +348,21 @@ func resolveSliceKey(
 	optional bool,
 ) (any, error) {
 	sliceVal := reflect.MakeSlice(key.Type, 0, 0)
-	elementKey := serviceKey{
-		Type: key.Type.Elem(),
+	elemType := key.Type.Elem()
+	elemKey := serviceKey{
+		Type: elemType,
 		Tag:  key.Tag,
 	}
 	found := false
 
 	for s := scope; s != nil; s = s.parent {
-		for _, svc := range s.services[elementKey] {
-			val, err := resolveService(ctx, scope, elementKey, svc, visitor)
+		for _, svc := range s.services[elemKey] {
+			val, err := resolveService(ctx, scope, elemKey, svc, visitor)
 			if err != nil {
 				return nil, err
 			}
-			if val != nil {
-				sliceVal = reflect.Append(sliceVal, reflect.ValueOf(val))
-			}
 
+			sliceVal = reflect.Append(sliceVal, safeReflectValue(elemType, val))
 			found = true
 		}
 	}
@@ -526,30 +525,6 @@ var (
 	errDependencyCycle      = errors.New("dependency cycle detected")
 	errContainerClosed      = errors.New("container closed")
 )
-
-type optionOrder int8
-
-const (
-	orderService    optionOrder = iota
-	orderValidation optionOrder = iota
-)
-
-func newContainerOption(order optionOrder, fn func(*Container) error) ContainerOption {
-	return containerOption{fn: fn, ord: order}
-}
-
-type containerOption struct {
-	fn  func(*Container) error
-	ord optionOrder
-}
-
-func (o containerOption) order() optionOrder {
-	return o.ord
-}
-
-func (o containerOption) applyContainer(c *Container) error {
-	return o.fn(c)
-}
 
 type resolveResult struct {
 	val any
