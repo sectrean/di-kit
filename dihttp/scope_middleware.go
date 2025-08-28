@@ -29,21 +29,19 @@ func NewRequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOpti
 		panic("dihttp.NewRequestScopeMiddleware: parent is nil")
 	}
 
-	mw := &scopeMiddleware{
-		parent:          parent,
-		newScopeHandler: defaultNewScopeErrorHandler,
-		closeHandler:    defaultScopeCloseErrorHandler,
-	}
-
-	for _, opt := range opts {
-		opt.applyScopeMiddleware(mw)
-	}
-
 	return func(next http.Handler) http.Handler {
-		h := *mw
-		h.next = next
+		mw := scopeMiddleware{
+			next:            next,
+			parent:          parent,
+			newScopeHandler: defaultNewScopeErrorHandler,
+			closeHandler:    defaultScopeCloseErrorHandler,
+		}
 
-		return h
+		for _, opt := range opts {
+			opt.applyScopeMiddleware(&mw)
+		}
+
+		return mw
 	}
 }
 
