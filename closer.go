@@ -46,7 +46,7 @@ func IgnoreCloser() ServiceOption {
 
 // UseCloser configures the [Container] to call Close on this service when the Container is closed.
 //
-// Use this option if you want the [Container] to call Close on a value service.
+// Use this option if you want the container to call Close on a value service.
 // See [Closer] for more information.
 func UseCloser() ServiceOption {
 	return serviceOption(func(sc serviceConfig) error {

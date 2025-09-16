@@ -86,9 +86,6 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 }
 
 // InvokeOption is used to configure the behavior of Invoke.
-//
-// Available options:
-//   - WithTagged
 type InvokeOption interface {
 	applyInvokeConfig(*invokeConfig) error
 }

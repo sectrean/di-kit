@@ -30,6 +30,7 @@ var _ Scope = (*Container)(nil)
 //
 // Available options:
 //   - [WithService] registers a service with a value or constructor function.
+//   - [WithModule] registers services from a module.
 //   - [WithDependencyValidation] validates service dependencies.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
@@ -120,7 +121,8 @@ func (c *Container) registerType(t reflect.Type, sc serviceConfig) {
 // This will check that all dependencies are registered and that there are no dependency cycles.
 // It will return an error with details if any issues are found.
 //
-// Scoped services are not validated because depedencies may be registered with a child scope.
+// Scoped services are not validated because dependencies may be registered with a child scope.
+// They can be validated using this option when creating a child scope with [Container.NewScope].
 func WithDependencyValidation() ContainerOption {
 	return containerOption(func(c *Container) error {
 		c.validate = true
@@ -236,8 +238,8 @@ func (c *Container) lookupService(key serviceKey) service {
 
 // NewScope creates a new [Container] with a child scope.
 //
-// Services registered with the parent [Container] will be inherited by the child [Container].
-// For services registered with [ScopedLifetime], each child container will create it's own instance
+// Services registered with the parent container will be inherited by the child.
+// For services registered with [ScopedLifetime], each child container will create an isolated instance
 // when the service is resolved.
 //
 // Additional services can be registered when creating the new scope if needed and they will be isolated from
@@ -245,6 +247,7 @@ func (c *Container) lookupService(key serviceKey) service {
 //
 // Available options:
 //   - [WithService] registers a service with a value or a function.
+//   - [WithModule] registers services from a module.
 //   - [WithDependencyValidation] validates service dependencies.
 func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 	c.closedMu.RLock()
@@ -267,7 +270,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 	return scope, nil
 }
 
-// Contains returns true if the [Container] has a service registered for the given [reflect.Type].
+// Contains returns true if the container has a service registered for the given [reflect.Type].
 //
 // Available options:
 //   - [WithTag] specifies a key associated with the service.
@@ -293,17 +296,18 @@ func (c *Container) Contains(t reflect.Type, opts ...ResolveOption) bool {
 
 // ResolveOption can be used when calling [Resolve], [MustResolve],
 // [Container.Resolve], or [Container.Contains].
-//
-// Available options:
-//   - [WithTag]
 type ResolveOption interface {
 	applyServiceKey(serviceKey) serviceKey
 }
 
 // Resolve a service of the given [reflect.Type].
 //
-// The type must be registered with the [Container].
-// This will return an error if the [Container] has been closed.
+// This will return an error under the following conditions:
+//   - The container has been closed
+//   - The type is not registered with the container
+//   - The type cannot be resolved due to unregistered dependencies
+//   - A dependency cycle is detected
+//   - A service's constructor function returns an error
 //
 // Available options:
 //   - [WithTag] specifies a key associated with the service.
@@ -498,10 +502,13 @@ func resolveService(
 	return val, nil
 }
 
-// Close the [Container] and resolved services.
+// Close all services resolved by this container.
+// See [Closer] for more information.
 //
 // Services are closed in the reverse order they were resolved/created.
 // Errors returned from closing services are joined together.
+//
+// Resolve and NewScope will return an error if called after the container has been closed.
 //
 // Close will return an error if called more than once.
 func (c *Container) Close(ctx context.Context) error {
