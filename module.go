@@ -18,6 +18,8 @@ func (m Module) applyContainer(c *Container) error {
 	})
 }
 
+var _ ContainerOption = Module{}
+
 // WithModule applies the options in a module [Module] when calling [NewContainer] or [Container.NewScope].
 //
 // Example:

@@ -98,11 +98,21 @@ func (c *Container) register(sc serviceConfig) {
 }
 
 func (c *Container) registerType(t reflect.Type, sc serviceConfig) {
-	key := serviceKey{
-		Type: t,
-		Tag:  sc.Tag(),
+	if len(sc.Tags()) == 0 {
+		key := serviceKey{
+			Type: t,
+		}
+		c.services[key] = append(c.services[key], sc)
+	} else {
+		// This doesn't de-duplicate tags, so if someone registers duplicate tags, that's on them
+		for _, tag := range sc.Tags() {
+			key := serviceKey{
+				Type: t,
+				Tag:  tag,
+			}
+			c.services[key] = append(c.services[key], sc)
+		}
 	}
-	c.services[key] = append(c.services[key], sc)
 }
 
 // WithDependencyValidation validates registered services on [Container] creation.
@@ -404,7 +414,7 @@ func resolveService(
 		scope.resolvedMu.RUnlock()
 
 		if exists {
-			return res.val, res.err
+			return res.Val, res.Err
 		}
 	}
 
@@ -461,7 +471,7 @@ func resolveService(
 
 		// Check if another goroutine resolved the service since the last check
 		if res, exists := scope.resolved[svc]; exists {
-			return res.val, res.err
+			return res.Val, res.Err
 		}
 
 		defer func() {
@@ -527,8 +537,8 @@ var (
 )
 
 type resolveResult struct {
-	val any
-	err error
+	Val any
+	Err error
 }
 
 type resolveVisitor map[service]struct{}

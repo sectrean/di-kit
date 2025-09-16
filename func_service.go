@@ -1,6 +1,7 @@
 package di
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/sectrean/di-kit/internal/errors"
@@ -10,7 +11,7 @@ type funcService struct {
 	scope         *Container
 	fn            reflect.Value
 	t             reflect.Type
-	tag           any
+	tags          []any
 	closerFactory closerFactory
 	deps          []serviceKey
 	assignables   []reflect.Type
@@ -104,19 +105,12 @@ func (s *funcService) SetAssignables(assignables []reflect.Type) {
 	s.assignables = assignables
 }
 
-func (s *funcService) Tag() any {
-	return s.tag
+func (s *funcService) Tags() []any {
+	return s.tags
 }
 
-func (s *funcService) SetTag(tag any) {
-	s.tag = tag
-}
-
-func (s *funcService) Key() serviceKey {
-	return serviceKey{
-		Type: s.t,
-		Tag:  s.tag,
-	}
+func (s *funcService) SetTags(tags []any) {
+	s.tags = tags
 }
 
 func (s *funcService) Dependencies() []serviceKey {
@@ -170,7 +164,7 @@ func (s *funcService) SetCloserFactory(cf closerFactory) {
 }
 
 func (s *funcService) String() string {
-	return s.Key().String()
+	return fmt.Sprintf("%T", s.fn.Interface())
 }
 
 var _ service = (*funcService)(nil)

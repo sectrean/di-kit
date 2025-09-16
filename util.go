@@ -36,7 +36,7 @@ func isNil(v any) bool {
 	}
 }
 
-// Apply functional options and join any errors together.
+// applyOptions applies functional options and joins any errors together.
 func applyOptions[O any](opts []O, f func(O) error) error {
 	var errs []error
 

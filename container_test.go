@@ -322,8 +322,10 @@ func Test_NewContainer(t *testing.T) {
 		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err,
-			"di.NewContainer: WithDependencyValidation: service testtypes.InterfaceB: dependency testtypes.InterfaceA: service not registered")
+		assert.EqualError(t, err, "di.NewContainer: WithDependencyValidation: "+
+			"service func(testtypes.InterfaceA) testtypes.InterfaceB: "+
+			"dependency testtypes.InterfaceA: service not registered",
+		)
 	})
 
 	t.Run("WithDependencyValidation scoped service", func(t *testing.T) {
@@ -358,7 +360,10 @@ func Test_NewContainer(t *testing.T) {
 		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "di.NewContainer: WithDependencyValidation: service testtypes.InterfaceA: dependency testtypes.InterfaceA: dependency cycle detected")
+		assert.EqualError(t, err, "di.NewContainer: WithDependencyValidation: "+
+			"service func(context.Context, testtypes.InterfaceA) testtypes.InterfaceA: "+
+			"dependency testtypes.InterfaceA: dependency cycle detected",
+		)
 	})
 
 	t.Run("WithDependencyValidation slice dependency", func(t *testing.T) {
@@ -375,8 +380,9 @@ func Test_NewContainer(t *testing.T) {
 		testutils.LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err,
-			"di.NewContainer: WithDependencyValidation: service testtypes.InterfaceD: dependency testtypes.InterfaceC: service not registered",
+		assert.EqualError(t, err, "di.NewContainer: WithDependencyValidation: "+
+			"service func([]testtypes.InterfaceC) testtypes.InterfaceD: "+
+			"dependency testtypes.InterfaceC: service not registered",
 		)
 	})
 
@@ -488,7 +494,10 @@ func Test_Container_NewScope(t *testing.T) {
 		testutils.LogError(t, err)
 
 		assert.Nil(t, scope)
-		assert.EqualError(t, err, "di.Container.NewScope: WithDependencyValidation: service testtypes.InterfaceB: dependency testtypes.InterfaceA: service not registered")
+		assert.EqualError(t, err, "di.Container.NewScope: WithDependencyValidation: "+
+			"service func(testtypes.InterfaceA) testtypes.InterfaceB: "+
+			"dependency testtypes.InterfaceA: service not registered",
+		)
 	})
 
 	t.Run("WithDependencyValidation dependency cycle", func(t *testing.T) {
@@ -1337,7 +1346,42 @@ func Test_Container_Resolve(t *testing.T) {
 		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
-		assert.EqualError(t, err, "di.Container.Resolve []testtypes.InterfaceA (Tag 1): service not registered")
+		assert.EqualError(t, err, "di.Container.Resolve []testtypes.InterfaceA: WithTag 1: service not registered")
+	})
+
+	t.Run("WithTag multiple tags", func(t *testing.T) {
+		a1 := &testtypes.StructA{Tag: 1}
+		a2 := &testtypes.StructA{Tag: 2}
+
+		c, err := di.NewContainer(
+			di.WithService(a1,
+				di.As[testtypes.InterfaceA](),
+				di.WithDefaultTag(),
+				di.WithTag("a"),
+				di.WithTag("b"),
+			),
+			di.WithService(a2,
+				di.As[testtypes.InterfaceA](),
+				di.WithTag("a"),
+				di.WithTag("b"),
+				di.WithTag("c"),
+			),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+
+		got := di.MustResolve[testtypes.InterfaceA](ctx, c)
+		assert.Same(t, a1, got)
+
+		gotA := di.MustResolve[testtypes.InterfaceA](ctx, c, di.WithTag("a"))
+		assert.Same(t, a2, gotA)
+
+		gotSliceA := di.MustResolve[[]testtypes.InterfaceA](ctx, c, di.WithTag("a"))
+		assert.Equal(t, []testtypes.InterfaceA{a1, a2}, gotSliceA)
+
+		gotSliceB := di.MustResolve[[]testtypes.InterfaceA](ctx, c, di.WithTag("b"))
+		assert.Equal(t, []testtypes.InterfaceA{a1, a2}, gotSliceB)
 	})
 
 	t.Run("As", func(t *testing.T) {
@@ -1468,7 +1512,7 @@ func Test_Container_Resolve(t *testing.T) {
 		testutils.LogError(t, err)
 
 		assert.Nil(t, got)
-		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA (Tag other): service not registered")
+		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: WithTag other: service not registered")
 	})
 
 	t.Run("WithTagged", func(t *testing.T) {

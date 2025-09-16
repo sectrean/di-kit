@@ -153,7 +153,7 @@ func As[Service any]() ServiceOption {
 	})
 }
 
-// ServiceOption is used to configure service registration calling [WithService].
+// ServiceOption is used to configure service registration when calling [WithService].
 type ServiceOption interface {
 	applyServiceConfig(serviceConfig) error
 }
@@ -189,9 +189,9 @@ type serviceConfig interface {
 	// Type returns the type of the service.
 	Type() reflect.Type
 
-	// Tag returns the tag of the service.
-	Tag() any
-	SetTag(any)
+	// Tags returns the tags for the service.
+	Tags() []any
+	SetTags([]any)
 
 	// Lifetime returns the lifetime of the service.
 	Lifetime() Lifetime
@@ -215,5 +215,5 @@ func (k serviceKey) String() string {
 	if k.Tag == nil {
 		return k.Type.String()
 	}
-	return fmt.Sprintf("%s (Tag %v)", k.Type, k.Tag)
+	return fmt.Sprintf("%s: WithTag %v", k.Type, k.Tag)
 }

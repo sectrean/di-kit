@@ -6,16 +6,41 @@ import (
 	"github.com/sectrean/di-kit/internal/errors"
 )
 
-// WithTag is used to specify the tag associated with a service.
+// WithTag is used to specify a tag associated with a service.
+//
+// When registering a service, WithTag can be used multiple times to associate multiple tags with a service.
+// See also [WithDefaultTag].
 //
 // WithTag can be used with:
 //   - [WithService]
 //   - [Resolve]
 //   - [MustResolve]
+//   - [Contains]
 //   - [Container.Resolve]
 //   - [Container.Contains]
 func WithTag(tag any) ServiceTagOption {
-	return tagOption{tag: tag}
+	return tagOption{Tag: tag}
+}
+
+// WithDefaultTag is used to associate the default tag with a service.
+//
+// This is useful when you register a service with a tag, but you also want the service to
+// be resolved when no tag is specified.
+//
+// Example:
+//
+//	c, err := di.NewContainer(
+//		di.WithService(client.NewReadClient,
+//			di.WithTag(client.Read),
+//		),
+//		di.WithService(client.NewWriteClient,
+//			di.WithTag(client.Write),
+//			di.WithDefaultTag(),
+//		),
+//		...
+//	)
+func WithDefaultTag() ServiceOption {
+	return WithTag(nil)
 }
 
 // ServiceTagOption is used to specify the tag associated with a service when calling [WithService],
@@ -72,18 +97,18 @@ type DependencyOption interface {
 }
 
 type tagOption struct {
-	tag any
+	Tag any
 }
 
 func (o tagOption) applyServiceConfig(sc serviceConfig) error {
-	sc.SetTag(o.tag)
+	sc.SetTags(append(sc.Tags(), o.Tag))
 	return nil
 }
 
 func (o tagOption) applyServiceKey(key serviceKey) serviceKey {
 	return serviceKey{
 		Type: key.Type,
-		Tag:  o.tag,
+		Tag:  o.Tag,
 	}
 }
 

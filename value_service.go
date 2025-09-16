@@ -10,7 +10,7 @@ type valueService struct {
 	scope         *Container
 	val           any
 	t             reflect.Type
-	tag           any
+	tags          []any
 	closerFactory closerFactory
 	assignables   []reflect.Type
 }
@@ -66,12 +66,12 @@ func (s *valueService) SetLifetime(l Lifetime) error {
 	return errors.New("invalid lifetime for value service")
 }
 
-func (s *valueService) Tag() any {
-	return s.tag
+func (s *valueService) Tags() []any {
+	return s.tags
 }
 
-func (s *valueService) SetTag(tag any) {
-	s.tag = tag
+func (s *valueService) SetTags(tags []any) {
+	s.tags = tags
 }
 
 func (*valueService) Dependencies() []serviceKey {
