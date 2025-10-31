@@ -23,7 +23,7 @@ func Scope(ctx context.Context) di.Scope {
 	return nil
 }
 
-// Resolve a service of type Service from the container scope stored on the [context.Context].
+// Resolve a service of type *Service* from the container scope stored on the [context.Context].
 //
 // This will return an error if there is no [di.Scope] on the context, or the service cannot be
 // resolved.
@@ -49,7 +49,7 @@ func Resolve[Service any](ctx context.Context, opts ...di.ResolveOption) (Servic
 	return val, nil
 }
 
-// MustResolve resolves a service of type Service from the container scope stored on the [context.Context].
+// MustResolve resolves a service of type *Service* from the container scope stored on the [context.Context].
 //
 // This will panic if there is no [di.Scope] on the context, or the service cannot be resolved.
 //

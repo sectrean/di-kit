@@ -68,7 +68,7 @@ type ServiceTagOption interface {
 //		),
 //	)
 //
-// This option will return an error if the Service does not have a dependency of type Dependency.
+// This option will return an error if the service does not have a dependency of type *Dependency*.
 func WithTagged[Dependency any](tag any) DependencyOption {
 	// Assign the tag to the first dependency of the right type that does not already have a tag.
 	// If no dependency is found, an error is returned.
@@ -101,7 +101,7 @@ type tagOption struct {
 }
 
 func (o tagOption) applyServiceConfig(sc serviceConfig) error {
-	sc.SetTags(append(sc.Tags(), o.Tag))
+	sc.AddTag(o.Tag)
 	return nil
 }
 

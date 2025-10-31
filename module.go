@@ -1,7 +1,7 @@
 package di
 
 // A Module is a collection of container options.
-// It can be used to export a re-usable group of related services.
+// It can be used to create a re-usable collection of related services.
 //
 // Example:
 //

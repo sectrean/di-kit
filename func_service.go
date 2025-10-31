@@ -109,8 +109,8 @@ func (s *funcService) Tags() []any {
 	return s.tags
 }
 
-func (s *funcService) SetTags(tags []any) {
-	s.tags = tags
+func (s *funcService) AddTag(tag any) {
+	s.tags = append(s.tags, tag)
 }
 
 func (s *funcService) Dependencies() []serviceKey {

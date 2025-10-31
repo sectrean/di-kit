@@ -297,6 +297,7 @@ func (c *Container) Contains(t reflect.Type, opts ...ResolveOption) bool {
 // ResolveOption can be used when calling [Resolve], [MustResolve],
 // [Container.Resolve], or [Container.Contains].
 type ResolveOption interface {
+	// applyServiceKey does not use a pointer to optimize allocations.
 	applyServiceKey(serviceKey) serviceKey
 }
 

@@ -115,12 +115,14 @@ func validateDependencyType(t reflect.Type) bool {
 	return validateServiceType(t)
 }
 
-// As registers the service as type Service when calling [WithService].
+// As registers the service as type *Service* when calling [WithService].
 //
 // By default, function services will be registered as the constructor function return type.
 // Value services will be registered as the actual type of the value.
 //
-// For your services to depend on interfaces, you must provide the implemented interface type(s) when creating the [Container].
+// Use [As] to register the service as an implemented interface.
+// This will override the default registration behavior.
+// The original type can also be registered using [As].
 //
 // Example:
 //
@@ -132,9 +134,7 @@ func validateDependencyType(t reflect.Type) bool {
 //		// ...
 //	)
 //
-// If you use any [As] option, the original type will not be registered unless you specify it with another [As] option.
-//
-// This option will return an error if the service type is not assignable to type Service.
+// This option will return an error if the service type is not assignable to type *Service*.
 func As[Service any]() ServiceOption {
 	return serviceOption(func(sc serviceConfig) error {
 		t := reflect.TypeFor[Service]()
@@ -191,7 +191,7 @@ type serviceConfig interface {
 
 	// Tags returns the tags for the service.
 	Tags() []any
-	SetTags([]any)
+	AddTag(any)
 
 	// Lifetime returns the lifetime of the service.
 	Lifetime() Lifetime

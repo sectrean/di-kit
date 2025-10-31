@@ -21,10 +21,11 @@ import (
 //
 //	type DBFactory struct {
 //		scope di.Scope
+//		config Config
 //	}
 //
-//	func NewDBFactory(scope di.Scope) *DBFactory {
-//		return &DBFactory{scope}
+//	func NewDBFactory(s di.Scope, c Config) *DBFactory {
+//		return &DBFactory{scope: s, config: c}
 //	}
 //
 //	func (f *DBFactory) NewDB(ctx context.Context, dbName string) *DB {
@@ -42,7 +43,7 @@ type Scope interface {
 	Resolve(ctx context.Context, t reflect.Type, opts ...ResolveOption) (any, error)
 }
 
-// Resolve a service of type Service.
+// Resolve a service of type *Service*.
 //
 // See [Container.Resolve] for more information.
 func Resolve[Service any](ctx context.Context, s Scope, opts ...ResolveOption) (Service, error) {
@@ -55,7 +56,7 @@ func Resolve[Service any](ctx context.Context, s Scope, opts ...ResolveOption) (
 	return val, err
 }
 
-// MustResolve resolves a service of type Service.
+// MustResolve resolves a service of type *Service*.
 //
 // See [Container.Resolve] for more information.
 //
@@ -68,7 +69,7 @@ func MustResolve[Service any](ctx context.Context, s Scope, opts ...ResolveOptio
 	return val
 }
 
-// Contains returns true if the Scope can resolve a service of type Service.
+// Contains returns true if the Scope can resolve a service of type *Service*.
 //
 // See [Container.Contains] for more information.
 func Contains[Service any](s Scope, opts ...ResolveOption) bool {

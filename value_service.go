@@ -70,8 +70,8 @@ func (s *valueService) Tags() []any {
 	return s.tags
 }
 
-func (s *valueService) SetTags(tags []any) {
-	s.tags = tags
+func (s *valueService) AddTag(tag any) {
+	s.tags = append(s.tags, tag)
 }
 
 func (*valueService) Dependencies() []serviceKey {
