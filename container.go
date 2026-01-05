@@ -14,8 +14,8 @@ import (
 // It is used to resolve services by first resolving their dependencies.
 type Container struct {
 	parent     *Container
-	services   map[serviceKey][]service
-	resolved   map[service]resolveResult
+	services   map[serviceKey][]*service
+	resolved   map[*service]resolveResult
 	closers    []Closer
 	resolvedMu sync.RWMutex
 	closedMu   sync.RWMutex
@@ -34,8 +34,8 @@ var _ Scope = (*Container)(nil)
 //   - [WithDependencyValidation] validates service dependencies.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
-		services: make(map[serviceKey][]service),
-		resolved: make(map[service]resolveResult),
+		services: make(map[serviceKey][]*service),
+		resolved: make(map[*service]resolveResult),
 	}
 
 	err := c.applyOptions(opts)
@@ -76,42 +76,42 @@ func (c *Container) applyOptions(opts []ContainerOption) error {
 	return nil
 }
 
-func (c *Container) register(sc serviceConfig) {
+func (c *Container) register(s *service) {
 	if c.services == nil {
-		c.services = make(map[serviceKey][]service)
+		c.services = make(map[serviceKey][]*service)
 	}
 
-	if len(sc.Assignables()) == 0 {
-		c.registerType(sc.Type(), sc)
+	if len(s.Assignables()) == 0 {
+		c.registerType(s.Type(), s)
 	} else {
-		for _, assignable := range sc.Assignables() {
-			c.registerType(assignable, sc)
+		for _, assignable := range s.Assignables() {
+			c.registerType(assignable, s)
 		}
 	}
 
 	// Add closers for value services
 	// We don't need to take locks here because this is only called when creating a new Container
-	if vs, ok := sc.(*valueService); ok {
-		if closer := sc.CloserFor(vs.val); closer != nil {
+	if s.IsValue() {
+		if closer := s.CloserFor(s.Value()); closer != nil {
 			c.closers = append(c.closers, closer)
 		}
 	}
 }
 
-func (c *Container) registerType(t reflect.Type, sc serviceConfig) {
-	if len(sc.Tags()) == 0 {
+func (c *Container) registerType(t reflect.Type, s *service) {
+	if len(s.Tags()) == 0 {
 		key := serviceKey{
 			Type: t,
 		}
-		c.services[key] = append(c.services[key], sc)
+		c.services[key] = append(c.services[key], s)
 	} else {
 		// This doesn't de-duplicate tags, so if someone registers duplicate tags, that's on them
-		for _, tag := range sc.Tags() {
+		for _, tag := range s.Tags() {
 			key := serviceKey{
 				Type: t,
 				Tag:  tag,
 			}
-			c.services[key] = append(c.services[key], sc)
+			c.services[key] = append(c.services[key], s)
 		}
 	}
 }
@@ -132,7 +132,7 @@ func WithDependencyValidation() ContainerOption {
 
 func (c *Container) validateDependencies() error {
 	var errs []error
-	svcProblems := make(map[service]string)
+	svcProblems := make(map[*service]string)
 
 	for _, svcs := range c.services {
 		for _, svc := range svcs {
@@ -168,7 +168,7 @@ func (c *Container) validateDependencies() error {
 	return errors.Join(errs...)
 }
 
-func (c *Container) validateService(svc service, svcProblems map[service]string, visitor resolveVisitor) string {
+func (c *Container) validateService(svc *service, svcProblems map[*service]string, visitor resolveVisitor) string {
 	if prob, ok := svcProblems[svc]; ok {
 		return prob
 	}
@@ -191,7 +191,7 @@ func (c *Container) validateService(svc service, svcProblems map[service]string,
 		}
 
 		if isUnnamedSliceType(depKey.Type) {
-			if svc.(*funcService).IsVariadic() {
+			if svc.Func().Type().IsVariadic() {
 				// If the service is variadic, registration is optional
 				continue
 			}
@@ -222,7 +222,7 @@ func (c *Container) validateService(svc service, svcProblems map[service]string,
 	return ""
 }
 
-func (c *Container) lookupService(key serviceKey) service {
+func (c *Container) lookupService(key serviceKey) *service {
 	for scope := c; scope != nil; scope = scope.parent {
 		svcs, ok := scope.services[key]
 		if !ok {
@@ -259,7 +259,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 
 	scope := &Container{
 		parent:   c,
-		resolved: make(map[service]resolveResult),
+		resolved: make(map[*service]resolveResult),
 	}
 
 	err := scope.applyOptions(opts)
@@ -394,9 +394,14 @@ func resolveService(
 	ctx context.Context,
 	scope *Container,
 	key serviceKey,
-	svc service,
+	svc *service,
 	visitor resolveVisitor,
 ) (val any, err error) {
+	if svc.IsValue() {
+		// Value services are always resolved, so we can return the value directly.
+		return svc.Value(), nil
+	}
+
 	// Check context for errors
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -451,7 +456,7 @@ func resolveService(
 
 			default:
 				optional := false
-				if i == len(deps)-1 && svc.(*funcService).IsVariadic() {
+				if i == len(deps)-1 && svc.Func().Type().IsVariadic() {
 					// If this is the last arg and the constructor function is variadic,
 					// we treat it as optional.
 					optional = true
@@ -549,9 +554,9 @@ type resolveResult struct {
 	Err error
 }
 
-type resolveVisitor map[service]struct{}
+type resolveVisitor map[*service]struct{}
 
-func (v resolveVisitor) Enter(s service) bool {
+func (v resolveVisitor) Enter(s *service) bool {
 	if _, exists := v[s]; exists {
 		return false
 	}
@@ -560,6 +565,6 @@ func (v resolveVisitor) Enter(s service) bool {
 	return true
 }
 
-func (v resolveVisitor) Leave(s service) {
+func (v resolveVisitor) Leave(s *service) {
 	delete(v, s)
 }

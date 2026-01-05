@@ -36,12 +36,13 @@ const (
 	ScopedLifetime Lifetime = iota
 )
 
-func (l Lifetime) applyServiceConfig(sc serviceConfig) error {
-	err := sc.SetLifetime(l)
-	if err != nil {
-		return errors.Wrapf(err, "Lifetime %s", l)
+func (l Lifetime) applyService(s *service) error {
+	if s.IsValue() && l != SingletonLifetime {
+		// Value services can only be singletons because they are created outside of the container.
+		return errors.Errorf("Lifetime %s: invalid lifetime for value service", l)
 	}
 
+	s.lifetime = l
 	return nil
 }
 

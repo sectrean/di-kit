@@ -54,33 +54,86 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 	// WithService(NewService()) // This works as a value
 
 	return containerOption(func(c *Container) error {
-		if isNil(funcOrValue) {
-			return errors.Errorf("WithService: funcOrValue is nil")
+		v := reflect.ValueOf(funcOrValue)
+		if isNil(v) {
+			return errors.New("WithService: funcOrValue is nil")
 		}
 
-		t := reflect.TypeOf(funcOrValue)
-
-		var sc serviceConfig
-		var err error
-		if t.Kind() == reflect.Func && t.Name() == "" {
-			sc, err = newFuncService(c, funcOrValue, opts...)
-		} else {
-			sc, err = newValueService(c, funcOrValue, opts...)
-		}
-
+		s, err := newService(c, v, opts...)
 		if err != nil {
-			return errors.Wrapf(err, "WithService %T", funcOrValue)
+			return errors.Wrapf(err, "WithService %s", v.Type())
 		}
 
-		c.register(sc)
+		c.register(s)
 		return nil
 	})
+}
+
+// ServiceOption is used to configure service registration when calling [WithService].
+type ServiceOption interface {
+	applyService(*service) error
+}
+
+type serviceOption func(*service) error
+
+func (o serviceOption) applyService(s *service) error {
+	return o(s)
+}
+
+// As registers the service as type *Service* when calling [WithService].
+//
+// By default, function services will be registered as the constructor function return type.
+// Value services will be registered as the actual type of the value.
+//
+// Use [As] to register the service as an implemented interface.
+// This will override the default registration behavior.
+// The original type can also be registered using [As].
+//
+// Example:
+//
+//	c, err := di.NewContainer(
+//		di.WithService(db.NewSQLDB,	// NewSQLDB() *db.SQLDB
+//			di.As[db.DB](),	// Register as an implemented interface
+//		),
+//		di.WithService(storage.NewDBStorage),	// NewDBStorage(db.DB) *storage.DBStorage
+//		// ...
+//	)
+//
+// This option will return an error if the service type is not assignable to type *Service*.
+func As[Service any]() ServiceOption {
+	return serviceOption(func(s *service) error {
+		t := reflect.TypeFor[Service]()
+
+		if ok := validateServiceType(t); !ok {
+			return errors.Errorf("As %s: invalid service type", t)
+		}
+		if !s.Type().AssignableTo(t) {
+			return errors.Errorf("As %s: type %s not assignable to %s", t, s.Type(), t)
+		}
+
+		s.assignables = append(s.assignables, t)
+		return nil
+	})
+}
+
+type serviceKey struct {
+	Type reflect.Type
+	Tag  any
+}
+
+func (k serviceKey) String() string {
+	if k.Tag == nil {
+		return k.Type.String()
+	}
+	return fmt.Sprintf("%s: WithTag %v", k.Type, k.Tag)
 }
 
 func validateServiceType(t reflect.Type) bool {
 	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
+
+	// TODO: Give more specific error messages for invalid types, e.g. unnamed basic types, reserved types, etc.
 
 	switch t {
 	// These special types cannot be registered as services
@@ -115,105 +168,151 @@ func validateDependencyType(t reflect.Type) bool {
 	return validateServiceType(t)
 }
 
-// As registers the service as type *Service* when calling [WithService].
-//
-// By default, function services will be registered as the constructor function return type.
-// Value services will be registered as the actual type of the value.
-//
-// Use [As] to register the service as an implemented interface.
-// This will override the default registration behavior.
-// The original type can also be registered using [As].
-//
-// Example:
-//
-//	c, err := di.NewContainer(
-//		di.WithService(db.NewSQLDB,	// NewSQLDB() *db.SQLDB
-//			di.As[db.DB](),	// Register as an implemented interface
-//		),
-//		di.WithService(storage.NewDBStorage),	// NewDBStorage(db.DB) *storage.DBStorage
-//		// ...
-//	)
-//
-// This option will return an error if the service type is not assignable to type *Service*.
-func As[Service any]() ServiceOption {
-	return serviceOption(func(sc serviceConfig) error {
-		t := reflect.TypeFor[Service]()
-
-		if ok := validateServiceType(t); !ok {
-			return errors.Errorf("As %s: invalid service type", t)
-		}
-		if !sc.Type().AssignableTo(t) {
-			return errors.Errorf("As %s: type %s not assignable to %s", t, sc.Type(), t)
-		}
-
-		assignables := append(sc.Assignables(), t)
-		sc.SetAssignables(assignables)
-
-		return nil
-	})
-}
-
-// ServiceOption is used to configure service registration when calling [WithService].
-type ServiceOption interface {
-	applyServiceConfig(serviceConfig) error
-}
-
-type serviceOption func(serviceConfig) error
-
-func (o serviceOption) applyServiceConfig(sc serviceConfig) error {
-	return o(sc)
-}
-
-// service provides information about a service and how to resolve it.
-type service interface {
-	// Scope returns the Container the service was registered with.
-	Scope() *Container
-
-	// Lifetime returns the lifetime of the service.
-	Lifetime() Lifetime
-
-	// Dependencies returns the types of the services that this service depends on.
-	Dependencies() []serviceKey
-
-	// New uses the dependencies to create a new instance of the service.
-	New([]reflect.Value) (any, error)
-
-	// CloserFor returns a Closer for the service.
-	CloserFor(any) Closer
-}
-
-// serviceConfig provides information to register a service with a Container.
-type serviceConfig interface {
-	service
-
-	// Type returns the type of the service.
-	Type() reflect.Type
-
-	// Tags returns the tags for the service.
-	Tags() []any
-	AddTag(any)
-
-	// Lifetime returns the lifetime of the service.
-	Lifetime() Lifetime
-	SetLifetime(Lifetime) error
-
-	// Assignables returns the types that this service can be resolved as.
-	Assignables() []reflect.Type
-	SetAssignables([]reflect.Type)
-
-	SetCloserFactory(closerFactory)
-}
-
 type closerFactory = func(any) Closer
 
-type serviceKey struct {
-	Type reflect.Type
-	Tag  any
+type service struct {
+	scope         *Container
+	v             reflect.Value
+	t             reflect.Type
+	deps          []serviceKey
+	tags          []any
+	closerFactory closerFactory
+	assignables   []reflect.Type
+	lifetime      Lifetime
 }
 
-func (k serviceKey) String() string {
-	if k.Tag == nil {
-		return k.Type.String()
+func newService(c *Container, v reflect.Value, opts ...ServiceOption) (*service, error) {
+	s := &service{
+		scope:    c,
+		v:        v,
+		lifetime: SingletonLifetime,
 	}
-	return fmt.Sprintf("%s: WithTag %v", k.Type, k.Tag)
+	var err error
+
+	if v.Kind() == reflect.Func {
+		// Func service
+		err = s.initFuncService(v.Type())
+	} else {
+		// Value service
+		err = s.initValueService(v.Type())
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	err = applyOptions(opts, func(opt ServiceOption) error {
+		return opt.applyService(s)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+func (s *service) initFuncService(funcType reflect.Type) error {
+	// Figure out the service type
+	switch {
+	case funcType.NumOut() == 1:
+		s.t = funcType.Out(0)
+	case funcType.NumOut() == 2 && funcType.Out(1) == typeError:
+		s.t = funcType.Out(0)
+	default:
+		return errors.New("function must return Service or (Service, error)")
+	}
+
+	if ok := validateServiceType(s.t); !ok {
+		return errors.New("invalid service type")
+	}
+
+	// Get the dependencies and validate dependency types
+	var errs []error
+
+	if funcType.NumIn() > 0 {
+		s.deps = make([]serviceKey, funcType.NumIn())
+		for i := range funcType.NumIn() {
+			depType := funcType.In(i)
+
+			if ok := validateDependencyType(depType); !ok {
+				err := errors.Errorf("invalid dependency type %s", depType)
+				errs = append(errs, err)
+				continue
+			}
+
+			s.deps[i] = serviceKey{
+				Type: depType,
+			}
+		}
+	}
+
+	if err := errors.Join(errs...); err != nil {
+		return err
+	}
+
+	s.closerFactory = getCloser
+
+	return nil
+}
+
+func (s *service) initValueService(valType reflect.Type) error {
+	if ok := validateServiceType(valType); !ok {
+		return errors.New("invalid service type")
+	}
+
+	s.t = valType
+	return nil
+}
+
+func (s *service) Scope() *Container { return s.scope }
+
+// Type of the service. This is the return type of the constructor function or the actual type of the value.
+func (s *service) Type() reflect.Type          { return s.t }
+func (s *service) IsValue() bool               { return s.v.Kind() != reflect.Func }
+func (s *service) Lifetime() Lifetime          { return s.lifetime }
+func (s *service) Dependencies() []serviceKey  { return s.deps }
+func (s *service) Tags() []any                 { return s.tags }
+func (s *service) Assignables() []reflect.Type { return s.assignables }
+
+func (s *service) Value() any {
+	return s.v.Interface()
+}
+
+func (s *service) Func() reflect.Value {
+	return s.v
+}
+
+func (s *service) New(deps []reflect.Value) (val any, err error) {
+	// Call the function
+	var out []reflect.Value
+	if s.Func().Type().IsVariadic() {
+		out = s.Func().CallSlice(deps)
+	} else {
+		out = s.Func().Call(deps)
+	}
+
+	// Get the return value and error, if any
+	if !isNil(out[0]) {
+		val = out[0].Interface()
+	}
+	if len(out) == 2 && !isNil(out[1]) {
+		err = out[1].Interface().(error)
+	}
+
+	return val, err
+}
+
+func (s *service) CloserFor(val any) Closer {
+	if val == nil {
+		return nil
+	}
+
+	if s.closerFactory != nil {
+		return s.closerFactory(val)
+	}
+
+	return nil
+}
+
+func (s *service) String() string {
+	return s.v.Type().String()
 }

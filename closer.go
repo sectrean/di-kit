@@ -38,8 +38,8 @@ type Closer interface {
 // Use this option if a function service has a Close method, but you don't want the Container to call it.
 // See [Closer] for more information.
 func IgnoreCloser() ServiceOption {
-	return serviceOption(func(sc serviceConfig) error {
-		sc.SetCloserFactory(nil)
+	return serviceOption(func(s *service) error {
+		s.closerFactory = nil
 		return nil
 	})
 }
@@ -49,8 +49,8 @@ func IgnoreCloser() ServiceOption {
 // Use this option if you want the container to call Close on a value service.
 // See [Closer] for more information.
 func UseCloser() ServiceOption {
-	return serviceOption(func(sc serviceConfig) error {
-		sc.SetCloserFactory(getCloser)
+	return serviceOption(func(s *service) error {
+		s.closerFactory = getCloser
 		return nil
 	})
 }
@@ -70,17 +70,17 @@ func UseCloser() ServiceOption {
 //
 // This option will return an error if the service type is not assignable to type *Service*.
 func UseCloseFunc[Service any](f func(context.Context, Service) error) ServiceOption {
-	return serviceOption(func(sc serviceConfig) error {
-		if !sc.Type().AssignableTo(reflect.TypeFor[Service]()) {
+	return serviceOption(func(s *service) error {
+		if !s.Type().AssignableTo(reflect.TypeFor[Service]()) {
 			return errors.Errorf("UseCloseFunc: service type %s is not assignable to %s",
-				sc.Type(), reflect.TypeFor[Service]())
+				s.Type(), reflect.TypeFor[Service]())
 		}
 
-		sc.SetCloserFactory(func(val any) Closer {
+		s.closerFactory = func(val any) Closer {
 			return closeFunc(func(ctx context.Context) error {
 				return f(ctx, val.(Service))
 			})
-		})
+		}
 		return nil
 	})
 }

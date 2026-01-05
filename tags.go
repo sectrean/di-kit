@@ -100,8 +100,8 @@ type tagOption struct {
 	Tag any
 }
 
-func (o tagOption) applyServiceConfig(sc serviceConfig) error {
-	sc.AddTag(o.Tag)
+func (o tagOption) applyService(s *service) error {
+	s.tags = append(s.tags, o.Tag)
 	return nil
 }
 
@@ -116,8 +116,8 @@ var _ ServiceTagOption = tagOption{}
 
 type dependencyOption func(deps []serviceKey) error
 
-func (o dependencyOption) applyServiceConfig(sc serviceConfig) error {
-	return o(sc.Dependencies())
+func (o dependencyOption) applyService(s *service) error {
+	return o(s.Dependencies())
 }
 
 func (o dependencyOption) applyInvokeConfig(c *invokeConfig) error {
