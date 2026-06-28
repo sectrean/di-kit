@@ -17,7 +17,7 @@ tasks:
     cmds:
       - go test -bench=. -benchmem ./...
 
-  mocks:
+  generate:
     cmds:
       - mockery
 

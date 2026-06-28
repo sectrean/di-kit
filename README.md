@@ -49,7 +49,6 @@ svc, err := di.Resolve[*service.Service](ctx, c)
 ```shell
 go get github.com/sectrean/di-kit
 ```
-*Requires Go 1.22 or higher*
 
 ### Create the Container
 
