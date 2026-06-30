@@ -11,9 +11,9 @@ import (
 // Use when registering a service with [WithService].
 //
 // Available lifetimes:
-//   - [SingletonLifetime] specifies that a service is created once and subsequent requests return the same instance.
-//   - [TransientLifetime] specifies that a service is created for each request.
-//   - [ScopedLifetime] specifies that a service is created once per scope.
+//   - [Singleton] specifies that a service is created once and subsequent requests return the same instance.
+//   - [Transient] specifies that a service is created for each request.
+//   - [Scoped] specifies that a service is created once per scope.
 //
 // Example:
 //
@@ -24,20 +24,20 @@ import (
 type Lifetime uint8
 
 const (
-	// SingletonLifetime specifies that a service is created once and subsequent requests to resolve return the same instance.
+	// Singleton specifies that a service is created once and subsequent requests to resolve return the same instance.
 	//
 	// This is the default lifetime for services.
-	SingletonLifetime Lifetime = iota
+	Singleton Lifetime = iota
 
-	// TransientLifetime specifies that a service is created for each request.
-	TransientLifetime Lifetime = iota
+	// Transient specifies that a service is created for each request.
+	Transient Lifetime = iota
 
-	// ScopedLifetime specifies that a service is created once per scope.
-	ScopedLifetime Lifetime = iota
+	// Scoped specifies that a service is created once per scope.
+	Scoped Lifetime = iota
 )
 
 func (l Lifetime) applyService(s *service) error {
-	if s.IsValue() && l != SingletonLifetime {
+	if s.IsValue() && l != Singleton {
 		// Value services can only be singletons because they are created outside of the container.
 		return errors.Errorf("Lifetime %s: invalid lifetime for value service", l)
 	}
@@ -46,15 +46,15 @@ func (l Lifetime) applyService(s *service) error {
 	return nil
 }
 
-var _ ServiceOption = SingletonLifetime
+var _ ServiceOption = Singleton
 
 func (l Lifetime) String() string {
 	switch l {
-	case SingletonLifetime:
+	case Singleton:
 		return "Singleton"
-	case TransientLifetime:
+	case Transient:
 		return "Transient"
-	case ScopedLifetime:
+	case Scoped:
 		return "Scoped"
 	default:
 		return fmt.Sprintf("Unknown Lifetime %d", l)

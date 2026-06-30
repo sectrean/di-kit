@@ -185,7 +185,7 @@ func newService(c *Container, v reflect.Value, opts ...ServiceOption) (*service,
 	s := &service{
 		scope:    c,
 		v:        v,
-		lifetime: SingletonLifetime,
+		lifetime: Singleton,
 	}
 	var err error
 

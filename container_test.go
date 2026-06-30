@@ -73,7 +73,7 @@ func Test_NewContainer(t *testing.T) {
 
 	t.Run("WithService invalid type di.Lifetime", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(di.SingletonLifetime, di.WithTag("tag")),
+			di.WithService(di.Singleton, di.WithTag("tag")),
 		)
 		testutils.LogError(t, err)
 
@@ -154,7 +154,7 @@ func Test_NewContainer(t *testing.T) {
 
 	t.Run("WithService SingletonLifetime value service", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(&testtypes.StructA{}, di.SingletonLifetime),
+			di.WithService(&testtypes.StructA{}, di.Singleton),
 		)
 		assert.NotNil(t, c)
 		assert.NoError(t, err)
@@ -162,7 +162,7 @@ func Test_NewContainer(t *testing.T) {
 
 	t.Run("WithService TransientLifetime value service", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(&testtypes.StructA{}, di.TransientLifetime),
+			di.WithService(&testtypes.StructA{}, di.Transient),
 		)
 		testutils.LogError(t, err)
 
@@ -331,7 +331,7 @@ func Test_NewContainer(t *testing.T) {
 	t.Run("WithDependencyValidation scoped service", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
-			di.WithService(testtypes.NewInterfaceC, di.ScopedLifetime),
+			di.WithService(testtypes.NewInterfaceC, di.Scoped),
 			di.WithDependencyValidation(),
 		)
 		assert.NotNil(t, c)
@@ -406,7 +406,7 @@ func Test_Container_NewScope(t *testing.T) {
 	t.Run("no options", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
-			di.WithService(testtypes.NewInterfaceB, di.ScopedLifetime),
+			di.WithService(testtypes.NewInterfaceB, di.Scoped),
 		)
 		require.NoError(t, err)
 
@@ -444,7 +444,7 @@ func Test_Container_NewScope(t *testing.T) {
 		require.NoError(t, err)
 
 		scope, err := c.NewScope(
-			di.WithService(di.ScopedLifetime),
+			di.WithService(di.Scoped),
 		)
 		testutils.LogError(t, err)
 
@@ -470,7 +470,7 @@ func Test_Container_NewScope(t *testing.T) {
 	t.Run("WithDependencyValidation", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
-			di.WithService(testtypes.NewInterfaceB, di.ScopedLifetime),
+			di.WithService(testtypes.NewInterfaceB, di.Scoped),
 			di.WithDependencyValidation(),
 		)
 		require.NoError(t, err)
@@ -483,7 +483,7 @@ func Test_Container_NewScope(t *testing.T) {
 
 	t.Run("WithDependencyValidation service not registered", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceB, di.ScopedLifetime),
+			di.WithService(testtypes.NewInterfaceB, di.Scoped),
 			di.WithDependencyValidation(),
 		)
 		require.NoError(t, err)
@@ -503,7 +503,7 @@ func Test_Container_NewScope(t *testing.T) {
 	t.Run("WithDependencyValidation dependency cycle", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
-			di.WithService(func(testtypes.InterfaceB) testtypes.InterfaceC { return nil }, di.ScopedLifetime),
+			di.WithService(func(testtypes.InterfaceB) testtypes.InterfaceC { return nil }, di.Scoped),
 			di.WithDependencyValidation(),
 		)
 		require.NoError(t, err)
@@ -949,7 +949,7 @@ func Test_Container_Resolve(t *testing.T) {
 					calls++
 					return &testtypes.StructA{Tag: 1}
 				},
-				di.SingletonLifetime,
+				di.Singleton,
 			),
 		)
 		require.NoError(t, err)
@@ -975,7 +975,7 @@ func Test_Container_Resolve(t *testing.T) {
 					calls++
 					return &testtypes.StructA{Tag: 1}
 				},
-				di.SingletonLifetime,
+				di.Singleton,
 			),
 		)
 		require.NoError(t, err)
@@ -1004,7 +1004,7 @@ func Test_Container_Resolve(t *testing.T) {
 					calls++
 					return &testtypes.StructA{Tag: calls}
 				},
-				di.TransientLifetime,
+				di.Transient,
 			),
 		)
 		require.NoError(t, err)
@@ -1032,7 +1032,7 @@ func Test_Container_Resolve(t *testing.T) {
 					assert.NotNil(t, a)
 					return &testtypes.StructB{}
 				},
-				di.ScopedLifetime,
+				di.Scoped,
 			),
 		)
 		require.NoError(t, err)
@@ -1060,7 +1060,7 @@ func Test_Container_Resolve(t *testing.T) {
 	t.Run("ScopedLifetime resolve from root", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
-			di.WithService(testtypes.NewInterfaceB, di.ScopedLifetime),
+			di.WithService(testtypes.NewInterfaceB, di.Scoped),
 		)
 		require.NoError(t, err)
 
@@ -1079,7 +1079,7 @@ func Test_Container_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		scope1, err := root.NewScope(
-			di.WithService(testtypes.NewInterfaceB, di.ScopedLifetime),
+			di.WithService(testtypes.NewInterfaceB, di.Scoped),
 		)
 		require.NoError(t, err)
 
@@ -1100,8 +1100,8 @@ func Test_Container_Resolve(t *testing.T) {
 
 	t.Run("ScopedLifetime dependencies", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA, di.SingletonLifetime),
-			di.WithService(testtypes.NewInterfaceC, di.ScopedLifetime),
+			di.WithService(testtypes.NewInterfaceA, di.Singleton),
+			di.WithService(testtypes.NewInterfaceC, di.Scoped),
 		)
 		require.NoError(t, err)
 
@@ -1123,8 +1123,8 @@ func Test_Container_Resolve(t *testing.T) {
 
 	t.Run("ScopedLifetime captive dependency", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA, di.ScopedLifetime),
-			di.WithService(testtypes.NewInterfaceB, di.SingletonLifetime),
+			di.WithService(testtypes.NewInterfaceA, di.Scoped),
+			di.WithService(testtypes.NewInterfaceB, di.Singleton),
 		)
 		require.NoError(t, err)
 
@@ -1786,11 +1786,11 @@ func Test_Container_Resolve(t *testing.T) {
 			di.WithService(func() testtypes.InterfaceA {
 				time.Sleep(time.Duration(r) * time.Microsecond)
 				return &testtypes.StructA{}
-			}, di.TransientLifetime),
+			}, di.Transient),
 			di.WithService(func(testtypes.InterfaceA) testtypes.InterfaceB {
 				calls++
 				return &testtypes.StructB{}
-			}, di.ScopedLifetime),
+			}, di.Scoped),
 		)
 		require.NoError(t, err)
 

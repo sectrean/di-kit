@@ -136,7 +136,7 @@ func (c *Container) validateDependencies() error {
 
 	for _, svcs := range c.services {
 		for _, svc := range svcs {
-			if svc.Lifetime() == ScopedLifetime {
+			if svc.Lifetime() == Scoped {
 				// Scoped services are not validated
 				continue
 			}
@@ -152,7 +152,7 @@ func (c *Container) validateDependencies() error {
 		// Validate scoped services on the parent Container
 		for _, svcs := range c.parent.services {
 			for _, svc := range svcs {
-				if svc.Lifetime() != ScopedLifetime {
+				if svc.Lifetime() != Scoped {
 					// Now we only want the scoped services
 					continue
 				}
@@ -239,7 +239,7 @@ func (c *Container) lookupService(key serviceKey) *service {
 // NewScope creates a new [Container] with a child scope.
 //
 // Services registered with the parent container will be inherited by the child.
-// For services registered with [ScopedLifetime], each child container will create an isolated instance
+// For services registered with [Scoped], each child container will create an isolated instance
 // when the service is resolved.
 //
 // Additional services can be registered when creating the new scope if needed and they will be isolated from
@@ -410,15 +410,15 @@ func resolveService(
 	// For singleton services, use the scope the service is registered with.
 	// Otherwise, use the current scope.
 	lifetime := svc.Lifetime()
-	if lifetime == SingletonLifetime {
+	if lifetime == Singleton {
 		scope = svc.Scope()
-	} else if lifetime == ScopedLifetime && scope == svc.Scope() {
+	} else if lifetime == Scoped && scope == svc.Scope() {
 		return nil, errors.New("scoped service must be resolved from a child scope")
 	}
 
 	// For Singleton or Scoped services, we store the result.
 	// See if this service has already been resolved.
-	if lifetime != TransientLifetime {
+	if lifetime != Transient {
 		scope.resolvedMu.RLock()
 		res, exists := scope.resolved[svc]
 		scope.resolvedMu.RUnlock()
@@ -474,7 +474,7 @@ func resolveService(
 		}
 	}
 
-	if svc.Lifetime() != TransientLifetime {
+	if svc.Lifetime() != Transient {
 		// We need to lock before we create the service to make sure we don't create it twice
 		scope.resolvedMu.Lock()
 		defer scope.resolvedMu.Unlock()

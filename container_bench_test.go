@@ -46,7 +46,7 @@ func Benchmark_Container_NewScope(b *testing.B) {
 	b.Run("no new services", func(b *testing.B) {
 		root, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceAStruct),
-			di.WithService(testtypes.NewInterfaceBStruct, di.ScopedLifetime),
+			di.WithService(testtypes.NewInterfaceBStruct, di.Scoped),
 		)
 		require.NoError(b, err)
 
@@ -170,7 +170,7 @@ func Benchmark_Container_Resolve(b *testing.B) {
 	b.Run("singleton func", func(b *testing.B) {
 		ctx := context.Background()
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceA, di.SingletonLifetime),
+			di.WithService(testtypes.NewInterfaceA, di.Singleton),
 		)
 		require.NoError(b, err)
 
@@ -246,7 +246,7 @@ func Benchmark_Container_Resolve(b *testing.B) {
 	b.Run("transient func", func(b *testing.B) {
 		ctx := context.Background()
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceAStruct, di.TransientLifetime),
+			di.WithService(testtypes.NewInterfaceAStruct, di.Transient),
 		)
 		require.NoError(b, err)
 
@@ -260,7 +260,7 @@ func Benchmark_Container_Resolve(b *testing.B) {
 	b.Run("transient func parallel", func(b *testing.B) {
 		ctx := context.Background()
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceAStruct, di.TransientLifetime),
+			di.WithService(testtypes.NewInterfaceAStruct, di.Transient),
 		)
 		require.NoError(b, err)
 
@@ -276,8 +276,8 @@ func Benchmark_Container_Resolve(b *testing.B) {
 	b.Run("transient func with transient dep", func(b *testing.B) {
 		ctx := context.Background()
 		c, err := di.NewContainer(
-			di.WithService(testtypes.NewInterfaceAStruct, di.TransientLifetime),
-			di.WithService(testtypes.NewInterfaceBStruct, di.TransientLifetime),
+			di.WithService(testtypes.NewInterfaceAStruct, di.Transient),
+			di.WithService(testtypes.NewInterfaceBStruct, di.Transient),
 		)
 		require.NoError(b, err)
 
@@ -291,8 +291,8 @@ func Benchmark_Container_Resolve(b *testing.B) {
 
 func newParent(b *testing.B) *di.Container {
 	parent, err := di.NewContainer(
-		di.WithService(testtypes.NewInterfaceAStruct, di.SingletonLifetime),
-		di.WithService(testtypes.NewInterfaceBStruct, di.ScopedLifetime),
+		di.WithService(testtypes.NewInterfaceAStruct, di.Singleton),
+		di.WithService(testtypes.NewInterfaceBStruct, di.Scoped),
 	)
 	require.NoError(b, err)
 	return parent

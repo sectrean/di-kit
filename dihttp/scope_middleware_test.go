@@ -48,7 +48,7 @@ func Test_Middleware(t *testing.T) {
 	t.Run("Resolve scoped service", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
-			di.WithService(testtypes.NewInterfaceB, di.ScopedLifetime),
+			di.WithService(testtypes.NewInterfaceB, di.Scoped),
 		)
 		require.NoError(t, err)
 
@@ -144,7 +144,7 @@ func Test_Middleware(t *testing.T) {
 				return &testtypes.StructA{
 					Tag: r.URL.Path,
 				}
-			}, di.ScopedLifetime),
+			}, di.Scoped),
 		)
 		require.NoError(t, err)
 
@@ -237,7 +237,7 @@ func Test_Middleware(t *testing.T) {
 					Return(errors.New("close error"))
 
 				return a
-			}, di.TransientLifetime),
+			}, di.Transient),
 		)
 		require.NoError(t, err)
 
@@ -271,7 +271,7 @@ func Test_Middleware(t *testing.T) {
 					Return(errors.New("close error"))
 
 				return a
-			}, di.TransientLifetime),
+			}, di.Transient),
 		)
 		require.NoError(t, err)
 

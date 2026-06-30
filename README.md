@@ -238,8 +238,8 @@ Specify a lifetime when registering a function service:
 
 ```go
 c, err := di.NewContainer(
-	di.WithService(service.NewScopedService, di.ScopedLifetime),
-	di.WithService(service.NewTransientService, di.TransientLifetime),
+	di.WithService(service.NewScopedService, di.Scoped),
+	di.WithService(service.NewTransientService, di.Transient),
 )
 ```
 
@@ -251,7 +251,7 @@ You can create new Containers with child scopes. Scoped dependencies can be reso
 c, err := di.NewContainer(
 	di.WithService(logger),
 	di.WithService(service.NewService),
-	di.WithService(service.NewScopedService, di.ScopedLifetime),
+	di.WithService(service.NewScopedService, di.Scoped),
 )
 
 scope, err := c.NewScope()
@@ -337,7 +337,7 @@ The `dihttp` package provides configurable `net/http` middleware to create new c
 ```go
 c, err := di.NewContainer(
 	di.WithService(logger),
-	di.WithService(service.NewRequestService, di.ScopedLifetime), // NewRequestService(*slog.Logger, *http.Request) *service.RequestService
+	di.WithService(service.NewRequestService, di.Scoped), // NewRequestService(*slog.Logger, *http.Request) *service.RequestService
 )
 // ...
 

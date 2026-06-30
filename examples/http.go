@@ -19,7 +19,7 @@ func HTTP_Example() {
 	c, err := di.NewContainer(
 		di.WithService(logger),
 		di.WithService(foo.NewFooService),
-		di.WithService(bar.NewBarService, di.ScopedLifetime),
+		di.WithService(bar.NewBarService, di.Scoped),
 	)
 	if err != nil {
 		logger.Error("error creating container", "error", err)
