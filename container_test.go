@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sectrean/di-kit"
+	"github.com/sectrean/di-kit/ditest"
 	"github.com/sectrean/di-kit/internal/errors"
 	"github.com/sectrean/di-kit/internal/mocks"
 	"github.com/sectrean/di-kit/internal/testtypes"
@@ -35,8 +36,7 @@ func Test_NewContainer(t *testing.T) {
 		assert.NotNil(t, c)
 		assert.NoError(t, err)
 
-		has := di.Contains[testtypes.InterfaceA](c)
-		assert.True(t, has)
+		ditest.AssertContains[testtypes.InterfaceA](t, c)
 	})
 
 	t.Run("WithService invalid type int", func(t *testing.T) {
@@ -414,8 +414,8 @@ func Test_Container_NewScope(t *testing.T) {
 		assert.NotNil(t, scope)
 		assert.NoError(t, err)
 
-		assert.True(t, di.Contains[testtypes.InterfaceA](scope))
-		assert.True(t, di.Contains[testtypes.InterfaceB](scope))
+		ditest.AssertContains[testtypes.InterfaceA](t, scope)
+		ditest.AssertContains[testtypes.InterfaceB](t, scope)
 	})
 
 	t.Run("WithService", func(t *testing.T) {
@@ -430,11 +430,11 @@ func Test_Container_NewScope(t *testing.T) {
 		assert.NotNil(t, scope)
 		assert.NoError(t, err)
 
-		assert.True(t, di.Contains[testtypes.InterfaceA](c))
-		assert.False(t, di.Contains[testtypes.InterfaceB](c))
+		ditest.AssertContains[testtypes.InterfaceA](t, c)
+		ditest.AssertNotContains[testtypes.InterfaceB](t, c)
 
-		assert.True(t, di.Contains[testtypes.InterfaceA](scope))
-		assert.True(t, di.Contains[testtypes.InterfaceB](scope))
+		ditest.AssertContains[testtypes.InterfaceA](t, scope)
+		ditest.AssertContains[testtypes.InterfaceB](t, scope)
 	})
 
 	t.Run("WithService invalid type di.Lifetime", func(t *testing.T) {
@@ -1656,7 +1656,7 @@ func Test_Container_Resolve(t *testing.T) {
 						"not supported within service constructor function")
 
 				// Contains can be called though
-				assert.True(t, di.Contains[testtypes.InterfaceA](scope))
+				ditest.AssertContains[testtypes.InterfaceA](t, scope)
 
 				// We have to store it and we can call Resolve later.
 				return NewScopeFactory(scope, func(ctx context.Context, s di.Scope) (testtypes.InterfaceA, error) {

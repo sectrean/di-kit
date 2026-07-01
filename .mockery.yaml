@@ -7,6 +7,9 @@ packages:
   github.com/sectrean/di-kit:
     interfaces:
       Scope:
+  github.com/sectrean/di-kit/ditest:
+    interfaces:
+      TestingT:
   github.com/sectrean/di-kit/internal/testtypes:
     interfaces:
       InterfaceA:
