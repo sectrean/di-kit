@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/sectrean/di-kit"
-	"github.com/sectrean/di-kit/examples/foo"
+	"github.com/sectrean/di-kit/examples/service"
 )
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
 	c, err := di.NewContainer(
 		// Register services with values and functions
 		di.WithService(logger),
-		di.WithService(foo.NewFooService),
+		di.WithService(service.NewService),
 	)
 	if err != nil {
 		logger.ErrorContext(ctx, "error creating container", "error", err)
@@ -33,9 +33,9 @@ func main() {
 	}()
 
 	// Resolve our service from the container
-	fooSvc := di.MustResolve[*foo.FooService](ctx, c)
+	svc := di.MustResolve[*service.Service](ctx, c)
 
-	err = fooSvc.Run(ctx)
+	err = svc.Run(ctx)
 	if err != nil {
 		logger.ErrorContext(ctx, "error running service", "error", err)
 	}

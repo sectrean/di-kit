@@ -8,10 +8,16 @@ import (
 	"github.com/sectrean/di-kit/internal/errors"
 )
 
-// Scope is an interface to resolve services from a [Container].
+// Scope is an interface for resolving services from a [Container].
 //
-// Scope can be used as a parameter for a service's constructor function.
-// This can be used to create a "factory" service.
+// Example:
+//
+//	svc, err := di.Resolve[*service.Service](ctx, scope)
+//
+// # Scope as a Parameter
+//
+// [Scope] can be used as a constructor function parameter to create
+// a "factory" service.
 //
 // Note that the Scope should be stored on the service struct for later use.
 // Resolve cannot be called from within the constructor function.
@@ -19,17 +25,17 @@ import (
 //
 // Example:
 //
-//	type DBFactory struct {
-//		scope di.Scope
+//	type Factory struct {
+//		scope  di.Scope
 //		config Config
 //	}
 //
-//	func NewDBFactory(s di.Scope, c Config) *DBFactory {
-//		return &DBFactory{scope: s, config: c}
+//	func NewFactory(s di.Scope, c Config) *Factory {
+//		return &Factory{scope: s, config: c}
 //	}
 //
-//	func (f *DBFactory) NewDB(ctx context.Context, dbName string) *DB {
-//		// Use the Scope to resolve dependencies...
+//	func (f *Factory) New(ctx context.Context, name string) Service {
+//		// Use f.scope to manually resolve dependencies...
 //	}
 type Scope interface {
 	// Contains returns true if the Scope can resolve a service of the given type.

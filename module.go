@@ -5,14 +5,14 @@ package di
 //
 // Example:
 //
-//	var DependencyModule = di.Module{
+//	var Deps = di.Module{
+//		di.WithService(NewLogger),
 //		di.WithService(NewDB),
-//		di.WithService(NewStore),
-//		di.WithService(NewService),
 //	}
 type Module []ContainerOption
 
 func (m Module) applyContainer(c *Container) error {
+	// Apply each option contained in this module
 	return applyOptions(m, func(o ContainerOption) error {
 		return o.applyContainer(c)
 	})
@@ -25,9 +25,12 @@ var _ ContainerOption = Module{}
 // Example:
 //
 //	c, err := di.NewContainer(
-//		di.WithModule(DependencyModule), // var DependencyModule di.Module
-//		di.WithService(NewHandler), // NewHandler(*slog.Logger, *db.DB) *Handler
+//		di.WithModule(common.Deps),
+//		di.WithModule(service.Deps),
 //	)
+//
+//	// Can also be used directly as an option
+//	c, err := di.NewContainer(common.Deps, service.Deps)
 func WithModule(m Module) ContainerOption {
 	return m
 }

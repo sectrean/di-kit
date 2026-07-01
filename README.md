@@ -193,37 +193,44 @@ Variadic parameters can also be used, but the dependency is considered optional.
 
 If you want to register multiple services as the same type, but be able to differentiate them when resolving, use `di.WithTag()` when registering the service.
 
-Use `di.WithTagged[Dependency]()` when registering a service to specify a tag to use when resolving a dependency.
+Use `di.WithTagged[Dependency]()` to specify a tag to use when resolving a dependency.
 
 ```go
+type dbTag uint8
+
+const (
+	dbPrimary dbTag iota,
+	dbReplica
+)
+
 c, err := di.NewContainer(
-	di.WithService(db.NewPrimaryDB, // NewPrimaryDB(context.Context) (*sql.DB, error)
-		di.WithTag(db.Primary),
+	di.WithService(db.ConnectPrimaryDB, // ConnectPrimaryDB(context.Context) (*sql.DB, error)
+		di.WithTag(dbPrimary),
 	),
-	di.WithService(db.NewReplicaDB, // NewReplicaDB(context.Context) (*sql.DB, error)
-		di.WithTag(db.Replica),
+	di.WithService(db.ConnectReplicaDB, // ConnectReplicaDB(context.Context) (*sql.DB, error)
+		di.WithTag(dbReplica),
 	),
-	di.WithService(storage.NewReadWriteStore, // NewReadWriteStore(*sql.DB) *storage.ReadWriteStore
-		di.WithTagged[*sql.DB](db.Primary),
+	di.WithService(storage.NewReadWriteStore, // NewReadWriteStore(*sql.DB) *ReadWriteStore
+		di.WithTagged[*sql.DB](dbPrimary),
 	),
-	di.WithService(storage.NewReadOnlyStore, // NewReadOnlyStore(*sql.DB) *storage.ReadOnlyStore
-		di.WithTagged[*sql.DB](db.Replica),
+	di.WithService(storage.NewReadOnlyStore, // NewReadOnlyStore(*sql.DB) *ReadOnlyStore
+		di.WithTagged[*sql.DB](dbReplica),
 	),
 )
 ```
 
 ```go
-// The *sql.DB service tagged with db.Primary will be injected
+// The *sql.DB service tagged with dbPrimary will be injected
 rwStore, err := di.Resolve[*storage.ReadWriteStore](ctx, c)
 
-// The *sql.DB service tagged with db.Replica will be injected
+// The *sql.DB service tagged with dbReplica will be injected
 roStore, err := di.Resolve[*storage.ReadOnlyStore](ctx, c)
 ```
 
 Use `di.WithTag()` to specify a tag when resolving a service directly from a container.
 
 ```go
-primary, err := di.Resolve[*sql.DB](ctx, c, di.WithTag(db.Primary))
+primary, err := di.Resolve[*sql.DB](ctx, c, di.WithTag(dbPrimary))
 ```
 
 ### Lifetimes
@@ -268,7 +275,7 @@ New services can also be registered when creating a child scope. These new servi
 
 ```go
 scope, err := c.NewScope(
-	di.WithService(requestService),
+	di.WithService(scopeValue),
 )
 ```
 
@@ -281,16 +288,17 @@ A couple services are provided directly by the container and cannot be registere
 `di.Scope` - The current container scope can be injected into a service as `di.Scope`. This allows you to create a "factory" service that can resolve dependencies from the container scope. The scope must be stored and only used *after* the constructor function returns.
 
 ```go
-func NewDBFactory(scope di.Scope) *DBFactory {
-	return &DBFactory{scope}
+func NewFactory(s di.Scope, c Config) *Factory {
+	return &Factory{scope: s, config: c}
 }
 
-type DBFactory struct {
-	scope di.Scope
+type Factory struct {
+	scope  di.Scope
+	config Config
 }
 
-func (f *DBFactory) NewDB(ctx context.Context, dbName string) *DB {
-	// Use f.scope to resolve dependencies needed to create a *DB...
+func (f *Factory) New(ctx context.Context, name string) (Service, error) {
+	// Use f.scope to manually resolve dependencies...
 }
 ```
 
@@ -299,23 +307,32 @@ func (f *DBFactory) NewDB(ctx context.Context, dbName string) *DB {
 Modules allow you to export a collection of container options (service registrations) that can be re-used for different containers.
 
 ```go
-var DependencyModule = di.Module{
-	di.WithService(NewLogger),
+package common
+
+var Dependencies = di.Module{
+	di.WithService(NewLogger), // NewLogger() *slog.Logger
 	//...
 }
 ```
 
 ```go
 c, err := di.NewContainer(
-	di.WithModule(DependencyModule), // var DependencyModule di.Module
-	di.WithService(service.NewService), // NewService(*slog.Logger) *service.Service
+	di.WithModule(common.Dependencies), // var Dependencies di.Module
+	di.WithService(service.NewService), // NewService(*slog.Logger) *Service
+	//...
 )
+```
+
+Modules can also be used directly as container options.
+
+```go
+c, err := di.NewContainer(common.Dependencies, service.Dependencies)
 ```
 
 ## `dicontext`
 
 The `dicontext` package allows you to add a container scope to a `context.Context`.
-Then the scope can be retrieved from the context and used as a [service locator](https://en.wikipedia.org/wiki/Service_locator_pattern).
+Then the scope can be used as a [service locator](https://en.wikipedia.org/wiki/Service_locator_pattern) from a context.
 
 ```go
 // Add container scope to the context
@@ -336,16 +353,15 @@ The `dihttp` package provides configurable `net/http` middleware to create new c
 
 ```go
 c, err := di.NewContainer(
-	di.WithService(logger),
-	di.WithService(service.NewRequestService, di.Scoped), // NewRequestService(*slog.Logger, *http.Request) *service.RequestService
+	di.WithService(logger), // var logger *slog.Logger
+	di.WithService(service.NewRequestService, di.Scoped), // NewRequestService(*slog.Logger, *http.Request) *RequestService
 )
 // ...
 
 var handler http.Handler
 handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	// Access the scope from the request context
-	ctx := r.Context()
-	svc, err := dicontext.Resolve[*service.RequestService](ctx)
+	svc, err := dicontext.Resolve[*service.RequestService](r.Context())
 	// ...
 })
 

@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_DependencyModule(t *testing.T) {
+func Test_Deps(t *testing.T) {
 	_, err := di.NewContainer(
-		di.WithModule(DependencyModule),
+		di.WithModule(Deps),
 		di.WithDependencyValidation(),
 	)
 
