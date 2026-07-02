@@ -12,20 +12,6 @@ import (
 // When registering a service, this option can be used multiple times to
 // associate multiple tags with a service.
 //
-// Example:
-//
-//	c, err := di.NewContainer(
-//		di.WithService(client.NewReadClient,
-//			di.WithTag(client.Read),
-//		),
-//		di.WithService(client.NewWriteClient,
-//			di.WithTag(client.Write),
-//			di.WithTag(nil), // Associate the default tag with this service too
-//		),
-//	)
-//
-//	readClient := di.MustResolve[*client.Client](ctx, c, di.WithTag(client.Read))
-//
 // WithTag can be used with:
 //   - [WithService]
 //   - [Resolve]
@@ -47,22 +33,10 @@ type ServiceTagOption interface {
 // WithTagged is used to specify a tag for a service dependency when calling
 // [WithService] or [Invoke].
 //
-// This option can be used multiple times to specify keys for function service dependencies.
-//
-// Example:
-//
-//	c, err := di.NewContainer(
-//		di.WithService(db.NewPrimaryDB, di.WithTag(db.Primary)),
-//		di.WithService(db.NewReplicaDB, di.WithTag(db.Replica)),
-//		di.WithService(storage.NewReadWriteStore,
-//			di.WithTagged[*db.DB](db.Primary),
-//		),
-//		di.WithService(storage.NewReadOnlyStore,
-//			di.WithTagged[*db.DB](db.Replica),
-//		),
-//	)
-//
 // This option will return an error if the service does not have a dependency of type *Dependency*.
+//
+// This option can be used multiple times to specify keys for function service dependencies.
+// Multiple dependencies of the same type are allowed, but they should each have a non-nil tag specified.
 func WithTagged[Dependency any](tag any) DependencyOption {
 	// Assign the tag to the first dependency of the right type that does not already have a tag.
 	// If no dependency is found, an error is returned.

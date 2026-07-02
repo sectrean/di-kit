@@ -14,13 +14,6 @@ import (
 //   - [Singleton] specifies that a service is created once and subsequent requests return the same instance.
 //   - [Transient] specifies that a service is created for each request.
 //   - [Scoped] specifies that a service is created once per scope.
-//
-// Example:
-//
-//	c, err := di.NewContainer(
-//		di.WithService(NewService, di.Transient),
-//		di.WithService(NewRequestService, di.Scoped),
-//	)
 type Lifetime uint8
 
 const (

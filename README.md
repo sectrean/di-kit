@@ -196,41 +196,35 @@ If you want to register multiple services as the same type, but be able to diffe
 Use `di.WithTagged[Dependency]()` to specify a tag to use when resolving a dependency.
 
 ```go
-type depTag uint8
-
-const (
-	dbPrimary depTag iota,
-	dbReplica
-)
-
 c, err := di.NewContainer(
 	di.WithService(db.ConnectPrimaryDB, // ConnectPrimaryDB(context.Context) (*sql.DB, error)
-		di.WithTag(dbPrimary),
+		di.WithTag(db.Primary),
+		di.WithTag(nil), // Also allow resolving with no tag
 	),
 	di.WithService(db.ConnectReplicaDB, // ConnectReplicaDB(context.Context) (*sql.DB, error)
-		di.WithTag(dbReplica),
+		di.WithTag(db.Replica),
 	),
 	di.WithService(storage.NewReadWriteStore, // NewReadWriteStore(*sql.DB) *ReadWriteStore
-		di.WithTagged[*sql.DB](dbPrimary),
+		di.WithTagged[*sql.DB](db.Primary),
 	),
 	di.WithService(storage.NewReadOnlyStore, // NewReadOnlyStore(*sql.DB) *ReadOnlyStore
-		di.WithTagged[*sql.DB](dbReplica),
+		di.WithTagged[*sql.DB](db.Replica),
 	),
 )
 ```
 
 ```go
-// The *sql.DB service tagged with dbPrimary will be injected
+// The *sql.DB service tagged with db.Primary will be injected
 rwStore, err := di.Resolve[*storage.ReadWriteStore](ctx, c)
 
-// The *sql.DB service tagged with dbReplica will be injected
+// The *sql.DB service tagged with db.Replica will be injected
 roStore, err := di.Resolve[*storage.ReadOnlyStore](ctx, c)
 ```
 
 Use `di.WithTag()` to specify a tag when resolving a service directly from a container.
 
 ```go
-primary, err := di.Resolve[*sql.DB](ctx, c, di.WithTag(dbPrimary))
+primary, err := di.Resolve[*sql.DB](ctx, c, di.WithTag(db.Primary))
 ```
 
 ### Lifetimes
