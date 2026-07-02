@@ -54,7 +54,7 @@ func WithTagged[Dependency any](tag any) DependencyOption {
 			}
 		}
 
-		return errors.Errorf("WithTagged %s: parameter not found", depType)
+		return errors.Errorf("di.WithTagged %s: parameter not found", depType)
 	})
 }
 

@@ -192,7 +192,7 @@ func Test_Middleware(t *testing.T) {
 			dihttp.WithNewScopeErrorHandler(func(w http.ResponseWriter, r *http.Request, err error) {
 				assert.NotNil(t, w)
 				assert.NotNil(t, r)
-				assert.EqualError(t, err, "di.Container.NewScope: WithService: funcOrValue is nil")
+				assert.EqualError(t, err, "di.Container.NewScope: di.WithService: funcOrValue is nil")
 				called = true
 
 				w.WriteHeader(599)

@@ -145,7 +145,7 @@ func Test_Invoke(t *testing.T) {
 		assert.EqualError(t, err, "di.Invoke func(context.Context, testtypes.InterfaceA): di.Container.Resolve testtypes.InterfaceA: context canceled")
 	})
 
-	t.Run("WithTagged", func(t *testing.T) {
+	t.Run("di.WithTagged", func(t *testing.T) {
 		a := &testtypes.StructA{}
 
 		c, err := di.NewContainer(
@@ -172,7 +172,7 @@ func Test_Invoke(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("WithTagged parameter not found", func(t *testing.T) {
+	t.Run("di.WithTagged parameter not found", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -185,6 +185,6 @@ func Test_Invoke(t *testing.T) {
 		)
 		testutils.LogError(t, err)
 
-		assert.EqualError(t, err, "di.Invoke func(testtypes.InterfaceA): WithTagged testtypes.InterfaceB: parameter not found")
+		assert.EqualError(t, err, "di.Invoke func(testtypes.InterfaceA): di.WithTagged testtypes.InterfaceB: parameter not found")
 	})
 }

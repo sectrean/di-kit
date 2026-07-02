@@ -49,7 +49,7 @@ type Scope interface {
 	Resolve(ctx context.Context, t reflect.Type, opts ...ResolveOption) (any, error)
 }
 
-// Resolve a service of type *Service*.
+// Resolve a service of type Service.
 //
 // See [Container.Resolve] for more information.
 func Resolve[Service any](ctx context.Context, s Scope, opts ...ResolveOption) (Service, error) {
@@ -62,7 +62,7 @@ func Resolve[Service any](ctx context.Context, s Scope, opts ...ResolveOption) (
 	return val, err
 }
 
-// MustResolve resolves a service of type *Service*.
+// MustResolve resolves a service of type Service.
 //
 // See [Container.Resolve] for more information.
 //

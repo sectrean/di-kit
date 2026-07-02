@@ -30,9 +30,17 @@ const (
 )
 
 func (l Lifetime) applyService(s *service) error {
-	if s.IsValue() && l != Singleton {
-		// Value services can only be singletons because they are created outside of the container.
-		return errors.Errorf("Lifetime %s: invalid lifetime for value service", l)
+	switch l {
+	case Singleton:
+		// Singleton is always valid
+	case Transient, Scoped:
+		if s.IsValue() {
+			// Value services can only be singletons because they are created outside of the container.
+			return errors.Errorf("%s: invalid lifetime for value service", l.string())
+		}
+
+	default:
+		return errors.Errorf("%s: invalid lifetime", l.string())
 	}
 
 	s.lifetime = l
@@ -41,15 +49,15 @@ func (l Lifetime) applyService(s *service) error {
 
 var _ ServiceOption = Singleton
 
-func (l Lifetime) String() string {
+func (l Lifetime) string() string {
 	switch l {
 	case Singleton:
-		return "Singleton"
+		return "di.Singleton"
 	case Transient:
-		return "Transient"
+		return "di.Transient"
 	case Scoped:
-		return "Scoped"
+		return "di.Scoped"
 	default:
-		return fmt.Sprintf("Unknown Lifetime %d", l)
+		return fmt.Sprintf("di.Lifetime(%d)", l)
 	}
 }

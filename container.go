@@ -69,7 +69,7 @@ func (c *Container) applyOptions(opts []ContainerOption) error {
 	if c.validate {
 		err := c.validateDependencies()
 		if err != nil {
-			return errors.Wrap(err, "WithDependencyValidation")
+			return errors.Wrap(err, "di.WithDependencyValidation")
 		}
 	}
 

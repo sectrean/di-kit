@@ -30,6 +30,7 @@ import (
 // (It will be registered as the actual type even if the variable was declared as an interface.)
 //
 // A service can be almost any named type including structs, interfaces, basic types, functions, or a pointer to a named type.
+// A function with a named type will be treated as a value service, not a constructor function.
 // Some types like [error] and [context.Context] are reserved and cannot be registered as services.
 //
 // Available options:
@@ -56,12 +57,12 @@ func WithService(funcOrValue any, opts ...ServiceOption) ContainerOption {
 	return containerOption(func(c *Container) error {
 		v := reflect.ValueOf(funcOrValue)
 		if isNil(v) {
-			return errors.New("WithService: funcOrValue is nil")
+			return errors.New("di.WithService: funcOrValue is nil")
 		}
 
 		s, err := newService(c, v, opts...)
 		if err != nil {
-			return errors.Wrapf(err, "WithService %s", v.Type())
+			return errors.Wrapf(err, "di.WithService %s", v.Type())
 		}
 
 		c.register(s)
@@ -80,7 +81,7 @@ func (o serviceOption) applyService(s *service) error {
 	return o(s)
 }
 
-// As registers the service as type *Service* when calling [WithService].
+// As registers the service as type Service when calling [WithService].
 //
 // By default, function services will be registered as the constructor function return type.
 // Value services will be registered as the actual type of the value.
@@ -89,26 +90,16 @@ func (o serviceOption) applyService(s *service) error {
 // This will override the default registration behavior.
 // The original type can also be registered using [As].
 //
-// Example:
-//
-//	c, err := di.NewContainer(
-//		di.WithService(db.NewSQLDB,	// NewSQLDB() *db.SQLDB
-//			di.As[db.DB](),	// Register as an implemented interface
-//		),
-//		di.WithService(storage.NewDBStorage),	// NewDBStorage(db.DB) *storage.DBStorage
-//		// ...
-//	)
-//
-// This option will return an error if the service type is not assignable to type *Service*.
+// This option will return an error if the service type is not assignable to type Service.
 func As[Service any]() ServiceOption {
 	return serviceOption(func(s *service) error {
 		t := reflect.TypeFor[Service]()
 
 		if ok := validateServiceType(t); !ok {
-			return errors.Errorf("As %s: invalid service type", t)
+			return errors.Errorf("di.As %s: invalid service type", t)
 		}
 		if !s.Type().AssignableTo(t) {
-			return errors.Errorf("As %s: type %s not assignable to %s", t, s.Type(), t)
+			return errors.Errorf("di.As %s: type %s not assignable to %s", t, s.Type(), t)
 		}
 
 		s.assignables = append(s.assignables, t)
@@ -189,7 +180,7 @@ func newService(c *Container, v reflect.Value, opts ...ServiceOption) (*service,
 	}
 	var err error
 
-	if v.Kind() == reflect.Func {
+	if !s.IsValue() {
 		// Func service
 		err = s.initFuncService(v.Type())
 	} else {
@@ -266,8 +257,11 @@ func (s *service) initValueService(valType reflect.Type) error {
 func (s *service) Scope() *Container { return s.scope }
 
 // Type of the service. This is the return type of the constructor function or the actual type of the value.
-func (s *service) Type() reflect.Type          { return s.t }
-func (s *service) IsValue() bool               { return s.v.Kind() != reflect.Func }
+func (s *service) Type() reflect.Type { return s.t }
+
+// Named function types are treated as values, not constructor functions.
+func (s *service) isFunc() bool                { return s.v.Kind() == reflect.Func && s.v.Type().Name() == "" }
+func (s *service) IsValue() bool               { return !s.isFunc() }
 func (s *service) Lifetime() Lifetime          { return s.lifetime }
 func (s *service) Dependencies() []serviceKey  { return s.deps }
 func (s *service) Tags() []any                 { return s.tags }

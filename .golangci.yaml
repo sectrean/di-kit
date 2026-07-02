@@ -75,3 +75,7 @@ issues:
     - path: internal/...
       linters:
         - prealloc
+    # This file tests an unexported function
+    - path: lifetime_test.go
+      linters:
+        - testpackage

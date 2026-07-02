@@ -1,5 +1,7 @@
 package di
 
+import "github.com/sectrean/di-kit/internal/errors"
+
 // A Module is a collection of container options.
 // It can be used to create a re-usable collection of related services.
 //
@@ -13,9 +15,13 @@ type Module []ContainerOption
 
 func (m Module) applyContainer(c *Container) error {
 	// Apply each option contained in this module
-	return applyOptions(m, func(o ContainerOption) error {
+	err := applyOptions(m, func(o ContainerOption) error {
 		return o.applyContainer(c)
 	})
+	if err != nil {
+		err = errors.Wrap(err, "di.WithModule")
+	}
+	return err
 }
 
 var _ ContainerOption = Module{}

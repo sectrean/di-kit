@@ -1,43 +1,42 @@
-package di_test
+package di
 
 import (
 	"testing"
 
-	"github.com/sectrean/di-kit"
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Lifetime_String(t *testing.T) {
+func Test_Lifetime_string(t *testing.T) {
 	tests := []struct {
 		name     string
 		want     string
-		lifetime di.Lifetime
+		lifetime Lifetime
 	}{
 		{
 			name:     "singleton",
-			lifetime: di.Singleton,
-			want:     "Singleton",
+			lifetime: Singleton,
+			want:     "di.Singleton",
 		},
 		{
 			name:     "transient",
-			lifetime: di.Transient,
-			want:     "Transient",
+			lifetime: Transient,
+			want:     "di.Transient",
 		},
 		{
 			name:     "scoped",
-			lifetime: di.Scoped,
-			want:     "Scoped",
+			lifetime: Scoped,
+			want:     "di.Scoped",
 		},
 		{
-			name:     "unknown lifetime",
-			lifetime: di.Lifetime(99),
-			want:     "Unknown Lifetime 99",
+			name:     "unknown",
+			lifetime: Lifetime(99),
+			want:     "di.Lifetime(99)",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.lifetime.String()
+			got := tt.lifetime.string()
 			assert.Equal(t, tt.want, got)
 		})
 	}
