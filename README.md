@@ -172,7 +172,7 @@ c, err := di.NewContainer(
 
 ### Slice Services
 
-If a function service has a slice parameter, all services registered as the element type will be injected as a slice. An error will occur if no services are registered as the element type.
+If a function service has a slice parameter, all services registered as the element type will be injected as a slice.
 
 ```go
 c, err := di.NewContainer(
@@ -196,10 +196,10 @@ If you want to register multiple services as the same type, but be able to diffe
 Use `di.WithTagged[Dependency]()` to specify a tag to use when resolving a dependency.
 
 ```go
-type dbTag uint8
+type depTag uint8
 
 const (
-	dbPrimary dbTag iota,
+	dbPrimary depTag iota,
 	dbReplica
 )
 
@@ -377,4 +377,3 @@ handler = scopeMiddleware(handler)
 	Can be used to avoid creation if service is never needed. Or to get around dependency cycles in a simpler way than injecting `di.Scope`.
 - Allow retrying `Resolve` if an error was returned. Normally the first error would be cached for singleton or scoped dependencies. Subsequent attempts to resolve the service will return the error. However, if there is a transient error, you may want to retry the constructor function. One could also argue that you should avoid calls from constructor functions that can result in transient errors.
 - Automatically call `Shutdown` methods to close services.
-- Enable error stacktraces optionally.

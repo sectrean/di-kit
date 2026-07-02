@@ -1358,7 +1358,7 @@ func Test_Container_Resolve(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(a1,
 				di.As[testtypes.InterfaceA](),
-				di.WithDefaultTag(),
+				di.WithTag(nil),
 				di.WithTag("a"),
 				di.WithTag("b"),
 			),

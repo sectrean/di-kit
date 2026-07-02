@@ -12,7 +12,7 @@ Example:
 	...
 
 	// Resolve dependencies using the container scope on the context
-	svc, err := dicontext.Resolve[MyService](ctx)
+	svc, err := dicontext.Resolve[*service.Service](ctx)
 	...
 */
 package dicontext

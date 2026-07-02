@@ -7,9 +7,24 @@ import (
 )
 
 // WithTag is used to specify a tag associated with a service.
+// Services are registered with a `nil` tag by default.
 //
-// When registering a service, WithTag can be used multiple times to associate multiple tags with a service.
-// See also [WithDefaultTag].
+// When registering a service, this option can be used multiple times to
+// associate multiple tags with a service.
+//
+// Example:
+//
+//	c, err := di.NewContainer(
+//		di.WithService(client.NewReadClient,
+//			di.WithTag(client.Read),
+//		),
+//		di.WithService(client.NewWriteClient,
+//			di.WithTag(client.Write),
+//			di.WithTag(nil), // Associate the default tag with this service too
+//		),
+//	)
+//
+//	readClient := di.MustResolve[*client.Client](ctx, c, di.WithTag(client.Read))
 //
 // WithTag can be used with:
 //   - [WithService]
@@ -20,27 +35,6 @@ import (
 //   - [Container.Contains]
 func WithTag(tag any) ServiceTagOption {
 	return tagOption{Tag: tag}
-}
-
-// WithDefaultTag is used to associate the default tag with a service.
-//
-// This is useful when you register a service with a tag, but you also want the service to
-// be resolved when no tag is specified.
-//
-// Example:
-//
-//	c, err := di.NewContainer(
-//		di.WithService(client.NewReadClient,
-//			di.WithTag(client.Read),
-//		),
-//		di.WithService(client.NewWriteClient,
-//			di.WithTag(client.Write),
-//			di.WithDefaultTag(),
-//		),
-//		...
-//	)
-func WithDefaultTag() ServiceOption {
-	return WithTag(nil)
 }
 
 // ServiceTagOption is used to specify the tag associated with a service when calling [WithService],
