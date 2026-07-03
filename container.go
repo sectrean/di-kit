@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 
@@ -13,15 +14,27 @@ import (
 // Container is a dependency injection container.
 // It is used to resolve services by first resolving their dependencies.
 type Container struct {
-	parent     *Container
-	services   map[serviceKey][]*service
-	resolved   map[*service]resolveResult
-	closers    []Closer
-	resolvedMu sync.RWMutex
-	closedMu   sync.RWMutex
-	closersMu  sync.Mutex
-	closed     bool
-	validate   bool
+	parent   *Container
+	services map[serviceKey][]*service
+	resolved map[*service]*resolveResult
+	closers  []Closer
+
+	resolvedMu sync.Mutex
+
+	// waitingMu guards the blockedOn edges of all resolveVisitors in this container tree.
+	// It is only used on the root Container.
+	waitingMu sync.Mutex
+
+	// closeMu guards closed and closers.
+	// It is not held for the duration of a resolve: Resolve only reads closed under it,
+	// while constructService appends closers under it. This lets a service be resolved
+	// through a child scope while the Container it is registered with is closed
+	// concurrently — the closer is either collected by Close or, if closed is already
+	// set, closed by constructService itself.
+	closeMu sync.Mutex
+
+	closed   bool
+	validate bool
 }
 
 var _ Scope = (*Container)(nil)
@@ -35,7 +48,7 @@ var _ Scope = (*Container)(nil)
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		services: make(map[serviceKey][]*service),
-		resolved: make(map[*service]resolveResult),
+		resolved: make(map[*service]*resolveResult),
 	}
 
 	err := c.applyOptions(opts)
@@ -141,7 +154,7 @@ func (c *Container) validateDependencies() error {
 				continue
 			}
 
-			prob := c.validateService(svc, svcProblems, make(resolveVisitor))
+			prob := c.validateService(svc, svcProblems, newResolveVisitor())
 			if prob != "" {
 				errs = append(errs, errors.Errorf("service %s: %s", svc, prob))
 			}
@@ -157,7 +170,7 @@ func (c *Container) validateDependencies() error {
 					continue
 				}
 
-				prob := c.validateService(svc, svcProblems, make(resolveVisitor))
+				prob := c.validateService(svc, svcProblems, newResolveVisitor())
 				if prob != "" {
 					errs = append(errs, errors.Errorf("service %s: %s", svc, prob))
 				}
@@ -168,7 +181,7 @@ func (c *Container) validateDependencies() error {
 	return errors.Join(errs...)
 }
 
-func (c *Container) validateService(svc *service, svcProblems map[*service]string, visitor resolveVisitor) string {
+func (c *Container) validateService(svc *service, svcProblems map[*service]string, visitor *resolveVisitor) string {
 	if prob, ok := svcProblems[svc]; ok {
 		return prob
 	}
@@ -182,7 +195,7 @@ func (c *Container) validateService(svc *service, svcProblems map[*service]strin
 	if !visitor.Enter(svc) {
 		return errDependencyCycle.Error()
 	}
-	defer visitor.Leave(svc)
+	defer visitor.Leave()
 
 	var problems []string
 	for _, depKey := range deps {
@@ -222,6 +235,14 @@ func (c *Container) validateService(svc *service, svcProblems map[*service]strin
 	return ""
 }
 
+func (c *Container) root() *Container {
+	root := c
+	for root.parent != nil {
+		root = root.parent
+	}
+	return root
+}
+
 func (c *Container) lookupService(key serviceKey) *service {
 	for scope := c; scope != nil; scope = scope.parent {
 		svcs, ok := scope.services[key]
@@ -250,16 +271,17 @@ func (c *Container) lookupService(key serviceKey) *service {
 //   - [WithModule] registers services from a module.
 //   - [WithDependencyValidation] validates service dependencies.
 func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
-	c.closedMu.RLock()
-	defer c.closedMu.RUnlock()
+	c.closeMu.Lock()
+	closed := c.closed
+	c.closeMu.Unlock()
 
-	if c.closed {
+	if closed {
 		return nil, errors.Wrap(errContainerClosed, "di.Container.NewScope")
 	}
 
 	scope := &Container{
 		parent:   c,
-		resolved: make(map[*service]resolveResult),
+		resolved: make(map[*service]*resolveResult),
 	}
 
 	err := scope.applyOptions(opts)
@@ -318,14 +340,17 @@ func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...Resolve
 		key = opt.applyServiceKey(key)
 	}
 
-	c.closedMu.RLock()
-	defer c.closedMu.RUnlock()
+	c.closeMu.Lock()
+	closed := c.closed
+	c.closeMu.Unlock()
 
-	if c.closed {
+	if closed {
 		return nil, errors.Wrapf(errContainerClosed, "di.Container.Resolve %s", key)
 	}
 
-	val, err := resolveKey(ctx, c, key, make(resolveVisitor), false)
+	// The visitor is created lazily during resolution: a cached result is returned
+	// without one, avoiding an allocation on the hot path.
+	val, err := resolveKey(ctx, c, key, nil, false)
 	if err != nil {
 		return val, errors.Wrapf(err, "di.Container.Resolve %s", key)
 	}
@@ -337,7 +362,7 @@ func resolveKey(
 	ctx context.Context,
 	scope *Container,
 	key serviceKey,
-	visitor resolveVisitor,
+	visitor *resolveVisitor,
 	optional bool,
 ) (any, error) {
 	if isUnnamedSliceType(key.Type) {
@@ -359,7 +384,7 @@ func resolveSliceKey(
 	ctx context.Context,
 	scope *Container,
 	key serviceKey,
-	visitor resolveVisitor,
+	visitor *resolveVisitor,
 	optional bool,
 ) (any, error) {
 	sliceVal := reflect.MakeSlice(key.Type, 0, 0)
@@ -395,8 +420,8 @@ func resolveService(
 	scope *Container,
 	key serviceKey,
 	svc *service,
-	visitor resolveVisitor,
-) (val any, err error) {
+	visitor *resolveVisitor,
+) (any, error) {
 	if svc.IsValue() {
 		// Value services are always resolved, so we can return the value directly.
 		return svc.Value(), nil
@@ -416,24 +441,92 @@ func resolveService(
 		return nil, errors.New("scoped service must be resolved from a child scope")
 	}
 
-	// For Singleton or Scoped services, we store the result.
-	// See if this service has already been resolved.
-	if lifetime != Transient {
-		scope.resolvedMu.RLock()
-		res, exists := scope.resolved[svc]
-		scope.resolvedMu.RUnlock()
-
-		if exists {
-			return res.Val, res.Err
+	if lifetime == Transient {
+		// Transient services are not cached; they always construct a new value.
+		// Enter guards against a transient service depending on itself.
+		visitor = visitor.orNew()
+		if !visitor.Enter(svc) {
+			return nil, errDependencyCycle
 		}
+		defer visitor.Leave()
+
+		return constructService(ctx, scope, key, svc, visitor)
 	}
 
-	// Throw an error if we've already visited this service
+	// For Singleton or Scoped services, we cache the result.
+resolveAndCache:
+
+	scope.resolvedMu.Lock()
+	res, exists := scope.resolved[svc]
+	if exists {
+		scope.resolvedMu.Unlock()
+
+		if !res.isDone() {
+			// The service is being resolved by another goroutine, or by this one
+			// further up the stack (a dependency cycle). waitForResult detects the
+			// latter via the in-flight result's owner, so a cached hit needs no visitor.
+			visitor = visitor.orNew()
+			if err := scope.waitForResult(ctx, visitor, res, key); err != nil {
+				return nil, err
+			}
+		}
+
+		if res.failed {
+			// The service was not cached due to a non-cacheable error, so we need to retry.
+			goto resolveAndCache
+		}
+
+		// Return the cached result
+		return res.val, res.err
+	}
+
+	// This goroutine will resolve the service.
+	// Enter before publishing the in-flight result so a cycle back to this service
+	// is reported rather than silently re-owned.
+	visitor = visitor.orNew()
 	if !visitor.Enter(svc) {
+		scope.resolvedMu.Unlock()
 		return nil, errDependencyCycle
 	}
-	defer visitor.Leave(svc)
+	defer visitor.Leave()
 
+	res = &resolveResult{done: make(chan struct{}), owner: visitor}
+	scope.resolved[svc] = res
+	scope.resolvedMu.Unlock()
+
+	cached := false
+	defer func() {
+		if !cached {
+			// The error is not cacheable, or the constructor function panicked.
+			// Remove the slot BEFORE releasing waiters so no one serves this result,
+			// and signal them to re-resolve rather than handing them val/err.
+			scope.resolvedMu.Lock()
+			delete(scope.resolved, svc)
+			scope.resolvedMu.Unlock()
+
+			res.failed = true
+		}
+
+		close(res.done)
+	}()
+
+	val, err := constructService(ctx, scope, key, svc, visitor)
+
+	if err == nil || svc.IsErrorCacheable(ctx, err) {
+		res.val, res.err = val, err
+		cached = true
+	}
+
+	return val, err
+}
+
+func constructService(
+	ctx context.Context,
+	scope *Container,
+	key serviceKey,
+	svc *service,
+	visitor *resolveVisitor,
+) (val any, err error) {
 	// Recursively resolve dependencies
 	var depVals []reflect.Value
 
@@ -474,22 +567,6 @@ func resolveService(
 		}
 	}
 
-	if svc.Lifetime() != Transient {
-		// We need to lock before we create the service to make sure we don't create it twice
-		scope.resolvedMu.Lock()
-		defer scope.resolvedMu.Unlock()
-
-		// Check if another goroutine resolved the service since the last check
-		if res, exists := scope.resolved[svc]; exists {
-			return res.Val, res.Err
-		}
-
-		defer func() {
-			// Store the result
-			scope.resolved[svc] = resolveResult{val, err}
-		}()
-	}
-
 	// Create the service
 	val, err = svc.New(depVals)
 
@@ -500,9 +577,20 @@ func resolveService(
 
 	// Add Closer for the service
 	if closer := svc.CloserFor(val); closer != nil {
-		scope.closersMu.Lock()
+		scope.closeMu.Lock()
+		if scope.closed {
+			scope.closeMu.Unlock()
+
+			// The scope was closed while the service was being constructed.
+			// This can happen when a service is resolved through a child scope
+			// while the Container the service is registered with is closed concurrently.
+			// The Container can no longer close the service, so close it now
+			// and fail the resolution.
+			closeErr := closer.Close(ctx)
+			return nil, errors.Join(errContainerClosed, closeErr)
+		}
 		scope.closers = append(scope.closers, closer)
-		scope.closersMu.Unlock()
+		scope.closeMu.Unlock()
 	}
 
 	return val, nil
@@ -518,19 +606,25 @@ func resolveService(
 //
 // Close will return an error if called more than once.
 func (c *Container) Close(ctx context.Context) error {
-	c.closedMu.Lock()
-	defer c.closedMu.Unlock()
-
+	// Mark the Container closed and take the closers under closedMu.
+	// A service registered with this Container can be resolved through a child scope
+	// concurrently with Close. Its closer is either collected here,
+	// or constructService sees closed and closes the service itself.
+	c.closeMu.Lock()
 	if c.closed {
+		c.closeMu.Unlock()
 		return errors.Wrap(errContainerClosed, "di.Container.Close: closed already")
 	}
 	c.closed = true
+	closers := c.closers
+	c.closers = nil
+	c.closeMu.Unlock()
 
 	// Close services in LIFO order
 	// This is important because of dependencies
 	var errs []error
-	for i := len(c.closers) - 1; i >= 0; i-- {
-		err := c.closers[i].Close(ctx)
+	for i := len(closers) - 1; i >= 0; i-- {
+		err := closers[i].Close(ctx)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -550,21 +644,155 @@ var (
 )
 
 type resolveResult struct {
-	Val any
-	Err error
+	done chan struct{}
+	val  any
+	err  error
+
+	// owner is the resolveVisitor of the goroutine resolving this result.
+	// It is set before the result is published to the resolved map and never changes.
+	owner *resolveVisitor
+
+	failed bool
 }
 
-type resolveVisitor map[*service]struct{}
+// isDone returns true if the result has been resolved and Done has been closed.
+func (r *resolveResult) isDone() bool {
+	select {
+	case <-r.done:
+		return true
+	default:
+		return false
+	}
+}
 
-func (v resolveVisitor) Enter(s *service) bool {
-	if _, exists := v[s]; exists {
+// waitForResult blocks until res is resolved by another goroutine, or ctx is done.
+//
+// It registers the wait so cycles of goroutines waiting on each other are detected
+// (and reported as dependency cycle errors) instead of deadlocking.
+func (c *Container) waitForResult(ctx context.Context, visitor *resolveVisitor, res *resolveResult, key serviceKey) error {
+	root := c.root()
+
+	if err := root.beginWaiting(visitor, res, key); err != nil {
+		return err
+	}
+
+	var err error
+	select {
+	case <-res.done:
+	case <-ctx.Done():
+		err = ctx.Err()
+	}
+
+	root.waitingMu.Lock()
+	visitor.blockedOn = nil
+	root.waitingMu.Unlock()
+
+	return err
+}
+
+// beginWaiting registers that this resolution is about to block until res is resolved
+// by another goroutine. It must be called on the root Container.
+//
+// It returns an error if blocking would deadlock:
+// when services with a dependency cycle are resolved concurrently, the goroutines can
+// each end up owning one in-flight result while waiting on another, forming a cycle of
+// goroutines waiting on each other. The per-goroutine visitor cannot see such a cycle,
+// so we follow the chain of blocked resolutions here. If it leads back to this visitor,
+// waiting would never return, and we report a dependency cycle instead.
+func (c *Container) beginWaiting(visitor *resolveVisitor, res *resolveResult, key serviceKey) error {
+	c.waitingMu.Lock()
+	defer c.waitingMu.Unlock()
+
+	depKeys := make([]serviceKey, 0, 8)
+	seen := make(map[*resolveResult]struct{})
+
+	for cur := res; ; {
+		if cur.isDone() {
+			// The result is resolved, so anyone still waiting on it will wake up.
+			// The chain is not blocked.
+			break
+		}
+		if cur.owner == visitor {
+			// The chain of waiting goroutines leads back to us:
+			// wrap the error with the dependency chain the same way nested
+			// resolve calls would report it.
+			err := errDependencyCycle
+			for i := len(depKeys) - 1; i >= 0; i-- {
+				err = errors.Wrapf(err, "dependency %s", depKeys[i])
+			}
+			return err
+		}
+		if _, ok := seen[cur]; ok {
+			// Defensive: don't follow a foreign cycle forever.
+			break
+		}
+		seen[cur] = struct{}{}
+
+		next := cur.owner.blockedOn
+		if next == nil {
+			// The owning goroutine is running and will make progress.
+			// If it blocks later, it will see our edge and run this same check.
+			break
+		}
+		depKeys = append(depKeys, cur.owner.blockedOnKey)
+		cur = next
+	}
+
+	visitor.blockedOn = res
+	visitor.blockedOnKey = key
+	return nil
+}
+
+const visitorBufSize = 8
+
+// resolveVisitor tracks the services being resolved by a single resolve call
+// to detect dependency cycles.
+//
+// It must always be used as a pointer: it serves as the identity of the resolve call
+// for deadlock detection, and entered is backed by the inline buf array.
+type resolveVisitor struct {
+	// blockedOnKey is the service key this resolution was resolving when it blocked.
+	// It is guarded by the root Container's waitingMu, together with blockedOn.
+	blockedOnKey serviceKey
+
+	// buf is the initial backing array for entered.
+	// append spills to the heap if a dependency chain is deeper.
+	buf [visitorBufSize]*service
+
+	// blockedOn is the in-flight result this resolution is waiting on, if any.
+	blockedOn *resolveResult
+
+	// entered is a stack of the services currently being resolved.
+	// Enter and Leave calls are strictly nested, and dependency chains are shallow.
+	entered []*service
+}
+
+func newResolveVisitor() *resolveVisitor {
+	v := &resolveVisitor{}
+	v.entered = v.buf[:0]
+	return v
+}
+
+// orNew returns v, or a new visitor if v is nil.
+// This lets a resolve start without allocating a visitor and create one only if
+// resolution reaches a path that needs cycle or deadlock detection.
+func (v *resolveVisitor) orNew() *resolveVisitor {
+	if v != nil {
+		return v
+	}
+	return newResolveVisitor()
+}
+
+func (v *resolveVisitor) Enter(s *service) bool {
+	if slices.Contains(v.entered, s) {
 		return false
 	}
 
-	v[s] = struct{}{}
+	v.entered = append(v.entered, s)
 	return true
 }
 
-func (v resolveVisitor) Leave(s *service) {
-	delete(v, s)
+// Leave pops the last entered service.
+func (v *resolveVisitor) Leave() {
+	v.entered = v.entered[:len(v.entered)-1]
 }

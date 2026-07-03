@@ -45,3 +45,7 @@ func Wrapf(err error, format string, a ...any) error {
 func Join(errs ...error) error {
 	return stderrors.Join(errs...)
 }
+
+func Is(err, target error) bool {
+	return stderrors.Is(err, target)
+}

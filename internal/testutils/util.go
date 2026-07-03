@@ -28,13 +28,11 @@ func ContextWithTestValue(ctx context.Context, val any) context.Context {
 // RunParallel runs a function in parallel with the given concurrency.
 func RunParallel(concurrency int, f func(int)) {
 	wg := sync.WaitGroup{}
-	wg.Add(concurrency)
 
 	for i := range concurrency {
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			f(i)
-		}()
+		})
 	}
 
 	wg.Wait()

@@ -11,7 +11,11 @@ tasks:
 
   test:
     cmds:
-      - go test -coverprofile=coverage.txt -timeout 10s -race -v ./...
+      - go test -coverprofile=coverage.txt -timeout 10s -v ./...
+
+  test-race:
+    cmds:
+      - go test -timeout 30s -race -count 20 -v ./...
 
   bench:
     cmds:

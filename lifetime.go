@@ -17,16 +17,16 @@ import (
 type Lifetime uint8
 
 const (
-	// Singleton specifies that a service is created once and subsequent requests to resolve return the same instance.
+	// Singleton services are created once and subsequent requests to resolve return the same instance.
 	//
 	// This is the default lifetime for services.
 	Singleton Lifetime = iota
 
-	// Transient specifies that a service is created for each request.
-	Transient Lifetime = iota
+	// Transient services are created for each request.
+	Transient
 
-	// Scoped specifies that a service is created once per scope.
-	Scoped Lifetime = iota
+	// Scoped services are created once per container scope.
+	Scoped
 )
 
 func (l Lifetime) applyService(s *service) error {
