@@ -15,7 +15,7 @@ tasks:
 
   bench:
     cmds:
-      - go test -bench=. -benchmem ./...
+      - go test -bench=. -benchmem -run='^$' ./...
 
   generate:
     cmds:
