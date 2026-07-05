@@ -19,7 +19,7 @@ Example:
 		)
 
 		// Create a new scope middleware
-		scopeMiddleware := dihttp.NewScopeMiddleware(c)
+		scopeMiddleware := dihttp.NewRequestScopeMiddleware(c)
 
 		// Create a handler function
 		handler := func(w http.ResponseWriter, r *http.Request) {
