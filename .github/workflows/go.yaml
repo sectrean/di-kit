@@ -20,7 +20,7 @@ jobs:
           cache: true
 
       - name: Install dev tools
-        run: go install tool
+        run: go -C tools install tool
 
       - name: Build
         run: task build

@@ -4,6 +4,9 @@ tasks:
   setup:
     cmds:
       - go mod download -x
+      # Dev tools (task, golangci-lint, mockery) live in a separate module
+      # under ./tools so they don't pollute the library's dependency graph.
+      - go -C tools install tool
 
   build:
     cmds:
