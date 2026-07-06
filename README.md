@@ -187,7 +187,7 @@ c, err := di.NewContainer(
 )
 ```
 
-Variadic parameters can also be used, but the dependency is considered optional. If no services are registered as the parameter type is not registered, the function will be called with an empty variadic argument.
+Variadic parameters can also be used, but the dependency is considered optional. If no services are registered for the parameter type, the function will be called with an empty variadic argument.
 
 ### Tagged Services
 

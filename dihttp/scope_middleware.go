@@ -19,9 +19,9 @@ type Middleware = func(http.Handler) http.Handler
 // The current [*http.Request] is automatically registered with the child-scoped container. It can be used as a dependency for scoped services.
 //
 // Available options:
-//   - WithScopeOptions: Set [di.ContainerOptions]s options to use when creating each request scope.
-//   - WithNewScopeErrorHandler: Set the error handler for when there is an error creating a new scope.
-//   - WithScopeCloseErrorHandler: Set the error handler for when there is an error closing the scope.
+//   - [WithContainerOptions]: Set [di.ContainerOption]s to use when creating each request scope.
+//   - [WithNewScopeErrorHandler]: Set the error handler for when there is an error creating a new scope.
+//   - [WithScopeCloseErrorHandler]: Set the error handler for when there is an error closing the scope.
 //
 // This will panic if parent is nil.
 func NewRequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOption) Middleware {
