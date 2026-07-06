@@ -2,7 +2,6 @@ package di_test
 
 import (
 	"context"
-	"math/rand"
 	"net/http"
 	"reflect"
 	"sync"
@@ -946,6 +945,46 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: dependency testtypes.InterfaceB: dependency testtypes.InterfaceA: dependency cycle detected")
 	})
 
+	t.Run("dependency cycle transient", func(t *testing.T) {
+		// A transient service that depends on itself is detected on a different
+		// code path than singleton/scoped cycles: transient results are not cached,
+		// so the cycle is caught by the resolve visitor rather than an in-flight result.
+		c, err := di.NewContainer(
+			di.WithService(func(testtypes.InterfaceA) testtypes.InterfaceA {
+				return &testtypes.StructA{}
+			}, di.Transient),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, got)
+		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: dependency testtypes.InterfaceA: dependency cycle detected")
+	})
+
+	t.Run("dependency cycle transient mutual", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func(testtypes.InterfaceB) testtypes.InterfaceA {
+				t.Error("constructor should not get called")
+				return nil
+			}, di.Transient),
+			di.WithService(func(testtypes.InterfaceA) testtypes.InterfaceB {
+				t.Error("constructor should not get called")
+				return nil
+			}, di.Transient),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+		testutils.LogError(t, err)
+
+		assert.Nil(t, got)
+		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: dependency testtypes.InterfaceB: dependency testtypes.InterfaceA: dependency cycle detected")
+	})
+
 	t.Run("di.Singleton", func(t *testing.T) {
 		calls := 0
 
@@ -1773,16 +1812,20 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("concurrent scoped", func(t *testing.T) {
-		r := rand.Intn(10)
+		const n = 100
+		starts := atomic.Int32{}
+		allStarted := make(chan struct{})
 		calls := 0
 
 		c, err := di.NewContainer(
-			di.WithService(func() testtypes.InterfaceA {
-				time.Sleep(time.Duration(r) * time.Microsecond)
-				return &testtypes.StructA{}
-			}, di.Transient),
+			di.WithService(testtypes.NewInterfaceA, di.Transient),
 			di.WithService(func(testtypes.InterfaceA) testtypes.InterfaceB {
+				// Only one goroutine constructs the scoped service; the count is
+				// written without synchronization so -race flags a second construction.
 				calls++
+				// Block until every goroutine has begun resolving, forcing the others
+				// to wait on this in-flight result instead of finding it already done.
+				<-allStarted
 				return &testtypes.StructB{}
 			}, di.Scoped),
 		)
@@ -1794,8 +1837,11 @@ func Test_Container_Resolve(t *testing.T) {
 		ctx := context.Background()
 		wg := sync.WaitGroup{}
 
-		for range 100 {
+		for range n {
 			wg.Go(func() {
+				if starts.Add(1) == n {
+					close(allStarted)
+				}
 				got, err := di.Resolve[testtypes.InterfaceB](ctx, scope)
 				assert.NotNil(t, got)
 				assert.NoError(t, err)
@@ -1807,16 +1853,20 @@ func Test_Container_Resolve(t *testing.T) {
 	})
 
 	t.Run("concurrent singleton race", func(t *testing.T) {
-		wait := make(chan struct{})
+		const n = 2
+		starts := atomic.Int32{}
+		allStarted := make(chan struct{})
 		calls := 0
 
 		c, err := di.NewContainer(
-			di.WithService(func() testtypes.InterfaceA {
-				close(wait)
-				return &testtypes.StructA{}
-			}),
+			di.WithService(testtypes.NewInterfaceA),
 			di.WithService(func(testtypes.InterfaceA) testtypes.InterfaceB {
+				// Only one goroutine constructs the singleton; the count is written
+				// without synchronization so -race flags a second construction.
 				calls++
+				// Block until both goroutines are resolving, so the second waits on
+				// this in-flight result instead of racing to construct its own.
+				<-allStarted
 				return &testtypes.StructB{}
 			}),
 		)
@@ -1825,17 +1875,15 @@ func Test_Container_Resolve(t *testing.T) {
 		ctx := context.Background()
 		wg := sync.WaitGroup{}
 
-		wg.Go(func() {
-			_, err := di.Resolve[testtypes.InterfaceB](ctx, c)
-			assert.NoError(t, err)
-		})
-		wg.Go(func() {
-			// Wait until the first goroutine has started resolving
-			<-wait
-
-			_, err := di.Resolve[testtypes.InterfaceB](ctx, c)
-			assert.NoError(t, err)
-		})
+		for range n {
+			wg.Go(func() {
+				if starts.Add(1) == n {
+					close(allStarted)
+				}
+				_, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+				assert.NoError(t, err)
+			})
+		}
 
 		wg.Wait()
 		assert.Equal(t, 1, calls)
@@ -1991,6 +2039,118 @@ func Test_Container_Resolve(t *testing.T) {
 		wg.Wait()
 	})
 
+	t.Run("concurrent dependency cycle detected across goroutines", func(t *testing.T) {
+		// Deterministically exercise the cross-goroutine deadlock detection in
+		// beginWaiting: each goroutine publishes its own in-flight service and only
+		// then races to resolve the other's, so the cycle is found by following the
+		// chain of waiting goroutines rather than by a single goroutine's visitor.
+		//
+		// The gate services block each top-level resolution after its in-flight
+		// result is published but before its cyclic dependency is resolved, until
+		// both goroutines have arrived.
+		started := make(chan struct{}, 8)
+		release := make(chan struct{})
+
+		gate := func() {
+			started <- struct{}{}
+			select {
+			case <-release:
+			case <-time.After(2 * time.Second):
+			}
+		}
+
+		c, err := di.NewContainer(
+			// Gate services are resolved first, before each cyclic dependency.
+			di.WithService(func() testtypes.InterfaceC { gate(); return &testtypes.StructC{} }),
+			di.WithService(func() testtypes.InterfaceD { gate(); return &testtypes.StructD{} }),
+			di.WithService(func(testtypes.InterfaceC, testtypes.InterfaceB) testtypes.InterfaceA {
+				assert.Fail(t, "constructor func should not get called")
+				return nil
+			}),
+			di.WithService(func(testtypes.InterfaceD, testtypes.InterfaceA) testtypes.InterfaceB {
+				assert.Fail(t, "constructor func should not get called")
+				return nil
+			}),
+		)
+		require.NoError(t, err)
+
+		// Release both goroutines once both in-flight results have been published.
+		go func() {
+			<-started
+			<-started
+			close(release)
+		}()
+
+		ctx := context.Background()
+		wg := sync.WaitGroup{}
+		wg.Go(func() {
+			_, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+			testutils.LogError(t, err)
+			assert.ErrorContains(t, err, "dependency cycle detected")
+		})
+		wg.Go(func() {
+			_, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+			testutils.LogError(t, err)
+			assert.ErrorContains(t, err, "dependency cycle detected")
+		})
+
+		wg.Wait()
+	})
+
+	t.Run("concurrent dependency cycle detected across goroutines in child scope", func(t *testing.T) {
+		// Like the test above, but the cyclic services are Scoped and resolved from
+		// a child scope, so the cross-goroutine deadlock detection runs against the
+		// root container reached by walking up from the child scope.
+		started := make(chan struct{}, 8)
+		release := make(chan struct{})
+
+		gate := func() {
+			started <- struct{}{}
+			select {
+			case <-release:
+			case <-time.After(2 * time.Second):
+			}
+		}
+
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceC { gate(); return &testtypes.StructC{} }, di.Scoped),
+			di.WithService(func() testtypes.InterfaceD { gate(); return &testtypes.StructD{} }, di.Scoped),
+			di.WithService(func(testtypes.InterfaceC, testtypes.InterfaceB) testtypes.InterfaceA {
+				assert.Fail(t, "constructor func should not get called")
+				return nil
+			}, di.Scoped),
+			di.WithService(func(testtypes.InterfaceD, testtypes.InterfaceA) testtypes.InterfaceB {
+				assert.Fail(t, "constructor func should not get called")
+				return nil
+			}, di.Scoped),
+		)
+		require.NoError(t, err)
+
+		scope, err := c.NewScope()
+		require.NoError(t, err)
+
+		go func() {
+			<-started
+			<-started
+			close(release)
+		}()
+
+		ctx := context.Background()
+		wg := sync.WaitGroup{}
+		wg.Go(func() {
+			_, err := di.Resolve[testtypes.InterfaceA](ctx, scope)
+			testutils.LogError(t, err)
+			assert.ErrorContains(t, err, "dependency cycle detected")
+		})
+		wg.Go(func() {
+			_, err := di.Resolve[testtypes.InterfaceB](ctx, scope)
+			testutils.LogError(t, err)
+			assert.ErrorContains(t, err, "dependency cycle detected")
+		})
+
+		wg.Wait()
+	})
+
 	t.Run("concurrent singleton retry after cancel", func(t *testing.T) {
 		started := make(chan struct{})
 		calls := atomic.Int32{}
@@ -2038,6 +2198,57 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err2)
 		assert.NotNil(t, got2)
 		assert.Equal(t, int32(2), calls.Load())
+	})
+
+	t.Run("concurrent resolve canceled while waiting", func(t *testing.T) {
+		// One goroutine blocks in the constructor while a second waits on the
+		// in-flight result. Canceling the waiting goroutine's context must return
+		// it promptly with the cancellation error, without affecting the constructor.
+		constructing := make(chan struct{})
+		release := make(chan struct{})
+
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA {
+				close(constructing)
+				<-release
+				return &testtypes.StructA{}
+			}),
+		)
+		require.NoError(t, err)
+
+		// The first goroutine constructs (blocking until released) with an
+		// uncancelable context, publishing the in-flight result.
+		g1 := make(chan error, 1)
+		go func() {
+			_, err := di.Resolve[testtypes.InterfaceA](context.Background(), c)
+			g1 <- err
+		}()
+		<-constructing
+
+		// The second goroutine waits on that in-flight result with a cancelable context.
+		ctx2, cancel := context.WithCancel(context.Background())
+		g2 := make(chan error, 1)
+		go func() {
+			_, err := di.Resolve[testtypes.InterfaceA](ctx2, c)
+			g2 <- err
+		}()
+
+		// Give the second goroutine a chance to start waiting, then cancel it.
+		// The constructor stays blocked, so this deterministically exercises the
+		// context-canceled branch of the wait rather than returning a cached result.
+		time.Sleep(10 * time.Millisecond)
+		cancel()
+
+		select {
+		case err2 := <-g2:
+			assert.ErrorIs(t, err2, context.Canceled)
+		case <-time.After(2 * time.Second):
+			assert.Fail(t, "canceled resolve did not return while waiting")
+		}
+
+		// Releasing the constructor still lets the first resolve succeed.
+		close(release)
+		assert.NoError(t, <-g1)
 	})
 
 	t.Run("concurrent singleton constructor panic", func(t *testing.T) {

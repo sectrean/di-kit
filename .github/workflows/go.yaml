@@ -31,6 +31,9 @@ jobs:
       - name: Test
         run: task test
 
+      - name: Test (race)
+        run: task test-race
+
       - name: Publish coverage reports
         uses: codecov/codecov-action@v5
         with:
