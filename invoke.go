@@ -12,6 +12,11 @@ import (
 // The function may take any number of parameters which will be resolved from the container,
 // and may return any number of results.
 // An [error] return parameter will be passed along and any other return parameters are ignored.
+//
+// The function may also accept a [context.Context], which will be injected directly.
+//
+// A variadic parameter is treated as an optional slice dependency: if no services are
+// registered for the element type, the function is called with an empty variadic argument.
 func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 	fnType := reflect.TypeOf(fn)
 	fnVal := reflect.ValueOf(fn)
@@ -58,6 +63,15 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 			depVal, depErr = s.Resolve(ctx, dep.Type)
 		}
 
+		// A variadic parameter is optional: if no services are registered for the
+		// element type, call the function with an empty variadic argument.
+		if depErr != nil &&
+			fnType.IsVariadic() && i == len(config.deps)-1 &&
+			errors.Is(depErr, errServiceNotRegistered) {
+			depErr = nil
+			depVal = reflect.MakeSlice(dep.Type, 0, 0).Interface()
+		}
+
 		if depErr != nil {
 			// Stop at the first error
 			return errors.Wrapf(depErr, "di.Invoke %T", fn)
@@ -71,7 +85,12 @@ func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 	}
 
 	// Invoke the function
-	out := fnVal.Call(in)
+	var out []reflect.Value
+	if fnType.IsVariadic() {
+		out = fnVal.CallSlice(in)
+	} else {
+		out = fnVal.Call(in)
+	}
 
 	// Return the first error return value, if any.
 	// Don't wrap the error, return it as-is.

@@ -187,4 +187,38 @@ func Test_Invoke(t *testing.T) {
 
 		assert.EqualError(t, err, "di.Invoke func(testtypes.InterfaceA): di.WithTagged testtypes.InterfaceB: parameter not found")
 	})
+
+	t.Run("variadic dependency", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(testtypes.NewInterfaceB),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		called := false
+		err = di.Invoke(ctx, c, func(b testtypes.InterfaceB, aa ...testtypes.InterfaceA) {
+			assert.NotNil(t, b)
+			assert.Len(t, aa, 1)
+			called = true
+		})
+
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("variadic dependency optional", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		called := false
+		err = di.Invoke(ctx, c, func(aa ...testtypes.InterfaceA) {
+			assert.Empty(t, aa)
+			called = true
+		})
+
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
 }
