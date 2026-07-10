@@ -29,7 +29,10 @@ func HTTP_Example() {
 		svc.HandleRequest(w, r)
 	})
 
-	scopeMiddleware := dihttp.NewRequestScopeMiddleware(c)
+	// NewRequestHandler depends on *http.Request, so register it with each request scope.
+	scopeMiddleware := dihttp.NewRequestScopeMiddleware(c,
+		dihttp.WithRequestService(),
+	)
 
 	mux := http.NewServeMux()
 	mux.Handle("/", scopeMiddleware(handler))

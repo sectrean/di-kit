@@ -45,6 +45,27 @@ func Benchmark_Middleware(b *testing.B) {
 		}
 	})
 
+	b.Run("with request service", func(b *testing.B) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(b, err)
+
+		mw := dihttp.NewRequestScopeMiddleware(c, dihttp.WithRequestService())
+		handler := mw(noopHandler)
+
+		w := noopResponseWriter{}
+		req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+
+		// Correctness check: the handler serves without hitting an error path.
+		handler.ServeHTTP(w, req)
+
+		b.ReportAllocs()
+		for b.Loop() {
+			handler.ServeHTTP(w, req)
+		}
+	})
+
 	b.Run("with scoped service", func(b *testing.B) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),

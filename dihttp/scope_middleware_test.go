@@ -73,7 +73,9 @@ func Test_Middleware(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		mw := dihttp.NewRequestScopeMiddleware(c)
+		mw := dihttp.NewRequestScopeMiddleware(c,
+			dihttp.WithRequestService(),
+		)
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -81,6 +83,25 @@ func Test_Middleware(t *testing.T) {
 
 			assert.Equal(t, r, req.WithContext(ctx))
 			assert.NoError(t, resolveErr)
+
+			w.WriteHeader(http.StatusOK)
+		})
+
+		code := RunRequest(t, mw(handler), "/")
+		assert.Equal(t, http.StatusOK, code)
+	})
+
+	t.Run("*http.Request not registered by default", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		mw := dihttp.NewRequestScopeMiddleware(c)
+
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, resolveErr := dicontext.Resolve[*http.Request](r.Context())
+			assert.ErrorContains(t, resolveErr, "service not registered")
 
 			w.WriteHeader(http.StatusOK)
 		})
@@ -148,7 +169,9 @@ func Test_Middleware(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		mw := dihttp.NewRequestScopeMiddleware(c)
+		mw := dihttp.NewRequestScopeMiddleware(c,
+			dihttp.WithRequestService(),
+		)
 
 		tags := make(chan any, concurrency)
 		expectedTags := make(chan any, concurrency)
