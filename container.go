@@ -90,6 +90,8 @@ func (c *Container) applyOptions(opts []ContainerOption) error {
 }
 
 func (c *Container) register(s *service) {
+	// The services map is allocated lazily so a child scope that registers no services
+	// does not pay for it.
 	if c.services == nil {
 		c.services = make(map[serviceKey][]*service)
 	}
@@ -279,9 +281,10 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 		return nil, errors.Wrap(errContainerClosed, "di.Container.NewScope")
 	}
 
+	// resolved is allocated lazily on first cache write (see resolveService), so a
+	// scope that never resolves a cached service does not pay for the map.
 	scope := &Container{
-		parent:   c,
-		resolved: make(map[*service]*resolveResult),
+		parent: c,
 	}
 
 	err := scope.applyOptions(opts)
@@ -491,6 +494,9 @@ resolveAndCache:
 	defer visitor.Leave()
 
 	res = &resolveResult{done: make(chan struct{}), owner: visitor}
+	if scope.resolved == nil {
+		scope.resolved = make(map[*service]*resolveResult)
+	}
 	scope.resolved[svc] = res
 	scope.resolvedMu.Unlock()
 

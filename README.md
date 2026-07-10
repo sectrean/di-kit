@@ -359,8 +359,12 @@ handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	// ...
 })
 
-// Create and apply the middleware
-scopeMiddleware := dihttp.NewRequestScopeMiddleware(c)
+// Create and apply the middleware.
+// RequestService depends on *http.Request, so register it with each request scope
+// using WithRequestService.
+scopeMiddleware := dihttp.NewRequestScopeMiddleware(c,
+	dihttp.WithRequestService(),
+)
 handler = scopeMiddleware(handler)
 // ...
 ```

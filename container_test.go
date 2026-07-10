@@ -525,6 +525,69 @@ func Test_Container_NewScope(t *testing.T) {
 		// The exact error message is non-deterministic because it depends on map iteration order
 		assert.ErrorContains(t, err, "dependency cycle detected")
 	})
+
+	t.Run("scoped service registered with tag", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		scope, err := c.NewScope(
+			di.WithService(testtypes.NewInterfaceB, di.WithTag("tag")),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[testtypes.InterfaceB](ctx, scope, di.WithTag("tag"))
+		assert.NotNil(t, got)
+		assert.NoError(t, err)
+
+		// The tag must match exactly: the untagged key is not registered.
+		ditest.AssertNotContains[testtypes.InterfaceB](t, scope)
+	})
+
+	t.Run("scoped service registered with As", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		a := &testtypes.StructA{}
+		scope, err := c.NewScope(
+			di.WithService(a,
+				di.As[testtypes.InterfaceA](),
+				di.As[*testtypes.StructA](),
+			),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+
+		gotIface, err := di.Resolve[testtypes.InterfaceA](ctx, scope)
+		assert.NoError(t, err)
+		assert.Same(t, a, gotIface)
+
+		gotPtr, err := di.Resolve[*testtypes.StructA](ctx, scope)
+		assert.NoError(t, err)
+		assert.Same(t, a, gotPtr)
+	})
+
+	t.Run("last scoped service registered wins", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		first := &testtypes.StructA{Tag: "first"}
+		last := &testtypes.StructA{Tag: "last"}
+
+		scope, err := c.NewScope(
+			di.WithService(first),
+			di.WithService(last),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[*testtypes.StructA](ctx, scope)
+		assert.NoError(t, err)
+		assert.Same(t, last, got)
+	})
 }
 
 func Test_Container_Contains(t *testing.T) {

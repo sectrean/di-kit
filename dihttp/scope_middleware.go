@@ -16,9 +16,8 @@ type Middleware = func(http.Handler) http.Handler
 // The child container is stored on the request context and can be accessed using [dicontext.Scope], [dicontext.Resolve], or [dicontext.MustResolve].
 // The child container is closed after the request is processed.
 //
-// The current [*http.Request] is automatically registered with the child-scoped container. It can be used as a dependency for scoped services.
-//
 // Available options:
+//   - [WithRequestService]: Register the current [*http.Request] with the request scope so it can be used as a dependency for scoped services.
 //   - [WithContainerOptions]: Set [di.ContainerOption]s to use when creating each request scope.
 //   - [WithNewScopeErrorHandler]: Set the error handler for when there is an error creating a new scope.
 //   - [WithScopeCloseErrorHandler]: Set the error handler for when there is an error closing the scope.
@@ -81,13 +80,19 @@ type scopeMiddleware struct {
 	newScopeHandler NewScopeErrorHandler
 	closeHandler    ScopeCloseErrorHandler
 	opts            []di.ContainerOption
+	registerRequest bool
 }
 
 func (m scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Use provided options and also register the current HTTP request
-	opts := make([]di.ContainerOption, len(m.opts)+1)
-	copy(opts, m.opts)
-	opts[len(m.opts)] = di.WithService(r)
+	opts := m.opts
+
+	// Register the current HTTP request with the scope if requested, so it can be
+	// injected into scoped services.
+	if m.registerRequest {
+		opts = make([]di.ContainerOption, len(m.opts)+1)
+		copy(opts, m.opts)
+		opts[len(m.opts)] = di.WithService(r)
+	}
 
 	// Create child scope for the request
 	scope, err := m.parent.NewScope(opts...)
