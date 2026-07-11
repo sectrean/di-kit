@@ -252,7 +252,10 @@ func (c *Container) lookupService(key serviceKey) *service {
 			continue
 		}
 
-		// Return the last registered service for this key
+		// When multiple services are registered for the same key (type and tag), this is
+		// an intentional "last registration wins" for single-value resolution: the others
+		// remain reachable via slice resolution (see resolveSliceKey). This is documented
+		// on Container.Resolve; callers wanting a specific one should use a distinct tag.
 		return svcs[len(svcs)-1]
 	}
 
@@ -327,6 +330,11 @@ type ResolveOption interface {
 }
 
 // Resolve a service of the given [reflect.Type].
+//
+// If more than one service is registered for the type and tag (including no tag),
+// resolving it as a single value returns the last-registered service. Resolve the type as
+// a slice to get all matching services, or use [WithTag] with a distinct tag to select a
+// specific one.
 //
 // This will return an error under the following conditions:
 //   - The container has been closed
