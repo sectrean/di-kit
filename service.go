@@ -32,7 +32,17 @@ import (
 //
 // A service can be almost any named type including structs, interfaces, basic types, functions, or a pointer to a named type.
 // A function with a named type will be treated as a value service, not a constructor function.
-// Some types like [error] and [context.Context] are reserved and cannot be registered as services.
+//
+// The following types cannot be registered as services:
+//   - The reserved types [error], [context.Context], and [Scope].
+//   - Unnamed types (such as slices, maps, and function types) and built-in types like int.
+//   - Any type declared in the di package (such as a [ServiceOption]),
+//     to guard against accidentally registering an option like [Singleton].
+//
+// A function service may depend on any type that can be registered as a service, plus:
+//   - [context.Context] and [Scope], which are provided by the Container rather than resolved.
+//   - A slice of a registered type (such as []Service), which resolves to all services
+//     registered for the element type.
 //
 // Available options:
 //   - [Lifetime] is used to specify how services are created when resolved.
@@ -125,8 +135,6 @@ func validateServiceType(t reflect.Type) bool {
 		t = t.Elem()
 	}
 
-	// TODO: Give more specific error messages for invalid types, e.g. unnamed basic types, reserved types, etc.
-
 	switch t {
 	// These special types cannot be registered as services
 	case typeContext,
@@ -135,7 +143,7 @@ func validateServiceType(t reflect.Type) bool {
 		return false
 	}
 
-	// We don't want someone to accidentally register a ContainerOption or something.
+	// We don't want someone to accidentally register a ServiceOption or something.
 	if t.PkgPath() == typeScope.PkgPath() {
 		return false
 	}
@@ -146,10 +154,9 @@ func validateServiceType(t reflect.Type) bool {
 
 func validateDependencyType(t reflect.Type) bool {
 	switch t {
-	// These special types are allowed as dependencies
+	// These special types are provided by the Container rather than resolved.
 	case typeContext,
-		typeScope,
-		typeError:
+		typeScope:
 		return true
 	}
 
