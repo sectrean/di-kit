@@ -118,6 +118,16 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "di.NewContainer: di.WithService func(int) testtypes.InterfaceA: invalid dependency type int")
 	})
 
+	t.Run("di.WithService invalid dependency type error", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func(error) testtypes.InterfaceA { return nil }),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: di.WithService func(error) testtypes.InterfaceA: invalid dependency type error")
+	})
+
 	t.Run("di.WithService invalid dependency types", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func(int, di.Lifetime) testtypes.InterfaceA { return nil }),

@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A function service that declares an `error` parameter is now rejected at registration
+  with an "invalid dependency type" error. Previously it registered successfully but
+  always failed to resolve, since `error` cannot be provided as a dependency.
+
 ### Documentation
 
 - Documented the "last registration wins" behavior for single-value resolution when
   multiple services are registered for the same type and tag (including no tag). Resolve
   the type as a slice to get all of them, or use `di.WithTag()` with a distinct tag to
   select a specific one. No behavior change.
+- Documented on `di.WithService` which types cannot be registered as services and which
+  types are valid as function-service dependencies.
 
 ### Added
 
