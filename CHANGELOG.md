@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- Documented the "last registration wins" behavior for single-value resolution when
+  multiple services are registered for the same type and tag (including no tag). Resolve
+  the type as a slice to get all of them, or use `di.WithTag()` with a distinct tag to
+  select a specific one. No behavior change.
+
 ### Added
 
 - `dihttp.WithRequestService` option to register the current `*http.Request` with each
