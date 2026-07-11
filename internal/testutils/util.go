@@ -30,12 +30,23 @@ func RunParallel(concurrency int, f func(int)) {
 	wg := sync.WaitGroup{}
 
 	for i := range concurrency {
-		wg.Go(func() {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
 			f(i)
-		})
+		}(i)
 	}
 
 	wg.Wait()
+}
+
+// Go runs f in a new goroutine tracked by wg.
+func Go(wg *sync.WaitGroup, f func()) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		f()
+	}()
 }
 
 // CollectChannel collects all values from a channel and returns them in a slice.
