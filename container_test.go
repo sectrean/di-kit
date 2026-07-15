@@ -264,6 +264,91 @@ func Test_NewContainer(t *testing.T) {
 		)
 	})
 
+	t.Run("di.WithService di.Lazy dependency", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA {
+				return &testtypes.StructA{}
+			}),
+			di.WithService(func(l di.Lazy[testtypes.InterfaceA]) testtypes.InterfaceB {
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+
+		assert.NotNil(t, c)
+		assert.NoError(t, err)
+	})
+
+	t.Run("di.WithService di.Lazy dependency cycle workaround", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func(b testtypes.InterfaceB) testtypes.InterfaceA {
+				return &testtypes.StructA{}
+			}),
+			di.WithService(func(l di.Lazy[testtypes.InterfaceA]) testtypes.InterfaceB {
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+
+		assert.NotNil(t, c)
+		assert.NoError(t, err)
+	})
+
+	t.Run("di.Lazy pointer dependency", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewStructAPtr),
+			di.WithService(func(l di.Lazy[*testtypes.StructA]) testtypes.InterfaceB {
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+		assert.NotNil(t, c)
+	})
+
+	t.Run("*di.Lazy dependency", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func(l *di.Lazy[testtypes.InterfaceA]) testtypes.InterfaceB {
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+		assert.NotNil(t, c)
+	})
+
+	t.Run("*di.Lazy cycle workaround", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func(b testtypes.InterfaceB) testtypes.InterfaceA {
+				return &testtypes.StructA{}
+			}),
+			di.WithService(func(l *di.Lazy[testtypes.InterfaceA]) testtypes.InterfaceB {
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+		assert.NotNil(t, c)
+	})
+
+	t.Run("*di.Lazy invalid inner dependency type", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func(l *di.Lazy[int]) testtypes.InterfaceA { return nil }),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: di.WithService func(*di.Lazy[int]) testtypes.InterfaceA: invalid dependency type *di.Lazy[int]")
+	})
+
+	t.Run("di.Lazy invalid inner dependency type", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func(l di.Lazy[int]) testtypes.InterfaceA { return nil }),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: di.WithService func(di.Lazy[int]) testtypes.InterfaceA: invalid dependency type di.Lazy[int]")
+	})
+
 	t.Run("multiple errors", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService([]testtypes.InterfaceA{}),
@@ -535,6 +620,86 @@ func Test_Container_Contains(t *testing.T) {
 		has = di.Contains[[]testtypes.InterfaceA](c, di.WithTag(1))
 		assert.True(t, has)
 	})
+
+	t.Run("di.Lazy found", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		has := c.Contains(reflect.TypeFor[di.Lazy[testtypes.InterfaceA]]())
+		assert.True(t, has)
+	})
+
+	t.Run("di.Lazy not found", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		has := c.Contains(reflect.TypeFor[di.Lazy[testtypes.InterfaceA]]())
+		assert.False(t, has)
+	})
+
+	t.Run("di.Lazy di.WithTag", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),
+		)
+		require.NoError(t, err)
+
+		has := c.Contains(reflect.TypeFor[di.Lazy[testtypes.InterfaceA]](), di.WithTag("tag"))
+		assert.True(t, has)
+
+		has = c.Contains(reflect.TypeFor[di.Lazy[testtypes.InterfaceA]]())
+		assert.False(t, has)
+	})
+
+	t.Run("*di.Lazy found", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		has := c.Contains(reflect.TypeFor[*di.Lazy[testtypes.InterfaceA]]())
+		assert.True(t, has)
+	})
+
+	t.Run("*di.Lazy not found", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		has := c.Contains(reflect.TypeFor[*di.Lazy[testtypes.InterfaceA]]())
+		assert.False(t, has)
+	})
+
+	t.Run("*di.Lazy di.WithTag", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),
+		)
+		require.NoError(t, err)
+
+		has := c.Contains(reflect.TypeFor[*di.Lazy[testtypes.InterfaceA]](), di.WithTag("tag"))
+		assert.True(t, has)
+
+		has = c.Contains(reflect.TypeFor[*di.Lazy[testtypes.InterfaceA]]())
+		assert.False(t, has)
+	})
+
+	t.Run("di.Lazy slice found", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		has := c.Contains(reflect.TypeFor[di.Lazy[[]testtypes.InterfaceA]]())
+		assert.True(t, has)
+	})
+
+	t.Run("di.Lazy slice not found", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		has := c.Contains(reflect.TypeFor[di.Lazy[[]testtypes.InterfaceA]]())
+		assert.False(t, has)
+	})
 }
 
 func Test_Container_Resolve(t *testing.T) {
@@ -719,6 +884,217 @@ func Test_Container_Resolve(t *testing.T) {
 		got, err := di.Resolve[testtypes.HTTPMiddleware](ctx, c)
 
 		assert.NotNil(t, got)
+		assert.NoError(t, err)
+	})
+
+	t.Run("di.Lazy type found", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[di.Lazy[testtypes.InterfaceA]](ctx, c)
+		require.NoError(t, err)
+
+		a, err := got.Resolve(ctx)
+		assert.Equal(t, &testtypes.StructA{}, a)
+		assert.NoError(t, err)
+	})
+
+	t.Run("di.Lazy type not found", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[di.Lazy[testtypes.InterfaceA]](ctx, c)
+		require.NoError(t, err)
+
+		a, err := got.Resolve(ctx)
+		assert.Nil(t, a)
+		assert.EqualError(t, err, "di.Lazy[testtypes.InterfaceA].Resolve: "+
+			"di.Container.Resolve testtypes.InterfaceA: service not registered")
+	})
+
+	t.Run("di.Lazy pointer type", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewStructAPtr),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[di.Lazy[*testtypes.StructA]](ctx, c)
+		require.NoError(t, err)
+
+		a, err := got.Resolve(ctx)
+		assert.Equal(t, &testtypes.StructA{}, a)
+		assert.NoError(t, err)
+	})
+
+	t.Run("di.Lazy di.WithTag", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA {
+				return &testtypes.StructA{Tag: 1}
+			}, di.WithTag("tag")),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[di.Lazy[testtypes.InterfaceA]](ctx, c, di.WithTag("tag"))
+		require.NoError(t, err)
+
+		a, err := got.Resolve(ctx)
+		assert.Equal(t, &testtypes.StructA{Tag: 1}, a)
+		assert.NoError(t, err)
+	})
+
+	t.Run("di.Lazy slice resolved", func(t *testing.T) {
+		f := &testtypes.Factory{}
+
+		c, err := di.NewContainer(
+			di.WithService(f.NewInterfaceA),
+			di.WithService(f.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[di.Lazy[[]testtypes.InterfaceA]](ctx, c)
+		require.NoError(t, err)
+
+		aa, err := got.Resolve(ctx)
+		assert.NoError(t, err)
+		assert.Equal(t, testtypes.ExpectInterfaceA(2), aa)
+	})
+
+	t.Run("di.Lazy slice not registered", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		got, err := di.Resolve[di.Lazy[[]testtypes.InterfaceA]](ctx, c)
+		require.NoError(t, err)
+
+		aa, err := got.Resolve(ctx)
+		assert.Nil(t, aa)
+		assert.EqualError(t, err, "di.Lazy[[]testtypes.InterfaceA].Resolve: di.Container.Resolve []testtypes.InterfaceA: service not registered")
+	})
+
+	t.Run("di.Lazy injected and resolved later", func(t *testing.T) {
+		// Verify that a Lazy[T] injected into a constructor can be resolved
+		// after the constructor returns.
+		var captured di.Lazy[testtypes.InterfaceA]
+
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func(l di.Lazy[testtypes.InterfaceA]) testtypes.InterfaceB {
+				captured = l
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		_, err = di.Resolve[testtypes.InterfaceB](ctx, c)
+		require.NoError(t, err)
+
+		a, err := captured.Resolve(ctx)
+		assert.Equal(t, &testtypes.StructA{}, a)
+		assert.NoError(t, err)
+	})
+
+	t.Run("di.Lazy injected cycle workaround resolved later", func(t *testing.T) {
+		// A depends on B; B breaks the cycle by taking Lazy[A] and resolving it
+		// on demand rather than at construction time.
+		var capturedLazy di.Lazy[testtypes.InterfaceA]
+
+		c, err := di.NewContainer(
+			di.WithService(func(b testtypes.InterfaceB) testtypes.InterfaceA {
+				return &testtypes.StructA{}
+			}),
+			di.WithService(func(l di.Lazy[testtypes.InterfaceA]) testtypes.InterfaceB {
+				capturedLazy = l
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		_, err = di.Resolve[testtypes.InterfaceB](ctx, c)
+		require.NoError(t, err)
+
+		// Resolving the lazy after construction completes unblocks the cycle.
+		a, err := capturedLazy.Resolve(ctx)
+		assert.NotNil(t, a)
+		assert.NoError(t, err)
+	})
+
+	t.Run("*di.Lazy injected and resolved later", func(t *testing.T) {
+		var captured *di.Lazy[testtypes.InterfaceA]
+
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func(l *di.Lazy[testtypes.InterfaceA]) testtypes.InterfaceB {
+				captured = l
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		_, err = di.Resolve[testtypes.InterfaceB](ctx, c)
+		require.NoError(t, err)
+
+		require.NotNil(t, captured)
+		a, err := captured.Resolve(ctx)
+		assert.Equal(t, &testtypes.StructA{}, a)
+		assert.NoError(t, err)
+	})
+
+	t.Run("*di.Lazy injected cycle workaround resolved later", func(t *testing.T) {
+		var capturedLazy *di.Lazy[testtypes.InterfaceA]
+
+		c, err := di.NewContainer(
+			di.WithService(func(b testtypes.InterfaceB) testtypes.InterfaceA {
+				return &testtypes.StructA{}
+			}),
+			di.WithService(func(l *di.Lazy[testtypes.InterfaceA]) testtypes.InterfaceB {
+				capturedLazy = l
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		_, err = di.Resolve[testtypes.InterfaceB](ctx, c)
+		require.NoError(t, err)
+
+		require.NotNil(t, capturedLazy)
+		a, err := capturedLazy.Resolve(ctx)
+		assert.NotNil(t, a)
+		assert.NoError(t, err)
+	})
+
+	t.Run("di.Lazy resolve within constructor", func(t *testing.T) {
+		// Calling Lazy.Resolve inside the constructor is not allowed:
+		// the injected scope is not ready until the constructor returns.
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func(l di.Lazy[testtypes.InterfaceA]) testtypes.InterfaceB {
+				a, err := l.Resolve(context.Background())
+				LogError(t, err)
+
+				assert.Nil(t, a)
+				assert.EqualError(t, err,
+					"di.Lazy[testtypes.InterfaceA].Resolve: di.Scope.Resolve testtypes.InterfaceA: "+
+						"not supported within service constructor function",
+				)
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		_, err = di.Resolve[testtypes.InterfaceB](ctx, c)
 		assert.NoError(t, err)
 	})
 

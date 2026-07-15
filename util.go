@@ -12,6 +12,7 @@ var (
 	typeError   = reflect.TypeFor[error]()
 	typeContext = reflect.TypeFor[context.Context]()
 	typeScope   = reflect.TypeFor[Scope]()
+	typeLazy    = reflect.TypeFor[lazy]()
 )
 
 func safeReflectValue(t reflect.Type, val any) reflect.Value {

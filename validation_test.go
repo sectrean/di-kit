@@ -167,4 +167,30 @@ func Test_ValidateDependencies(t *testing.T) {
 		// The exact error message is non-deterministic because it depends on map iteration order
 		assert.ErrorContains(t, err, "dependency cycle detected")
 	})
+
+	t.Run("di.Lazy dependency registered", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func(l di.Lazy[testtypes.InterfaceA]) testtypes.InterfaceB {
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+
+		err = di.ValidateContainer(c)
+		assert.NoError(t, err)
+	})
+
+	t.Run("di.Lazy dependency not registered", func(t *testing.T) {
+		// Lazy[Service] can be used for an optional dependency
+		c, err := di.NewContainer(
+			di.WithService(func(l di.Lazy[testtypes.InterfaceA]) testtypes.InterfaceB {
+				return &testtypes.StructB{}
+			}),
+		)
+		require.NoError(t, err)
+
+		err = di.ValidateContainer(c)
+		assert.NoError(t, err)
+	})
 }

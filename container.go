@@ -178,6 +178,11 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 // Available options:
 //   - [WithTag] specifies a key associated with the service.
 func (c *Container) Contains(t reflect.Type, opts ...ResolveOption) bool {
+	// Check if the type is a Lazy, look for the underlying service type
+	if isLazyType(t) {
+		t = getLazyServiceType(t)
+	}
+
 	// Check if the type is a slice, look for the element type
 	if isUnnamedSliceType(t) {
 		t = t.Elem()
@@ -234,6 +239,10 @@ func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...Resolve
 		return nil, errors.Wrapf(errContainerClosed, "di.Container.Resolve %s", key)
 	}
 
+	if isLazyType(key.Type) {
+		return newLazy(c, key), nil
+	}
+
 	// The visitor is created lazily during resolution: a cached result is returned
 	// without one, avoiding an allocation on the hot path.
 	val, err := resolveKey(ctx, c, key, nil, false)
@@ -259,7 +268,6 @@ func resolveKey(
 	svc := scope.lookupService(key)
 	if svc == nil {
 		// If the service is not found, return an error
-		// TODO: Support optional dependencies?
 		return nil, errServiceNotRegistered
 	}
 
@@ -422,19 +430,30 @@ func constructService(
 	deps := svc.Dependencies()
 	if len(deps) > 0 {
 		depVals = make([]reflect.Value, len(deps))
+		var injectScope *injectedScope
+
 		for i, depKey := range deps {
 			var depVal any
 			var depErr error
 
-			switch depKey.Type {
-			case typeContext:
+			switch {
+			case depKey.Type == typeContext:
 				// Pass along the context
 				depVal = ctx
 
-			case typeScope:
-				var ready func()
-				depVal, ready = newInjectedScope(scope, key)
-				defer ready()
+			case depKey.Type == typeScope:
+				if injectScope == nil {
+					injectScope = newInjectedScope(scope, key)
+					defer injectScope.setReady()
+				}
+				depVal = injectScope
+
+			case isLazyType(depKey.Type):
+				if injectScope == nil {
+					injectScope = newInjectedScope(scope, key)
+					defer injectScope.setReady()
+				}
+				depVal = newLazy(injectScope, depKey)
 
 			default:
 				optional := false

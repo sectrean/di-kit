@@ -92,6 +92,12 @@ func validateService(c *Container, svc *service, svcProblems map[*service]string
 			depKey.Type = depKey.Type.Elem()
 		}
 
+		if isLazyType(depKey.Type) {
+			// We don't want to check if Lazy Service type is registered
+			// It's valid to use Lazy[Service] to allow for optional
+			continue
+		}
+
 		depSvc := c.lookupService(depKey)
 		if depSvc == nil {
 			prob := fmt.Sprintf("dependency %s: service not registered", depKey)
