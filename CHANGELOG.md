@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   select a specific one. No behavior change.
 - Documented on `di.WithService` which types cannot be registered as services and which
   types are valid as function-service dependencies.
+- Added a more complete overview to the package-level godoc.
 
 ### Added
 
