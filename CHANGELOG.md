@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documented on `di.WithService` which types cannot be registered as services and which
   types are valid as function-service dependencies.
 - Added a more complete overview to the package-level godoc.
+- Added Features -> Validation section to README.
 
 ### Added
 
@@ -38,6 +39,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   registrations in a slice instead of allocating a map, and the resolution cache is
   allocated lazily on first use. A request scope that registers no services dropped from
   9 to 3 allocations.
+- **BREAKING** Refactored validation API to use a package-level `di.ValidateDependencies()`
+  function, rather than a `di.WithDependencyValidation()` option that returns an error when
+  creating a `Container`. This change simplifies the API and makes it more flexible. A user
+  can pass in a pre-constructed `Container` to validate rather than forcing them to append
+  a container option.
 
 ### Removed
 

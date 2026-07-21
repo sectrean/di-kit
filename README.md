@@ -312,6 +312,28 @@ var Dependencies = di.Module{
 c, err := di.NewContainer(Dependencies)
 ```
 
+### Validation
+
+Use `di.ValidateDependencies()` to validate that a container's services are all resolvable.
+This will validate that all service dependencies are registered and there are no dependency cycles.
+This should be done as a unit test.
+
+```go
+func Test_Dependencies(t *testing.T) {
+	c, err := di.NewContainer(
+		Dependencies, // var Dependencies di.Module
+	)
+	require.NoError(t, err)
+
+	// Assert that our root service(s) are registered
+	ditest.AssertContains[*service.Service](t, c)
+
+	// Validate that all services are resolveable
+	err = di.ValidateDependencies(c)
+	require.NoError(t, err)
+}
+```
+
 ## `dicontext`
 
 The `dicontext` package allows you to add a container scope to a `context.Context`.
