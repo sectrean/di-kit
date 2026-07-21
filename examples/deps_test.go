@@ -11,7 +11,7 @@ import (
 
 func Test_Deps(t *testing.T) {
 	c, err := di.NewContainer(
-		di.WithModule(Deps),
+		Deps,
 		di.WithDependencyValidation(),
 	)
 	require.NoError(t, err)
