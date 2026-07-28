@@ -30,7 +30,7 @@ func ValidateDependencies(c *Container) error {
 				continue
 			}
 
-			prob := c.validateService(svc, svcProblems, newResolveVisitor())
+			prob := validateService(c, svc, svcProblems, newResolveVisitor())
 			if prob != "" {
 				errs = append(errs, errors.Errorf("service %s: %s", svc, prob))
 			}
@@ -46,7 +46,7 @@ func ValidateDependencies(c *Container) error {
 					continue
 				}
 
-				prob := c.validateService(svc, svcProblems, newResolveVisitor())
+				prob := validateService(c, svc, svcProblems, newResolveVisitor())
 				if prob != "" {
 					errs = append(errs, errors.Errorf("service %s: %s", svc, prob))
 				}
@@ -61,7 +61,7 @@ func ValidateDependencies(c *Container) error {
 	return nil
 }
 
-func (c *Container) validateService(svc *service, svcProblems map[*service]string, visitor *resolveVisitor) string {
+func validateService(c *Container, svc *service, svcProblems map[*service]string, visitor *resolveVisitor) string {
 	if prob, ok := svcProblems[svc]; ok {
 		return prob
 	}
@@ -100,7 +100,7 @@ func (c *Container) validateService(svc *service, svcProblems map[*service]strin
 			continue
 		}
 
-		prob := c.validateService(depSvc, svcProblems, visitor)
+		prob := validateService(c, depSvc, svcProblems, visitor)
 		if prob != "" {
 			problems = append(problems, fmt.Sprintf("dependency %s: %s", depKey, prob))
 		}
