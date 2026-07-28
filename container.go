@@ -43,7 +43,7 @@ var _ Scope = (*Container)(nil)
 //
 // Available options:
 //   - [WithService] registers a service with a value or constructor function.
-//   - [WithModule] registers services from a module.
+//   - [Module] registers a collection of services.
 //   - [WithDependencyValidation] validates service dependencies.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
@@ -273,7 +273,7 @@ func (c *Container) lookupService(key serviceKey) *service {
 //
 // Available options:
 //   - [WithService] registers a service with a value or a function.
-//   - [WithModule] registers services from a module.
+//   - [Module] registers a collection of services.
 //   - [WithDependencyValidation] validates service dependencies.
 func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 	c.closeMu.Lock()

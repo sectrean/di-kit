@@ -3,7 +3,7 @@ Package dicontext provides utilities for working with [di.Scope] and [context.Co
 
 Example:
 
-	c, err := di.NewContainer(di.WithModule(Dependencies))
+	c, err := di.NewContainer(Dependencies)
 	...
 
 	// Add the Container to the context
