@@ -307,18 +307,18 @@ func Test_NewContainer(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("di.WithModule di.WithService nil", func(t *testing.T) {
+	t.Run("di.Module di.WithService nil", func(t *testing.T) {
 		c, err := di.NewContainer(
-			di.WithModule([]di.ContainerOption{
+			di.Module{
 				di.WithService(testtypes.NewInterfaceA),
 				di.WithService(nil),
-			}),
+			},
 			di.WithService(testtypes.NewInterfaceC),
 		)
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "di.NewContainer: di.WithModule: di.WithService: funcOrValue is nil")
+		assert.EqualError(t, err, "di.NewContainer: di.Module: di.WithService: funcOrValue is nil")
 	})
 
 	t.Run("di.WithDependencyValidation", func(t *testing.T) {
@@ -1793,17 +1793,17 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("di.WithModule", func(t *testing.T) {
+	t.Run("di.Module", func(t *testing.T) {
 		// The module service should be registered first since the module is added before the
 		// other service registrations.
 		a1 := &testtypes.StructA{Tag: 1}
 		a2 := &testtypes.StructA{Tag: 2}
 
 		c, err := di.NewContainer(
-			di.WithModule(di.Module{
+			di.Module{
 				di.WithService(a1, di.As[testtypes.InterfaceA]()),
 				di.WithService(testtypes.NewInterfaceB),
-			}),
+			},
 			di.WithService(testtypes.NewInterfaceC),
 			di.WithService(a2, di.As[testtypes.InterfaceA]()),
 		)

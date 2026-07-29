@@ -8,8 +8,14 @@ import "github.com/sectrean/di-kit/internal/errors"
 // Example:
 //
 //	var Deps = di.Module{
-//		di.WithService(NewLogger),
-//		di.WithService(NewDB),
+//		common.Deps,
+//		di.WithService(storage.NewStorage),
+//		di.WithService(service.NewService),
+//	}
+//
+//	func main() {
+//		c, err := di.NewContainer(Deps)
+//		//...
 //	}
 type Module []ContainerOption
 
@@ -19,24 +25,9 @@ func (m Module) applyContainer(c *Container) error {
 		return o.applyContainer(c)
 	})
 	if err != nil {
-		err = errors.Wrap(err, "di.WithModule")
+		err = errors.Wrap(err, "di.Module")
 	}
 	return err
 }
 
 var _ ContainerOption = Module{}
-
-// WithModule applies the container options in a Module when calling [NewContainer] or [Container.NewScope].
-//
-// Example:
-//
-//	c, err := di.NewContainer(
-//		di.WithModule(common.Deps),
-//		di.WithModule(service.Deps),
-//	)
-//
-//	// Can also be used directly as an option
-//	c, err := di.NewContainer(common.Deps, service.Deps)
-func WithModule(m Module) ContainerOption {
-	return m
-}

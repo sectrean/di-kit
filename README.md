@@ -301,26 +301,15 @@ func (f *Factory) New(ctx context.Context, name string) (Service, error) {
 Modules allow you to export a collection of container options (service registrations) that can be re-used for different containers.
 
 ```go
-package common
-
 var Dependencies = di.Module{
-	di.WithService(NewLogger), // NewLogger() *slog.Logger
+	common.Dependencies, // var Dependencies di.Module
+	di.WithService(service.NewService), // NewService(*slog.Logger) *Service
 	//...
 }
 ```
 
 ```go
-c, err := di.NewContainer(
-	di.WithModule(common.Dependencies), // var Dependencies di.Module
-	di.WithService(service.NewService), // NewService(*slog.Logger) *Service
-	//...
-)
-```
-
-Modules can also be used directly as container options.
-
-```go
-c, err := di.NewContainer(common.Dependencies, service.Dependencies)
+c, err := di.NewContainer(Dependencies)
 ```
 
 ## `dicontext`

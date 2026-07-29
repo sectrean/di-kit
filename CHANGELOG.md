@@ -39,4 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   allocated lazily on first use. A request scope that registers no services dropped from
   9 to 3 allocations.
 
+### Removed
+
+**BREAKING:** Removed the `WithModule` option. It was redundant
+because a `Module` can be used directly as a `ContainerOption`.
+
 [Unreleased]: https://github.com/sectrean/di-kit/compare/v0.25.0...HEAD
