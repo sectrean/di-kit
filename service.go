@@ -160,6 +160,10 @@ func validateDependencyType(t reflect.Type) bool {
 		return true
 	}
 
+	if isLazyType(t) {
+		t = getLazyServiceType(t)
+	}
+
 	if isUnnamedSliceType(t) {
 		t = t.Elem()
 	}

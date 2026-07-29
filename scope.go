@@ -82,13 +82,11 @@ func Contains[Service any](s Scope, opts ...ResolveOption) bool {
 	return s.Contains(reflect.TypeFor[Service](), opts...)
 }
 
-func newInjectedScope(s Scope, key serviceKey) (scope *injectedScope, ready func()) {
-	wrapper := &injectedScope{
+func newInjectedScope(s Scope, key serviceKey) *injectedScope {
+	return &injectedScope{
 		scope: s,
 		key:   key,
 	}
-
-	return wrapper, wrapper.setReady
 }
 
 // injectedScope wraps a Container to be injected as a Scope dependency.
