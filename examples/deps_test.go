@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/sectrean/di-kit"
-	"github.com/sectrean/di-kit/ditest"
 	"github.com/sectrean/di-kit/examples/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,9 +14,9 @@ func Test_Deps(t *testing.T) {
 	require.NoError(t, err)
 
 	// Make sure the root service is registered
-	ditest.AssertContains[*service.Service](t, c)
+	assert.True(t, di.Contains[*service.Service](c))
 
 	// Validate that all services are resolvable
-	err = di.ValidateDependencies(c)
+	err = di.ValidateContainer(c)
 	assert.NoError(t, err)
 }

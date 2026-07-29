@@ -7,7 +7,7 @@ import (
 	"github.com/sectrean/di-kit/internal/errors"
 )
 
-// ValidateDependencies will validate that the Container's services are all resolvable.
+// ValidateContainer will validate that the given Container's services are all resolvable.
 //
 // This will verify that all service dependencies are registered and
 // there are no dependency cycles.
@@ -17,9 +17,8 @@ import (
 // may be registered with a child scope.
 // Child scopes can be validated separately.
 //
-// This function is intended to be called from a unit test
-// and is not optimized for performance.
-func ValidateDependencies(c *Container) error {
+// This function is intended to be used in tests, not in production code.
+func ValidateContainer(c *Container) error {
 	var errs []error
 	svcProblems := make(map[*service]string)
 
@@ -55,7 +54,7 @@ func ValidateDependencies(c *Container) error {
 	}
 
 	if err := errors.Join(errs...); err != nil {
-		return errors.Wrap(err, "di.ValidateDependencies")
+		return errors.Wrap(err, "di.ValidateContainer")
 	}
 
 	return nil

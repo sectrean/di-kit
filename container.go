@@ -41,14 +41,15 @@ var _ Scope = (*Container)(nil)
 // Available options:
 //   - [WithService] registers a service with a value or constructor function.
 //   - [Module] registers a collection of services.
-//   - [WithDependencyValidation] validates service dependencies.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		services: make(map[serviceKey][]*service),
 		resolved: make(map[*service]*resolveResult),
 	}
 
-	err := c.applyOptions(opts)
+	err := applyOptions(opts, func(o ContainerOption) error {
+		return o.applyContainer(c)
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "di.NewContainer")
 	}
@@ -66,17 +67,6 @@ type containerOption func(*Container) error
 
 func (o containerOption) applyContainer(c *Container) error {
 	return o(c)
-}
-
-func (c *Container) applyOptions(opts []ContainerOption) error {
-	err := applyOptions(opts, func(o ContainerOption) error {
-		return o.applyContainer(c)
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (c *Container) register(s *service) {
@@ -158,7 +148,6 @@ func (c *Container) lookupService(key serviceKey) *service {
 // Available options:
 //   - [WithService] registers a service with a value or a function.
 //   - [Module] registers a collection of services.
-//   - [WithDependencyValidation] validates service dependencies.
 func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 	c.closeMu.Lock()
 	closed := c.closed
@@ -174,7 +163,9 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 		parent: c,
 	}
 
-	err := scope.applyOptions(opts)
+	err := applyOptions(opts, func(o ContainerOption) error {
+		return o.applyContainer(scope)
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "di.Container.NewScope")
 	}

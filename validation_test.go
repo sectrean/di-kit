@@ -19,7 +19,7 @@ func Test_ValidateDependencies(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = di.ValidateDependencies(c)
+		err = di.ValidateContainer(c)
 		assert.NoError(t, err)
 	})
 
@@ -29,10 +29,10 @@ func Test_ValidateDependencies(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = di.ValidateDependencies(c)
+		err = di.ValidateContainer(c)
 		LogError(t, err)
 
-		assert.EqualError(t, err, "di.ValidateDependencies: "+
+		assert.EqualError(t, err, "di.ValidateContainer: "+
 			"service func(testtypes.InterfaceA) testtypes.InterfaceB: "+
 			"dependency testtypes.InterfaceA: service not registered",
 		)
@@ -45,7 +45,7 @@ func Test_ValidateDependencies(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = di.ValidateDependencies(c)
+		err = di.ValidateContainer(c)
 		assert.NoError(t, err)
 	})
 
@@ -57,7 +57,7 @@ func Test_ValidateDependencies(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = di.ValidateDependencies(c)
+		err = di.ValidateContainer(c)
 		LogError(t, err)
 
 		// The exact error message is non-deterministic because it depends on map iteration order
@@ -70,10 +70,10 @@ func Test_ValidateDependencies(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = di.ValidateDependencies(c)
+		err = di.ValidateContainer(c)
 		LogError(t, err)
 
-		assert.EqualError(t, err, "di.ValidateDependencies: "+
+		assert.EqualError(t, err, "di.ValidateContainer: "+
 			"service func(context.Context, testtypes.InterfaceA) testtypes.InterfaceA: "+
 			"dependency testtypes.InterfaceA: dependency cycle detected",
 		)
@@ -91,10 +91,10 @@ func Test_ValidateDependencies(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = di.ValidateDependencies(c)
+		err = di.ValidateContainer(c)
 		LogError(t, err)
 
-		assert.EqualError(t, err, "di.ValidateDependencies: "+
+		assert.EqualError(t, err, "di.ValidateContainer: "+
 			"service func([]testtypes.InterfaceC) testtypes.InterfaceD: "+
 			"dependency testtypes.InterfaceC: service not registered",
 		)
@@ -112,7 +112,7 @@ func Test_ValidateDependencies(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = di.ValidateDependencies(c)
+		err = di.ValidateContainer(c)
 		assert.NoError(t, err)
 	})
 
@@ -126,7 +126,7 @@ func Test_ValidateDependencies(t *testing.T) {
 		scope, err := c.NewScope()
 		require.NoError(t, err)
 
-		err = di.ValidateDependencies(scope)
+		err = di.ValidateContainer(scope)
 		assert.NoError(t, err)
 	})
 
@@ -139,11 +139,11 @@ func Test_ValidateDependencies(t *testing.T) {
 		scope, err := c.NewScope()
 		require.NoError(t, err)
 
-		err = di.ValidateDependencies(scope)
+		err = di.ValidateContainer(scope)
 		LogError(t, err)
 
 		assert.NotNil(t, scope)
-		assert.EqualError(t, err, "di.ValidateDependencies: "+
+		assert.EqualError(t, err, "di.ValidateContainer: "+
 			"service func(testtypes.InterfaceA) testtypes.InterfaceB: "+
 			"dependency testtypes.InterfaceA: service not registered",
 		)
@@ -161,7 +161,7 @@ func Test_ValidateDependencies(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = di.ValidateDependencies(scope)
+		err = di.ValidateContainer(scope)
 		LogError(t, err)
 
 		// The exact error message is non-deterministic because it depends on map iteration order

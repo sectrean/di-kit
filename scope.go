@@ -14,7 +14,7 @@ import (
 //
 //	svc, err := di.Resolve[*service.Service](ctx, scope)
 //
-// # Scope as a Parameter
+// # Scope as a Dependency
 //
 // [Scope] can be used as a constructor function parameter to create
 // a "factory" service.
@@ -34,11 +34,11 @@ import (
 //		return &Factory{scope: s, config: c}
 //	}
 //
-//	func (f *Factory) New(ctx context.Context, name string) Service {
+//	func (f *Factory) New(ctx context.Context, name string) (Service, error) {
 //		// Use f.scope to manually resolve dependencies...
 //	}
 type Scope interface {
-	// Contains returns true if the Scope can resolve a service of the given type.
+	// Contains returns true if the Scope has a service of the given type registered.
 	//
 	// See [Container.Contains] for more information.
 	Contains(t reflect.Type, opts ...ResolveOption) bool
@@ -73,6 +73,13 @@ func MustResolve[Service any](ctx context.Context, s Scope, opts ...ResolveOptio
 		panic(err)
 	}
 	return val
+}
+
+// Contains returns true if the Scope has a service of type Service registered.
+//
+// See [Container.Contains] for more information.
+func Contains[Service any](s Scope, opts ...ResolveOption) bool {
+	return s.Contains(reflect.TypeFor[Service](), opts...)
 }
 
 func newInjectedScope(s Scope, key serviceKey) (scope *injectedScope, ready func()) {
@@ -112,7 +119,7 @@ func (s *injectedScope) Resolve(
 	// Otherwise a deadlock is possible.
 	if !s.ready.Load() {
 		return nil, errors.Errorf(
-			"di.Container.Resolve %s: not supported within service constructor function", t,
+			"di.Scope.Resolve %s: not supported within service constructor function", t,
 		)
 	}
 

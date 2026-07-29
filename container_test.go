@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/sectrean/di-kit"
-	"github.com/sectrean/di-kit/ditest"
 	"github.com/sectrean/di-kit/internal/errors"
 	"github.com/sectrean/di-kit/internal/mocks"
 	"github.com/sectrean/di-kit/internal/testtypes"
@@ -33,7 +32,7 @@ func Test_NewContainer(t *testing.T) {
 		assert.NotNil(t, c)
 		assert.NoError(t, err)
 
-		ditest.AssertContains[testtypes.InterfaceA](t, c)
+		assert.True(t, di.Contains[testtypes.InterfaceA](c))
 	})
 
 	t.Run("di.WithService invalid type int", func(t *testing.T) {
@@ -334,8 +333,8 @@ func Test_Container_NewScope(t *testing.T) {
 		assert.NotNil(t, scope)
 		assert.NoError(t, err)
 
-		ditest.AssertContains[testtypes.InterfaceA](t, scope)
-		ditest.AssertContains[testtypes.InterfaceB](t, scope)
+		assert.True(t, di.Contains[testtypes.InterfaceA](c))
+		assert.True(t, di.Contains[testtypes.InterfaceB](c))
 	})
 
 	t.Run("di.WithService", func(t *testing.T) {
@@ -350,11 +349,11 @@ func Test_Container_NewScope(t *testing.T) {
 		assert.NotNil(t, scope)
 		assert.NoError(t, err)
 
-		ditest.AssertContains[testtypes.InterfaceA](t, c)
-		ditest.AssertNotContains[testtypes.InterfaceB](t, c)
+		assert.True(t, di.Contains[testtypes.InterfaceA](c))
+		assert.False(t, di.Contains[testtypes.InterfaceB](c))
 
-		ditest.AssertContains[testtypes.InterfaceA](t, scope)
-		ditest.AssertContains[testtypes.InterfaceB](t, scope)
+		assert.True(t, di.Contains[testtypes.InterfaceA](scope))
+		assert.True(t, di.Contains[testtypes.InterfaceB](scope))
 	})
 
 	t.Run("di.WithService invalid type di.Lifetime", func(t *testing.T) {
@@ -404,7 +403,7 @@ func Test_Container_NewScope(t *testing.T) {
 		assert.NoError(t, err)
 
 		// The tag must match exactly: the untagged key is not registered.
-		ditest.AssertNotContains[testtypes.InterfaceB](t, scope)
+		assert.False(t, di.Contains[testtypes.InterfaceB](scope))
 	})
 
 	t.Run("scoped service registered with As", func(t *testing.T) {
@@ -458,7 +457,7 @@ func Test_Container_Contains(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		has := c.Contains(reflect.TypeFor[testtypes.InterfaceA]())
+		has := di.Contains[testtypes.InterfaceA](c)
 		assert.True(t, has)
 	})
 
@@ -466,7 +465,7 @@ func Test_Container_Contains(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
 
-		has := c.Contains(reflect.TypeFor[testtypes.InterfaceA]())
+		has := di.Contains[testtypes.InterfaceA](c)
 		assert.False(t, has)
 	})
 
@@ -476,10 +475,10 @@ func Test_Container_Contains(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		has := c.Contains(reflect.TypeFor[testtypes.InterfaceA](), di.WithTag("tag"))
+		has := di.Contains[testtypes.InterfaceA](c, di.WithTag("tag"))
 		assert.True(t, has)
 
-		has = c.Contains(reflect.TypeFor[testtypes.InterfaceA]())
+		has = di.Contains[testtypes.InterfaceA](c)
 		assert.False(t, has)
 
 		has = c.Contains(reflect.TypeFor[testtypes.InterfaceA](), di.WithTag("other"))
@@ -497,10 +496,10 @@ func Test_Container_Contains(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		has := scope.Contains(reflect.TypeFor[testtypes.InterfaceA]())
+		has := di.Contains[testtypes.InterfaceA](scope)
 		assert.True(t, has)
 
-		has = scope.Contains(reflect.TypeFor[testtypes.InterfaceB]())
+		has = di.Contains[testtypes.InterfaceB](scope)
 		assert.True(t, has)
 	})
 
@@ -510,7 +509,7 @@ func Test_Container_Contains(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		has := c.Contains(reflect.TypeFor[[]testtypes.InterfaceA]())
+		has := di.Contains[[]testtypes.InterfaceA](c)
 		assert.True(t, has)
 	})
 
@@ -520,7 +519,7 @@ func Test_Container_Contains(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		has := c.Contains(reflect.TypeFor[[]testtypes.InterfaceB]())
+		has := di.Contains[[]testtypes.InterfaceB](c)
 		assert.False(t, has)
 	})
 
@@ -530,10 +529,10 @@ func Test_Container_Contains(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		has := c.Contains(reflect.TypeFor[[]testtypes.InterfaceA]())
+		has := di.Contains[[]testtypes.InterfaceA](c)
 		assert.False(t, has)
 
-		has = c.Contains(reflect.TypeFor[[]testtypes.InterfaceA](), di.WithTag(1))
+		has = di.Contains[[]testtypes.InterfaceA](c, di.WithTag(1))
 		assert.True(t, has)
 	})
 }
@@ -1621,11 +1620,11 @@ func Test_Container_Resolve(t *testing.T) {
 
 				assert.Nil(t, a)
 				assert.EqualError(t, err,
-					"di.Container.Resolve testtypes.InterfaceA: "+
+					"di.Scope.Resolve testtypes.InterfaceA: "+
 						"not supported within service constructor function")
 
 				// Contains can be called though
-				ditest.AssertContains[testtypes.InterfaceA](t, scope)
+				assert.True(t, di.Contains[testtypes.InterfaceA](scope))
 
 				// We have to store it and we can call Resolve later.
 				return NewScopeFactory(scope, func(ctx context.Context, s di.Scope) (testtypes.InterfaceA, error) {

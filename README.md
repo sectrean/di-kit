@@ -314,23 +314,24 @@ c, err := di.NewContainer(Dependencies)
 
 ### Validation
 
-Use `di.ValidateDependencies()` to validate that a container's services are all resolvable.
+Use `di.ValidateContainer()` to validate that a Container's services are all resolvable.
 This will validate that all service dependencies are registered and there are no dependency cycles.
-This should be done as a unit test.
+This should be used in a test.
 
 ```go
 func Test_Dependencies(t *testing.T) {
+	// Create a Container with the Module used at runtime
 	c, err := di.NewContainer(
 		Dependencies, // var Dependencies di.Module
 	)
 	require.NoError(t, err)
 
-	// Assert that our root service(s) are registered
-	ditest.AssertContains[*service.Service](t, c)
+	// Validate that all services are resolvable
+	err = di.ValidateContainer(c)
+	assert.NoError(t, err)
 
-	// Validate that all services are resolveable
-	err = di.ValidateDependencies(c)
-	require.NoError(t, err)
+	// Assert that our root service(s) were registered
+	assert.True(t, di.Contains[*service.Service](c))
 }
 ```
 

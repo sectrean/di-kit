@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `dihttp.WithRequestService` option to register the current `*http.Request` with each
   request scope, so it can be resolved directly or injected into scoped services.
+- `Contains[Service]` generic function for checking if a service is registered with a `Scope`.
 
 ### Changed
 
@@ -39,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   registrations in a slice instead of allocating a map, and the resolution cache is
   allocated lazily on first use. A request scope that registers no services dropped from
   9 to 3 allocations.
-- **BREAKING** Refactored validation API to use a package-level `di.ValidateDependencies()`
+- **BREAKING** Refactored validation API to use a package-level `di.ValidateContainer()`
   function, rather than a `di.WithDependencyValidation()` option that returns an error when
   creating a `Container`. This change simplifies the API and makes it more flexible. A user
   can pass in a pre-constructed `Container` to validate rather than forcing them to append
@@ -49,5 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **BREAKING:** Removed the `WithModule` option. It was redundant
 because a `Module` can be used directly as a `ContainerOption`.
+**BREAKING:** Removed the `ditest` package. Two assert functions didn't justify the need
+for this sub-package. Use `di.Contains[Service]` and assert on the result.
 
 [Unreleased]: https://github.com/sectrean/di-kit/compare/v0.25.0...HEAD
