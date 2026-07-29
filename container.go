@@ -2,10 +2,8 @@ package di
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"slices"
-	"strings"
 	"sync"
 
 	"github.com/sectrean/di-kit/internal/errors"
@@ -33,8 +31,7 @@ type Container struct {
 	// set, closed by constructService itself.
 	closeMu sync.Mutex
 
-	closed   bool
-	validate bool
+	closed bool
 }
 
 var _ Scope = (*Container)(nil)
@@ -44,14 +41,15 @@ var _ Scope = (*Container)(nil)
 // Available options:
 //   - [WithService] registers a service with a value or constructor function.
 //   - [Module] registers a collection of services.
-//   - [WithDependencyValidation] validates service dependencies.
 func NewContainer(opts ...ContainerOption) (*Container, error) {
 	c := &Container{
 		services: make(map[serviceKey][]*service),
 		resolved: make(map[*service]*resolveResult),
 	}
 
-	err := c.applyOptions(opts)
+	err := applyOptions(opts, func(o ContainerOption) error {
+		return o.applyContainer(c)
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "di.NewContainer")
 	}
@@ -69,24 +67,6 @@ type containerOption func(*Container) error
 
 func (o containerOption) applyContainer(c *Container) error {
 	return o(c)
-}
-
-func (c *Container) applyOptions(opts []ContainerOption) error {
-	err := applyOptions(opts, func(o ContainerOption) error {
-		return o.applyContainer(c)
-	})
-	if err != nil {
-		return err
-	}
-
-	if c.validate {
-		err := c.validateDependencies()
-		if err != nil {
-			return errors.Wrap(err, "di.WithDependencyValidation")
-		}
-	}
-
-	return nil
 }
 
 func (c *Container) register(s *service) {
@@ -131,112 +111,6 @@ func (c *Container) registerType(t reflect.Type, s *service) {
 	}
 }
 
-// WithDependencyValidation validates registered services on [Container] creation.
-//
-// This will check that all dependencies are registered and that there are no dependency cycles.
-// It will return an error with details if any issues are found.
-//
-// Scoped services are not validated because dependencies may be registered with a child scope.
-// They can be validated using this option when creating a child scope with [Container.NewScope].
-func WithDependencyValidation() ContainerOption {
-	return containerOption(func(c *Container) error {
-		c.validate = true
-		return nil
-	})
-}
-
-func (c *Container) validateDependencies() error {
-	var errs []error
-	svcProblems := make(map[*service]string)
-
-	for _, svcs := range c.services {
-		for _, svc := range svcs {
-			if svc.Lifetime() == Scoped {
-				// Scoped services are not validated
-				continue
-			}
-
-			prob := c.validateService(svc, svcProblems, newResolveVisitor())
-			if prob != "" {
-				errs = append(errs, errors.Errorf("service %s: %s", svc, prob))
-			}
-		}
-	}
-
-	if c.parent != nil {
-		// Validate scoped services on the parent Container
-		for _, svcs := range c.parent.services {
-			for _, svc := range svcs {
-				if svc.Lifetime() != Scoped {
-					// Now we only want the scoped services
-					continue
-				}
-
-				prob := c.validateService(svc, svcProblems, newResolveVisitor())
-				if prob != "" {
-					errs = append(errs, errors.Errorf("service %s: %s", svc, prob))
-				}
-			}
-		}
-	}
-
-	return errors.Join(errs...)
-}
-
-func (c *Container) validateService(svc *service, svcProblems map[*service]string, visitor *resolveVisitor) string {
-	if prob, ok := svcProblems[svc]; ok {
-		return prob
-	}
-
-	deps := svc.Dependencies()
-	if len(deps) == 0 {
-		svcProblems[svc] = ""
-		return ""
-	}
-
-	if !visitor.Enter(svc) {
-		return errDependencyCycle.Error()
-	}
-	defer visitor.Leave()
-
-	var problems []string
-	for _, depKey := range deps {
-		if depKey.Type == typeContext || depKey.Type == typeScope {
-			continue
-		}
-
-		if isUnnamedSliceType(depKey.Type) {
-			if svc.Func().Type().IsVariadic() {
-				// If the service is variadic, registration is optional
-				continue
-			}
-
-			// Check that the element type is registered
-			depKey.Type = depKey.Type.Elem()
-		}
-
-		depSvc := c.lookupService(depKey)
-		if depSvc == nil {
-			prob := fmt.Sprintf("dependency %s: service not registered", depKey)
-			problems = append(problems, prob)
-			continue
-		}
-
-		prob := c.validateService(depSvc, svcProblems, visitor)
-		if prob != "" {
-			problems = append(problems, fmt.Sprintf("dependency %s: %s", depKey, prob))
-		}
-	}
-
-	if len(problems) > 0 {
-		probs := strings.Join(problems, "; ")
-		svcProblems[svc] = probs
-		return probs
-	}
-
-	return ""
-}
-
 func (c *Container) root() *Container {
 	root := c
 	for root.parent != nil {
@@ -274,7 +148,6 @@ func (c *Container) lookupService(key serviceKey) *service {
 // Available options:
 //   - [WithService] registers a service with a value or a function.
 //   - [Module] registers a collection of services.
-//   - [WithDependencyValidation] validates service dependencies.
 func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 	c.closeMu.Lock()
 	closed := c.closed
@@ -290,7 +163,9 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 		parent: c,
 	}
 
-	err := scope.applyOptions(opts)
+	err := applyOptions(opts, func(o ContainerOption) error {
+		return o.applyContainer(scope)
+	})
 	if err != nil {
 		return nil, errors.Wrap(err, "di.Container.NewScope")
 	}
