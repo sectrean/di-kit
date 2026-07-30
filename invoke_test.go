@@ -13,6 +13,17 @@ import (
 )
 
 func Test_Invoke(t *testing.T) {
+	t.Run("fn is nil", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		err = di.Invoke(ctx, c, nil)
+		testutils.LogError(t, err)
+
+		assert.EqualError(t, err, "di.Invoke: fn is nil")
+	})
+
 	t.Run("not func", func(t *testing.T) {
 		c, err := di.NewContainer()
 		require.NoError(t, err)
@@ -21,7 +32,7 @@ func Test_Invoke(t *testing.T) {
 		err = di.Invoke(ctx, c, 1234)
 		testutils.LogError(t, err)
 
-		assert.EqualError(t, err, "di.Invoke int: fn must be a function")
+		assert.EqualError(t, err, "di.Invoke: fn must be a function")
 	})
 
 	t.Run("dependency nil", func(t *testing.T) {
@@ -52,6 +63,22 @@ func Test_Invoke(t *testing.T) {
 
 		err = di.Invoke(ctx, c, func(a testtypes.InterfaceA) {
 			assert.NotNil(t, a)
+			called = true
+		})
+
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("di.Scope param", func(t *testing.T) {
+		c, err := di.NewContainer()
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		called := false
+
+		err = di.Invoke(ctx, c, func(s di.Scope) {
+			assert.Same(t, c, s)
 			called = true
 		})
 
@@ -96,7 +123,7 @@ func Test_Invoke(t *testing.T) {
 		err = di.Invoke(ctx, c, func(testtypes.InterfaceA) {})
 		testutils.LogError(t, err)
 
-		assert.EqualError(t, err, "di.Invoke func(testtypes.InterfaceA): di.Container.Resolve testtypes.InterfaceA: service not registered")
+		assert.EqualError(t, err, "di.Invoke: di.Container.Resolve testtypes.InterfaceA: service not registered")
 	})
 
 	t.Run("context.Context dependency", func(t *testing.T) {
@@ -126,7 +153,7 @@ func Test_Invoke(t *testing.T) {
 		err = di.Invoke(ctx, c, func() {})
 		testutils.LogError(t, err)
 
-		assert.EqualError(t, err, "di.Invoke func(): context canceled")
+		assert.EqualError(t, err, "di.Invoke: context canceled")
 	})
 
 	t.Run("Resolve context canceled", func(t *testing.T) {
@@ -142,7 +169,7 @@ func Test_Invoke(t *testing.T) {
 		err = di.Invoke(ctx, c, func(context.Context, testtypes.InterfaceA) {})
 		testutils.LogError(t, err)
 
-		assert.EqualError(t, err, "di.Invoke func(context.Context, testtypes.InterfaceA): di.Container.Resolve testtypes.InterfaceA: context canceled")
+		assert.EqualError(t, err, "di.Invoke: di.Container.Resolve testtypes.InterfaceA: context canceled")
 	})
 
 	t.Run("di.WithTagged", func(t *testing.T) {
@@ -185,7 +212,7 @@ func Test_Invoke(t *testing.T) {
 		)
 		testutils.LogError(t, err)
 
-		assert.EqualError(t, err, "di.Invoke func(testtypes.InterfaceA): di.WithTagged testtypes.InterfaceB: parameter not found")
+		assert.EqualError(t, err, "di.Invoke: di.WithTagged testtypes.InterfaceB: parameter not found")
 	})
 
 	t.Run("variadic dependency", func(t *testing.T) {

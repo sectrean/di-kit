@@ -24,6 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   registered services for that variadic type are still validated.
 - `Container.Close` now returns an error while the container is still in use by
   an open child scope or an in-progress resolution, this enforces consistency for service and container lifetimes.
+- `di.Invoke` now returns an error when called with a nil function instead of
+  panicking.
+- `di.Invoke` now treats variadic dependencies as optional only when no matching
+  service is registered, preserving resolution errors for registered services.
+
+### Changed
+
+- Simplified `di.Invoke` error wrapping to use a simpler `di.Invoke:` prefix.
 
 ## [0.26.0] - 2026-07-28
 
