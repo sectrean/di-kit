@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The `dihttp` scope middleware now correctly defers the closing of the request-scoped container.
+  This will ensure that the scope still gets closed if a downstream handler panics.
+
 ## [0.26.0] - 2026-07-28
 
 ### Fixed

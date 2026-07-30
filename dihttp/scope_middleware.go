@@ -1,6 +1,7 @@
 package dihttp
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
@@ -30,10 +31,10 @@ func NewRequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOpti
 
 	return func(next http.Handler) http.Handler {
 		mw := scopeMiddleware{
-			next:            next,
-			parent:          parent,
-			newScopeHandler: defaultNewScopeErrorHandler,
-			closeHandler:    defaultScopeCloseErrorHandler,
+			next:               next,
+			parent:             parent,
+			newScopeErrHandler: defaultNewScopeErrorHandler,
+			closeErrHandler:    defaultScopeCloseErrorHandler,
 		}
 
 		for _, opt := range opts {
@@ -75,12 +76,12 @@ func defaultScopeCloseErrorHandler(r *http.Request, err error) {
 }
 
 type scopeMiddleware struct {
-	next            http.Handler
-	parent          *di.Container
-	newScopeHandler NewScopeErrorHandler
-	closeHandler    ScopeCloseErrorHandler
-	opts            []di.ContainerOption
-	registerRequest bool
+	next               http.Handler
+	parent             *di.Container
+	newScopeErrHandler NewScopeErrorHandler
+	closeErrHandler    ScopeCloseErrorHandler
+	opts               []di.ContainerOption
+	registerRequest    bool
 }
 
 func (m scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -95,21 +96,24 @@ func (m scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create child scope for the request
-	scope, err := m.parent.NewScope(opts...)
-	if err != nil {
-		m.newScopeHandler(w, r, err)
+	child, newScopeErr := m.parent.NewScope(opts...)
+	if newScopeErr != nil {
+		m.newScopeErrHandler(w, r, newScopeErr)
 		return
 	}
 
+	// Close the scope when the request is done
+	defer func() {
+		closeCtx := context.WithoutCancel(r.Context())
+		closeErr := child.Close(closeCtx)
+		if closeErr != nil {
+			m.closeErrHandler(r, closeErr)
+		}
+	}()
+
 	// Add the scope to the request context
-	ctx := dicontext.WithScope(r.Context(), scope)
+	scopeCtx := dicontext.WithScope(r.Context(), child)
 
 	// Call the next handler with the new context
-	m.next.ServeHTTP(w, r.WithContext(ctx))
-
-	// Close the scope after the request has been processed
-	err = scope.Close(ctx)
-	if err != nil {
-		m.closeHandler(r, err)
-	}
+	m.next.ServeHTTP(w, r.WithContext(scopeCtx))
 }
