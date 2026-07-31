@@ -1,5 +1,5 @@
 /*
-Package di is a dependency injection toolkit for modern Go applications.
+Package di (di-kit) is a dependency injection toolkit for modern Go applications.
 
 # Usage
 
@@ -14,24 +14,26 @@ The typical workflow has three steps:
  3. Close the container with [Container.Close] when you're done. The container
     calls Close on any services it created.
 
-    // 1. Create the Container and register services.
-    c, err := di.NewContainer(
-    di.WithService(logger), // var logger *slog.Logger
-    di.WithService(storage.NewDBStore, // NewDBStore(context.Context) (*storage.DBStore, error)
-    di.As[storage.Store](),
-    ),
-    di.WithService(service.NewService), // NewService(*slog.Logger, storage.Store) *service.Service
-    )
-    // ...
+Example:
 
-    // 3. Close the Container when you're done.
-    defer func() {
-    err := c.Close(ctx)
-    // ...
-    }()
+	// Create the Container and register services.
+	c, err := di.NewContainer(
+	   di.WithService(logger), // var logger *slog.Logger
+	   di.WithService(storage.NewDBStore, // NewDBStore(context.Context) (*storage.DBStore, error)
+	      di.As[storage.Store](),
+	   ),
+	   di.WithService(service.NewService), // NewService(*slog.Logger, storage.Store) *service.Service
+	)
+	// ...
 
-    // 2. Resolve services by type from the Container.
-    svc, err := di.Resolve[*service.Service](ctx, c)
+	// 3. Close the Container when you're done.
+	defer func() {
+	   err := c.Close(ctx)
+	   // ...
+	}()
+
+	// 2. Resolve services by type from the Container.
+	svc, err := di.Resolve[*service.Service](ctx, c)
 
 A service can be almost any named type (or pointer to a named type) including
 structs, interfaces, functions, or basic types. Some types like error and
@@ -51,12 +53,9 @@ Child scopes created with [Container.NewScope] isolate scoped services, and
 
 # Companion packages
 
-  - The dicontext package stores a container scope on a [context.Context] so it
+  - The [github.com/sectrean/di-kit/dicontext] package stores a container scope on a [context.Context] so it
     can be used as a service locator.
-  - The dihttp package provides net/http middleware that creates a new child
+  - The [github.com/sectrean/di-kit/dihttp] package provides net/http middleware that creates a new child
     scope for each request.
-
-See the package README for detailed examples of each feature:
-https://pkg.go.dev/github.com/sectrean/di-kit#section-readme
 */
 package di
