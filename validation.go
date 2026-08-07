@@ -1,7 +1,10 @@
 package di
 
 import (
+	"cmp"
 	"fmt"
+	"iter"
+	"slices"
 	"strings"
 
 	"github.com/sectrean/di-kit/internal/errors"
@@ -19,97 +22,187 @@ import (
 //
 // This function is intended to be used in tests, not in production code.
 func ValidateContainer(c *Container) error {
+	v := newValidator(c)
+
+	if err := v.Validate(); err != nil {
+		return errors.Wrap(err, "di.ValidateContainer")
+	}
+	return nil
+}
+
+func newValidator(c *Container) *validator {
+	return &validator{scope: c}
+}
+
+type validator struct {
+	scope *Container
+}
+
+func (v *validator) Validate() error {
 	var errs []error
-	svcProblems := make(map[*service]string)
 
-	for _, svcs := range c.services {
-		for _, svc := range svcs {
-			if svc.Lifetime() == Scoped {
-				// Scoped services are not validated
-				continue
-			}
-
-			prob := validateService(c, svc, svcProblems, newResolveVisitor())
-			if prob != "" {
-				errs = append(errs, errors.Errorf("service %s: %s", svc, prob))
-			}
+	for svc := range v.iterateServices() {
+		err := v.validateService(svc, newResolveVisitor())
+		if err != nil {
+			errs = append(errs, err)
 		}
 	}
 
-	if c.parent != nil {
-		// Validate scoped services on the parent Container
-		for _, svcs := range c.parent.services {
-			for _, svc := range svcs {
-				if svc.Lifetime() != Scoped {
-					// Now we only want the scoped services
-					continue
-				}
-
-				prob := validateService(c, svc, svcProblems, newResolveVisitor())
-				if prob != "" {
-					errs = append(errs, errors.Errorf("service %s: %s", svc, prob))
-				}
-			}
-		}
-	}
+	// Sort errors so we have stable output despite iterating
+	// on services from a map
+	slices.SortFunc(errs, func(a, b error) int {
+		return cmp.Compare(a.Error(), b.Error())
+	})
 
 	if err := errors.Join(errs...); err != nil {
-		return errors.Wrap(err, "di.ValidateContainer")
+		return err
 	}
 
 	return nil
 }
 
-func validateService(c *Container, svc *service, svcProblems map[*service]string, visitor *resolveVisitor) string {
-	if prob, ok := svcProblems[svc]; ok {
-		return prob
-	}
-
+func (v *validator) validateService(svc *service, visitor *resolveVisitor) error {
 	deps := svc.Dependencies()
 	if len(deps) == 0 {
-		svcProblems[svc] = ""
-		return ""
+		return nil
 	}
 
 	if !visitor.Enter(svc) {
-		return errDependencyCycle.Error()
+		return newServiceValidationError(svc, errDependencyCycle)
 	}
 	defer visitor.Leave()
 
-	var problems []string
-	for _, depKey := range deps {
+	var depErrs []error
+	for depIndex, depKey := range deps {
 		if depKey.Type == typeContext || depKey.Type == typeScope {
 			continue
 		}
 
 		if isUnnamedSliceType(depKey.Type) {
-			if svc.Func().Type().IsVariadic() {
-				// If the service is variadic, registration is optional
+			// A variadic parameter is optional
+			optional := depIndex == len(deps)-1 && svc.Func().Type().IsVariadic()
+			elemKey := serviceKey{
+				Type: depKey.Type.Elem(),
+				Tag:  depKey.Tag,
+			}
+
+			sliceSvcs := slices.Collect(v.scope.iterateServices(elemKey))
+			if len(sliceSvcs) == 0 && !optional {
+				depErrs = append(depErrs, newDependencyError(depKey, errServiceNotRegistered))
 				continue
 			}
 
-			// Check that the element type is registered
-			depKey.Type = depKey.Type.Elem()
-		}
-
-		depSvc := c.lookupService(depKey)
-		if depSvc == nil {
-			prob := fmt.Sprintf("dependency %s: service not registered", depKey)
-			problems = append(problems, prob)
+			for _, depSvc := range sliceSvcs {
+				if err := v.validateService(depSvc, visitor); err != nil {
+					depErrs = append(depErrs, newDependencyError(depKey, err))
+				}
+			}
 			continue
 		}
 
-		prob := validateService(c, depSvc, svcProblems, visitor)
-		if prob != "" {
-			problems = append(problems, fmt.Sprintf("dependency %s: %s", depKey, prob))
+		depSvc := v.scope.lookupService(depKey)
+		if depSvc == nil {
+			depErrs = append(depErrs, newDependencyError(depKey, errServiceNotRegistered))
+			continue
+		}
+
+		if err := v.validateService(depSvc, visitor); err != nil {
+			depErrs = append(depErrs, newDependencyError(depKey, err))
 		}
 	}
 
-	if len(problems) > 0 {
-		probs := strings.Join(problems, "; ")
-		svcProblems[svc] = probs
-		return probs
+	if len(depErrs) > 0 {
+		return newServiceValidationError(svc, depErrs...)
 	}
 
-	return ""
+	return nil
+}
+
+// iterateServices returns each registration once.
+// Services registered under multiple assignable types or tags share the same
+// identity. A scope validates its own non-scoped registrations and scoped
+// registrations inherited from every ancestor against the current scope.
+func (v *validator) iterateServices() iter.Seq[*service] {
+	return func(yield func(*service) bool) {
+		seen := make(map[*service]struct{})
+		checkScoped := false // Don't check scoped services on this container--only ancestors
+
+		for scope := v.scope; scope != nil; scope = scope.parent {
+			for _, svcs := range scope.services {
+				for _, svc := range svcs {
+					if (svc.Lifetime() == Scoped) != checkScoped {
+						continue
+					}
+
+					if _, ok := seen[svc]; ok {
+						continue
+					}
+					seen[svc] = struct{}{}
+
+					if !yield(svc) {
+						return
+					}
+				}
+			}
+
+			checkScoped = true
+		}
+	}
+}
+
+func newServiceValidationError(svc *service, depErrs ...error) error {
+	return &validationError{
+		svc:     svc,
+		depErrs: depErrs,
+	}
+}
+
+type validationError struct {
+	svc     *service
+	depErrs []error
+}
+
+var _ error = (*validationError)(nil)
+
+func (e *validationError) Error() string {
+	var sb strings.Builder
+
+	sb.WriteString("service ")
+	sb.WriteString(e.svc.String())
+	sb.WriteString(": ")
+
+	for i, err := range e.depErrs {
+		if i > 0 {
+			sb.WriteString("; ")
+		}
+		sb.WriteString(err.Error())
+	}
+
+	return sb.String()
+}
+
+func (e *validationError) Unwrap() []error {
+	return e.depErrs
+}
+
+func newDependencyError(key serviceKey, cause error) error {
+	return &dependencyError{
+		key:   key,
+		cause: cause,
+	}
+}
+
+type dependencyError struct {
+	key   serviceKey
+	cause error
+}
+
+var _ error = (*dependencyError)(nil)
+
+func (e *dependencyError) Error() string {
+	return fmt.Sprintf("dependency %s: %s", e.key, e.cause.Error())
+}
+
+func (e *dependencyError) Unwrap() error {
+	return e.cause
 }
