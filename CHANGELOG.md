@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The minimum supported Go version is now 1.23. Now using iterators.
+
 ### Fixed
 
 - The `dihttp` scope middleware now correctly defers the closing of the request-scoped container.

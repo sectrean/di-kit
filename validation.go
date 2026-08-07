@@ -41,7 +41,7 @@ type validator struct {
 func (v *validator) Validate() error {
 	var errs []error
 
-	for svc := range v.iterateServices() {
+	for svc := range v.services() {
 		err := v.validateService(svc, newResolveVisitor())
 		if err != nil {
 			errs = append(errs, err)
@@ -86,7 +86,7 @@ func (v *validator) validateService(svc *service, visitor *resolveVisitor) error
 				Tag:  depKey.Tag,
 			}
 
-			sliceSvcs := slices.Collect(v.scope.iterateServices(elemKey))
+			sliceSvcs := slices.Collect(v.scope.registeredServices(elemKey))
 			if len(sliceSvcs) == 0 && !optional {
 				depErrs = append(depErrs, newDependencyError(depKey, errServiceNotRegistered))
 				continue
@@ -118,11 +118,12 @@ func (v *validator) validateService(svc *service, visitor *resolveVisitor) error
 	return nil
 }
 
-// iterateServices returns each registration once.
-// Services registered under multiple assignable types or tags share the same
-// identity. A scope validates its own non-scoped registrations and scoped
-// registrations inherited from every ancestor against the current scope.
-func (v *validator) iterateServices() iter.Seq[*service] {
+// services returns services to validate.
+// A service is returned only once even if it was registered with multiple
+// types or tags. Iteration order is not stable.
+//
+// Scoped services registered with ancestor containers are validated.
+func (v *validator) services() iter.Seq[*service] {
 	return func(yield func(*service) bool) {
 		seen := make(map[*service]struct{})
 		checkScoped := false // Don't check scoped services on this container--only ancestors

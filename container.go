@@ -123,9 +123,10 @@ func (c *Container) root() *Container {
 // lookupService returns a service for the given key.
 // When multiple services are registered for the same key (type and tag), this is
 // an intentional "last registration wins" for single-value resolution.
-// For all services registered for a key use lookupServices (see resolveSliceKey).
 // This is documented on Container.Resolve; callers wanting a specific service
 // should use a distinct tag.
+//
+// Use [registeredServices] to get all services registered for a key.
 func (c *Container) lookupService(key serviceKey) *service {
 	for scope := c; scope != nil; scope = scope.parent {
 		svcs, ok := scope.services[key]
@@ -139,10 +140,10 @@ func (c *Container) lookupService(key serviceKey) *service {
 	return nil
 }
 
-// iterateServices returns every service registered for a key in runtime slice
-// resolution order: child to parent, preserving registration order within each
-// container.
-func (c *Container) iterateServices(key serviceKey) iter.Seq[*service] {
+// registeredServices returns every service registered for a key in runtime slice
+// resolution order: child to ancestors, preserving registration order within each
+// container scope.
+func (c *Container) registeredServices(key serviceKey) iter.Seq[*service] {
 	return func(yield func(*service) bool) {
 		for scope := c; scope != nil; scope = scope.parent {
 			for _, svc := range scope.services[key] {
@@ -292,7 +293,7 @@ func resolveSliceKey(
 	}
 
 	var found bool
-	for svc := range scope.iterateServices(elemKey) {
+	for svc := range scope.registeredServices(elemKey) {
 		val, err := resolveService(ctx, scope, elemKey, svc, visitor)
 		if err != nil {
 			return nil, err
