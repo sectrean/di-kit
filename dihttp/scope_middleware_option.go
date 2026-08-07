@@ -39,7 +39,7 @@ func WithContainerOptions(opts ...di.ContainerOption) ScopeMiddlewareOption {
 func WithNewScopeErrorHandler(h NewScopeErrorHandler) ScopeMiddlewareOption {
 	return scopeMiddlewareOption(func(m *scopeMiddleware) {
 		if h != nil {
-			m.newScopeHandler = h
+			m.newScopeErrHandler = h
 		}
 	})
 }
@@ -51,7 +51,7 @@ func WithNewScopeErrorHandler(h NewScopeErrorHandler) ScopeMiddlewareOption {
 func WithScopeCloseErrorHandler(h ScopeCloseErrorHandler) ScopeMiddlewareOption {
 	return scopeMiddlewareOption(func(m *scopeMiddleware) {
 		if h != nil {
-			m.closeHandler = h
+			m.closeErrHandler = h
 		}
 	})
 }

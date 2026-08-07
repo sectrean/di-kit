@@ -1,6 +1,7 @@
 package dihttp_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -308,6 +309,38 @@ func Test_Middleware(t *testing.T) {
 		code := RunRequest(t, mw(handler), "/")
 		assert.Equal(t, http.StatusOK, code)
 		// TODO: Assert log output
+	})
+
+	t.Run("handler panic", func(t *testing.T) {
+		closed := false
+
+		c, err := di.NewContainer(
+			di.WithService(
+				testtypes.NewInterfaceA,
+				di.Scoped,
+				di.UseCloseFunc(func(_ context.Context, a testtypes.InterfaceA) error {
+					closed = true
+					return nil
+				}),
+			),
+		)
+		require.NoError(t, err)
+
+		mw := dihttp.NewRequestScopeMiddleware(c)
+
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// We need to resolve the service for it to get closed
+			_, err := dicontext.Resolve[testtypes.InterfaceA](r.Context())
+			assert.NoError(t, err)
+
+			panic(&testtypes.CustomError{})
+		})
+
+		assert.PanicsWithValue(t, &testtypes.CustomError{}, func() {
+			RunRequest(t, mw(handler), "/")
+		})
+
+		assert.True(t, closed)
 	})
 }
 
