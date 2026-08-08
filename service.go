@@ -199,14 +199,15 @@ func newService(c *Container, v reflect.Value, opts ...ServiceOption) (*service,
 		return nil, err
 	}
 
-	err = applyOptions(opts, func(opt ServiceOption) error {
-		return opt.applyService(s)
-	})
-	if err != nil {
+	if err := s.apply(opts...); err != nil {
 		return nil, err
 	}
 
 	return s, nil
+}
+
+func (s *service) apply(opts ...ServiceOption) error {
+	return applyOptions(opts, func(o ServiceOption) error { return o.applyService(s) })
 }
 
 func (s *service) initFuncService(funcType reflect.Type) error {

@@ -48,13 +48,9 @@ func NewContainer(opts ...ContainerOption) (*Container, error) {
 		resolved: make(map[*service]*resolveResult),
 	}
 
-	err := applyOptions(opts, func(o ContainerOption) error {
-		return o.applyContainer(c)
-	})
-	if err != nil {
+	if err := c.apply(opts...); err != nil {
 		return nil, errors.Wrap(err, "di.NewContainer")
 	}
-
 	return c, nil
 }
 
@@ -68,6 +64,10 @@ type containerOption func(*Container) error
 
 func (o containerOption) applyContainer(c *Container) error {
 	return o(c)
+}
+
+func (c *Container) apply(opts ...ContainerOption) error {
+	return applyOptions(opts, func(o ContainerOption) error { return o.applyContainer(c) })
 }
 
 func (c *Container) register(s *service) {
@@ -186,10 +186,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 		parent: c,
 	}
 
-	err := applyOptions(opts, func(o ContainerOption) error {
-		return o.applyContainer(scope)
-	})
-	if err != nil {
+	if err := scope.apply(opts...); err != nil {
 		return nil, errors.Wrap(err, "di.Container.NewScope")
 	}
 

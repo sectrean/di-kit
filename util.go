@@ -52,8 +52,7 @@ func applyOptions[O any](opts []O, f func(O) error) error {
 	var errs []error
 
 	for _, o := range opts {
-		err := f(o)
-		if err != nil {
+		if err := f(o); err != nil {
 			errs = append(errs, err)
 		}
 	}
