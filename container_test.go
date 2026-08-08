@@ -2313,7 +2313,7 @@ func Test_Container_Close(t *testing.T) {
 		err = c.Close(ctx)
 		LogError(t, err)
 
-		assert.EqualError(t, err, "di.Container.Close: closed already: container closed")
+		assert.EqualError(t, err, "di.Container.Close: container already closed")
 	})
 
 	t.Run("in use by child scope", func(t *testing.T) {
@@ -2673,7 +2673,7 @@ func Test_Container_Close(t *testing.T) {
 		for _, err := range results {
 			if err != nil {
 				assert.Contains(t, []string{
-					"di.Container.Close: closed already: container closed",
+					"di.Container.Close: container already closed",
 					"di.Container.Close: container in use",
 				}, err.Error())
 				numErrors++

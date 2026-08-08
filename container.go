@@ -499,10 +499,6 @@ func constructService(
 // Close will return an error if called more than once.
 func (c *Container) Close(ctx context.Context) error {
 	if err := c.lifecycle.tryClose(); err != nil {
-		if errors.Is(err, errContainerClosed) {
-			return errors.Wrap(err, "di.Container.Close: closed already")
-		}
-
 		return errors.Wrap(err, "di.Container.Close")
 	}
 
@@ -534,10 +530,11 @@ func (c *Container) Close(ctx context.Context) error {
 }
 
 var (
-	errServiceNotRegistered = errors.New("service not registered")
-	errDependencyCycle      = errors.New("dependency cycle detected")
-	errContainerClosed      = errors.New("container closed")
-	errContainerInUse       = errors.New("container in use")
+	errServiceNotRegistered   = errors.New("service not registered")
+	errDependencyCycle        = errors.New("dependency cycle detected")
+	errContainerClosed        = errors.New("container closed")
+	errContainerAlreadyClosed = errors.New("container already closed")
+	errContainerInUse         = errors.New("container in use")
 )
 
 func newResolveResult(owner *resolveVisitor) *resolveResult {
@@ -730,7 +727,7 @@ func (g *leaseGate) tryClose() error {
 		return nil
 	}
 	if g.state.Load()&leaseGateClosed != 0 {
-		return errContainerClosed
+		return errContainerAlreadyClosed
 	}
 	return errContainerInUse
 }
