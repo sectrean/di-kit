@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from all ancestor scopes.
 - Variadic dependencies are now treated as optional only for the final variadic parameter, and any
   registered services for that variadic type are still validated.
+- `Container.Close` now returns an error while the container is still in use by
+  an open child scope or an in-progress resolution, this enforces consistency for service and container lifetimes.
 
 ## [0.26.0] - 2026-07-28
 
