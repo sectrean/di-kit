@@ -29,10 +29,10 @@ type Container struct {
 	// closers in parallel.
 	closersMu sync.Mutex
 
-	// lifecycle is a lease gate. A Resolve holds a lease for its duration, and
-	// each child scope holds a lease on its parent until the child has finished
-	// closing. Close succeeds only when there are no leases.
-	lifecycle leaseGate
+	// closeGate tracks active use of this container. A Resolve begins use for
+	// its duration, and each child scope begins use of its parent until the
+	// child has finished closing. Close succeeds only when no use is active.
+	closeGate closeGate
 }
 
 var _ Scope = (*Container)(nil)
@@ -168,15 +168,15 @@ func (c *Container) registeredServices(key serviceKey) iter.Seq[*service] {
 //   - [WithService] registers a service with a value or a function.
 //   - [Module] registers a collection of services.
 func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
-	// Keep a lease on the parent for the lifetime of the child. This both
-	// checks that the parent is open and prevents it from closing before the child.
-	if !c.lifecycle.acquire() {
+	// Begin using the parent for the lifetime of the child. This both checks
+	// that the parent is open and prevents it from closing before the child.
+	if !c.closeGate.beginUse() {
 		return nil, errors.Wrap(errContainerClosed, "di.Container.NewScope")
 	}
-	keepLease := false
+	keepUsingParent := false
 	defer func() {
-		if !keepLease {
-			c.lifecycle.release()
+		if !keepUsingParent {
+			c.closeGate.endUse()
 		}
 	}()
 
@@ -193,7 +193,7 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 		return nil, errors.Wrap(err, "di.Container.NewScope")
 	}
 
-	keepLease = true
+	keepUsingParent = true
 
 	return scope, nil
 }
@@ -245,10 +245,10 @@ func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...Resolve
 		key = opt.applyServiceKey(key)
 	}
 
-	if !c.lifecycle.acquire() {
+	if !c.closeGate.beginUse() {
 		return nil, errors.Wrapf(errContainerClosed, "di.Container.Resolve %s", key)
 	}
-	defer c.lifecycle.release()
+	defer c.closeGate.endUse()
 
 	// The visitor is created lazily during resolution: a cached result is returned
 	// without one, avoiding an allocation on the hot path.
@@ -498,13 +498,13 @@ func constructService(
 //
 // Close will return an error if called more than once.
 func (c *Container) Close(ctx context.Context) error {
-	if err := c.lifecycle.tryClose(); err != nil {
+	if err := c.closeGate.tryClose(); err != nil {
 		return errors.Wrap(err, "di.Container.Close")
 	}
 
-	// Keep the parent lease until all child cleanup is complete.
+	// Keep using the parent until all child cleanup is complete.
 	if c.parent != nil {
-		defer c.parent.lifecycle.release()
+		defer c.parent.closeGate.endUse()
 	}
 
 	c.closersMu.Lock()
@@ -698,35 +698,36 @@ func (v *resolveVisitor) Leave() {
 	v.entered = v.entered[:len(v.entered)-1]
 }
 
-// leaseGate combines a closed flag with a count of current users. Keeping the
-// atomic representation here lets Container use simple acquire/release semantics
-// without allocating a lease object or placing a mutex on the resolution hot path.
-type leaseGate struct {
+// closeGate combines a closed flag with a count of active users. Keeping the
+// atomic representation here lets Container use simple beginUse/endUse
+// semantics without allocating anything or placing a mutex on the
+// resolution hot path.
+type closeGate struct {
 	state atomic.Uint32
 }
 
-const leaseGateClosed uint32 = 1 << 31
+const closeGateClosed uint32 = 1 << 31
 
-func (g *leaseGate) acquire() bool {
+func (g *closeGate) beginUse() bool {
 	state := g.state.Add(1)
-	if state&leaseGateClosed == 0 {
+	if state&closeGateClosed == 0 {
 		return true
 	}
 
-	// Closing won the race. Undo the lease and reject the caller.
-	g.release()
+	// Closing won the race. Undo this use and reject the caller.
+	g.endUse()
 	return false
 }
 
-func (g *leaseGate) release() {
+func (g *closeGate) endUse() {
 	g.state.Add(^uint32(0))
 }
 
-func (g *leaseGate) tryClose() error {
-	if g.state.CompareAndSwap(0, leaseGateClosed) {
+func (g *closeGate) tryClose() error {
+	if g.state.CompareAndSwap(0, closeGateClosed) {
 		return nil
 	}
-	if g.state.Load()&leaseGateClosed != 0 {
+	if g.state.Load()&closeGateClosed != 0 {
 		return errContainerAlreadyClosed
 	}
 	return errContainerInUse

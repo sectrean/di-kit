@@ -369,7 +369,7 @@ func Test_Container_NewScope(t *testing.T) {
 
 		assert.Nil(t, scope)
 		assert.EqualError(t, err, "di.Container.NewScope: di.WithService di.Lifetime: invalid service type")
-		assert.NoError(t, c.Close(context.Background()), "a failed NewScope must release its parent lease")
+		assert.NoError(t, c.Close(context.Background()), "a failed NewScope must end use of its parent")
 	})
 
 	t.Run("parent closed", func(t *testing.T) {
@@ -2365,7 +2365,7 @@ func Test_Container_Close(t *testing.T) {
 		assert.NoError(t, root.Close(ctx))
 	})
 
-	t.Run("child retains parent lease while closing", func(t *testing.T) {
+	t.Run("child keeps parent in use while closing", func(t *testing.T) {
 		closerStarted := make(chan struct{})
 		releaseCloser := make(chan struct{})
 
