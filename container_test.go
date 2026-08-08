@@ -369,6 +369,7 @@ func Test_Container_NewScope(t *testing.T) {
 
 		assert.Nil(t, scope)
 		assert.EqualError(t, err, "di.Container.NewScope: di.WithService di.Lifetime: invalid service type")
+		assert.NoError(t, c.Close(context.Background()), "a failed NewScope must end use of its parent")
 	})
 
 	t.Run("parent closed", func(t *testing.T) {
@@ -2312,7 +2313,86 @@ func Test_Container_Close(t *testing.T) {
 		err = c.Close(ctx)
 		LogError(t, err)
 
-		assert.EqualError(t, err, "di.Container.Close: closed already: container closed")
+		assert.EqualError(t, err, "di.Container.Close: container already closed")
+	})
+
+	t.Run("in use by child scope", func(t *testing.T) {
+		value := &testtypes.StructA{Tag: "value"}
+		c, err := di.NewContainer(
+			di.WithService(value),
+			di.WithService(func() testtypes.InterfaceB { return &testtypes.StructB{} }),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		cached, err := di.Resolve[testtypes.InterfaceB](ctx, c)
+		require.NoError(t, err)
+
+		scope, err := c.NewScope()
+		require.NoError(t, err)
+
+		err = c.Close(ctx)
+		assert.EqualError(t, err, "di.Container.Close: container in use")
+
+		// A rejected Close must leave the parent usable. In particular, values and
+		// cached singletons reached by walking through the child remain valid.
+		gotValue, err := di.Resolve[*testtypes.StructA](ctx, scope)
+		assert.NoError(t, err)
+		assert.Same(t, value, gotValue)
+
+		gotCached, err := di.Resolve[testtypes.InterfaceB](ctx, scope)
+		assert.NoError(t, err)
+		assert.Same(t, cached, gotCached)
+
+		require.NoError(t, scope.Close(ctx))
+		assert.NoError(t, c.Close(ctx))
+	})
+
+	t.Run("descendant scopes remain open", func(t *testing.T) {
+		root, err := di.NewContainer()
+		require.NoError(t, err)
+		child, err := root.NewScope()
+		require.NoError(t, err)
+		grandchild, err := child.NewScope()
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		assert.EqualError(t, root.Close(ctx), "di.Container.Close: container in use")
+		assert.EqualError(t, child.Close(ctx), "di.Container.Close: container in use")
+
+		require.NoError(t, grandchild.Close(ctx))
+		require.NoError(t, child.Close(ctx))
+		assert.NoError(t, root.Close(ctx))
+	})
+
+	t.Run("child keeps parent in use while closing", func(t *testing.T) {
+		closerStarted := make(chan struct{})
+		releaseCloser := make(chan struct{})
+
+		root, err := di.NewContainer()
+		require.NoError(t, err)
+		child, err := root.NewScope(
+			di.WithService(&testtypes.StructA{},
+				di.UseCloseFunc(func(context.Context, *testtypes.StructA) error {
+					close(closerStarted)
+					<-releaseCloser
+					return nil
+				}),
+			),
+		)
+		require.NoError(t, err)
+
+		closeDone := make(chan error, 1)
+		go func() {
+			closeDone <- child.Close(context.Background())
+		}()
+
+		<-closerStarted
+		assert.EqualError(t, root.Close(context.Background()), "di.Container.Close: container in use")
+
+		close(releaseCloser)
+		require.NoError(t, <-closeDone)
+		assert.NoError(t, root.Close(context.Background()))
 	})
 
 	t.Run("all close funcs", func(t *testing.T) {
@@ -2592,7 +2672,10 @@ func Test_Container_Close(t *testing.T) {
 		numErrors := 0
 		for _, err := range results {
 			if err != nil {
-				assert.EqualError(t, err, "di.Container.Close: closed already: container closed")
+				assert.Contains(t, []string{
+					"di.Container.Close: container already closed",
+					"di.Container.Close: container in use",
+				}, err.Error())
 				numErrors++
 			}
 		}
@@ -2600,34 +2683,36 @@ func Test_Container_Close(t *testing.T) {
 		assert.Equal(t, concurrency-1, numErrors, "only one call should return a nil error")
 	})
 
-	t.Run("concurrent with Resolve", func(t *testing.T) {
+	t.Run("resolution in progress", func(t *testing.T) {
+		started := make(chan struct{})
+		release := make(chan struct{})
+
 		c, err := di.NewContainer(
-			di.WithService(&testtypes.StructA{}),
+			di.WithService(func() testtypes.InterfaceA {
+				close(started)
+				<-release
+				return &testtypes.StructA{}
+			}),
 		)
 		require.NoError(t, err)
 
-		var closeErr, resolveErr error
+		var resolveErr error
 		wg := sync.WaitGroup{}
-
 		Go(&wg, func() {
-			closeErr = c.Close(context.Background())
-		})
-		Go(&wg, func() {
-			_, resolveErr = di.Resolve[*testtypes.StructA](context.Background(), c)
+			_, resolveErr = di.Resolve[testtypes.InterfaceA](context.Background(), c)
 		})
 
+		<-started
+		closeErr := c.Close(context.Background())
+		assert.EqualError(t, closeErr, "di.Container.Close: container in use")
+
+		close(release)
 		wg.Wait()
-
-		assert.NoError(t, closeErr)
-		if resolveErr != nil {
-			assert.EqualError(t, resolveErr, "di.Container.Resolve *testtypes.StructA: container closed")
-		}
+		assert.NoError(t, resolveErr)
+		assert.NoError(t, c.Close(context.Background()))
 	})
 
 	t.Run("concurrent with Resolve on child scope", func(t *testing.T) {
-		// A Singleton service registered with the parent Container can be resolved
-		// through a child scope while the parent is being closed.
-		// The Resolve only locks the child scope, so Close does not wait for it.
 		ctx := context.Background()
 
 		started := make(chan struct{})
@@ -2657,19 +2742,18 @@ func Test_Container_Close(t *testing.T) {
 			_, resolveErr = di.Resolve[testtypes.InterfaceA](ctx, scope)
 		})
 
-		// Close the parent Container while the constructor function is running.
+		// The open child prevents its parent from closing, including while the child
+		// is resolving a singleton registered with that parent.
 		<-started
 		err = c.Close(ctx)
-		assert.NoError(t, err)
+		assert.EqualError(t, err, "di.Container.Close: container in use")
 
-		// The Container can no longer close the service,
-		// so it is closed as soon as the constructor function returns
-		// and the resolve fails.
 		close(release)
 		wg.Wait()
 
-		LogError(t, resolveErr)
-		assert.EqualError(t, resolveErr, "di.Container.Resolve testtypes.InterfaceA: container closed")
+		assert.NoError(t, resolveErr)
+		require.NoError(t, scope.Close(ctx))
+		assert.NoError(t, c.Close(ctx))
 	})
 
 	t.Run("concurrent with Resolve on child scopes stress", func(t *testing.T) {
@@ -2698,26 +2782,24 @@ func Test_Container_Close(t *testing.T) {
 			scopes[i] = scope
 		}
 
+		var closeErr error
 		RunParallel(concurrency+1, func(i int) {
 			if i == concurrency {
-				err := c.Close(context.Background())
-				assert.NoError(t, err)
+				closeErr = c.Close(context.Background())
 				return
 			}
 
 			got, err := di.Resolve[testtypes.InterfaceA](context.Background(), scopes[i])
-			if err != nil {
-				LogError(t, err)
-				assert.ErrorContains(t, err, "container closed")
-			} else {
-				assert.NotNil(t, got)
-			}
+			assert.NoError(t, err)
+			assert.NotNil(t, got)
 		})
 
-		// However the Resolve and Close calls interleave, the service must be
-		// constructed exactly once and closed exactly once:
-		// either by Close, or during the resolve if the Container was closed
-		// while the service was being constructed.
+		assert.EqualError(t, closeErr, "di.Container.Close: container in use")
+		for _, scope := range scopes {
+			require.NoError(t, scope.Close(context.Background()))
+		}
+		require.NoError(t, c.Close(context.Background()))
+
 		assert.Equal(t, int32(1), constructed.Load())
 		assert.Equal(t, int32(1), closed.Load())
 	})
@@ -2727,20 +2809,26 @@ func Test_Container_Close(t *testing.T) {
 		require.NoError(t, err)
 
 		var closeErr, scopeErr error
+		var scope *di.Container
 		wg := sync.WaitGroup{}
 
 		Go(&wg, func() {
 			closeErr = c.Close(context.Background())
 		})
 		Go(&wg, func() {
-			_, scopeErr = c.NewScope()
+			scope, scopeErr = c.NewScope()
 		})
 
 		wg.Wait()
 
-		assert.NoError(t, closeErr)
-		if scopeErr != nil {
+		if closeErr == nil {
 			assert.EqualError(t, scopeErr, "di.Container.NewScope: container closed")
+			assert.Nil(t, scope)
+		} else {
+			assert.EqualError(t, closeErr, "di.Container.Close: container in use")
+			require.NoError(t, scopeErr)
+			require.NoError(t, scope.Close(context.Background()))
+			assert.NoError(t, c.Close(context.Background()))
 		}
 	})
 }

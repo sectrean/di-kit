@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"slices"
 	"sync"
+	"sync/atomic"
 
 	"github.com/sectrean/di-kit/internal/errors"
 )
@@ -24,15 +25,14 @@ type Container struct {
 	// It is only used on the root Container.
 	waitingMu sync.Mutex
 
-	// closeMu guards closed and closers.
-	// It is not held for the duration of a resolve: Resolve only reads closed under it,
-	// while constructService appends closers under it. This lets a service be resolved
-	// through a child scope while the Container it is registered with is closed
-	// concurrently — the closer is either collected by Close or, if closed is already
-	// set, closed by constructService itself.
-	closeMu sync.Mutex
+	// closersMu guards closers. Resolutions may finish concurrently and append
+	// closers in parallel.
+	closersMu sync.Mutex
 
-	closed bool
+	// closeGate tracks active use of this container. A Resolve begins use for
+	// its duration, and each child scope begins use of its parent until the
+	// child has finished closing. Close succeeds only when no use is active.
+	closeGate closeGate
 }
 
 var _ Scope = (*Container)(nil)
@@ -168,13 +168,17 @@ func (c *Container) registeredServices(key serviceKey) iter.Seq[*service] {
 //   - [WithService] registers a service with a value or a function.
 //   - [Module] registers a collection of services.
 func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
-	c.closeMu.Lock()
-	closed := c.closed
-	c.closeMu.Unlock()
-
-	if closed {
+	// Begin using the parent for the lifetime of the child. This both checks
+	// that the parent is open and prevents it from closing before the child.
+	if !c.closeGate.beginUse() {
 		return nil, errors.Wrap(errContainerClosed, "di.Container.NewScope")
 	}
+	keepUsingParent := false
+	defer func() {
+		if !keepUsingParent {
+			c.closeGate.endUse()
+		}
+	}()
 
 	// resolved is allocated lazily on first cache write (see resolveService), so a
 	// scope that never resolves a cached service does not pay for the map.
@@ -188,6 +192,8 @@ func (c *Container) NewScope(opts ...ContainerOption) (*Container, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "di.Container.NewScope")
 	}
+
+	keepUsingParent = true
 
 	return scope, nil
 }
@@ -239,13 +245,10 @@ func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...Resolve
 		key = opt.applyServiceKey(key)
 	}
 
-	c.closeMu.Lock()
-	closed := c.closed
-	c.closeMu.Unlock()
-
-	if closed {
+	if !c.closeGate.beginUse() {
 		return nil, errors.Wrapf(errContainerClosed, "di.Container.Resolve %s", key)
 	}
+	defer c.closeGate.endUse()
 
 	// The visitor is created lazily during resolution: a cached result is returned
 	// without one, avoiding an allocation on the hot path.
@@ -476,20 +479,9 @@ func constructService(
 
 	// Add Closer for the service
 	if closer := svc.CloserFor(val); closer != nil {
-		scope.closeMu.Lock()
-		if scope.closed {
-			scope.closeMu.Unlock()
-
-			// The scope was closed while the service was being constructed.
-			// This can happen when a service is resolved through a child scope
-			// while the Container the service is registered with is closed concurrently.
-			// The Container can no longer close the service, so close it now
-			// and fail the resolution.
-			closeErr := closer.Close(ctx)
-			return nil, errors.Join(errContainerClosed, closeErr)
-		}
+		scope.closersMu.Lock()
 		scope.closers = append(scope.closers, closer)
-		scope.closeMu.Unlock()
+		scope.closersMu.Unlock()
 	}
 
 	return val, nil
@@ -502,22 +494,23 @@ func constructService(
 // Errors returned from closing services are joined together.
 //
 // Resolve and NewScope will return an error if called after the container has been closed.
+// Close will return an error while the container is in use by a child scope or resolution.
 //
 // Close will return an error if called more than once.
 func (c *Container) Close(ctx context.Context) error {
-	// Mark the Container closed and take the closers under closedMu.
-	// A service registered with this Container can be resolved through a child scope
-	// concurrently with Close. Its closer is either collected here,
-	// or constructService sees closed and closes the service itself.
-	c.closeMu.Lock()
-	if c.closed {
-		c.closeMu.Unlock()
-		return errors.Wrap(errContainerClosed, "di.Container.Close: closed already")
+	if err := c.closeGate.tryClose(); err != nil {
+		return errors.Wrap(err, "di.Container.Close")
 	}
-	c.closed = true
+
+	// Keep using the parent until all child cleanup is complete.
+	if c.parent != nil {
+		defer c.parent.closeGate.endUse()
+	}
+
+	c.closersMu.Lock()
 	closers := c.closers
 	c.closers = nil
-	c.closeMu.Unlock()
+	c.closersMu.Unlock()
 
 	// Close services in LIFO order
 	// This is important because of dependencies
@@ -537,9 +530,11 @@ func (c *Container) Close(ctx context.Context) error {
 }
 
 var (
-	errServiceNotRegistered = errors.New("service not registered")
-	errDependencyCycle      = errors.New("dependency cycle detected")
-	errContainerClosed      = errors.New("container closed")
+	errServiceNotRegistered   = errors.New("service not registered")
+	errDependencyCycle        = errors.New("dependency cycle detected")
+	errContainerClosed        = errors.New("container closed")
+	errContainerAlreadyClosed = errors.New("container already closed")
+	errContainerInUse         = errors.New("container in use")
 )
 
 func newResolveResult(owner *resolveVisitor) *resolveResult {
@@ -701,4 +696,39 @@ func (v *resolveVisitor) Enter(s *service) bool {
 // Leave pops the last entered service.
 func (v *resolveVisitor) Leave() {
 	v.entered = v.entered[:len(v.entered)-1]
+}
+
+// closeGate combines a closed flag with a count of active users. Keeping the
+// atomic representation here lets Container use simple beginUse/endUse
+// semantics without allocating anything or placing a mutex on the
+// resolution hot path.
+type closeGate struct {
+	state atomic.Uint32
+}
+
+const closeGateClosed uint32 = 1 << 31
+
+func (g *closeGate) beginUse() bool {
+	state := g.state.Add(1)
+	if state&closeGateClosed == 0 {
+		return true
+	}
+
+	// Closing won the race. Undo this use and reject the caller.
+	g.endUse()
+	return false
+}
+
+func (g *closeGate) endUse() {
+	g.state.Add(^uint32(0))
+}
+
+func (g *closeGate) tryClose() error {
+	if g.state.CompareAndSwap(0, closeGateClosed) {
+		return nil
+	}
+	if g.state.Load()&closeGateClosed != 0 {
+		return errContainerAlreadyClosed
+	}
+	return errContainerInUse
 }
