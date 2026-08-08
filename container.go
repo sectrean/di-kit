@@ -207,7 +207,11 @@ func (c *Container) Contains(t reflect.Type, opts ...ResolveOption) bool {
 
 	key := serviceKey{Type: t}
 	for _, opt := range opts {
-		key = opt.applyServiceKey(key)
+		var err error
+		key, err = opt.applyServiceKey(key)
+		if err != nil {
+			return false
+		}
 	}
 
 	return c.lookupService(key) != nil
@@ -216,8 +220,8 @@ func (c *Container) Contains(t reflect.Type, opts ...ResolveOption) bool {
 // ResolveOption can be used when calling [Resolve], [MustResolve],
 // [Container.Resolve], or [Container.Contains].
 type ResolveOption interface {
-	// applyServiceKey does not use a pointer to optimize allocations.
-	applyServiceKey(serviceKey) serviceKey
+	// applyServiceKey avoids using a pointer to optimize allocations.
+	applyServiceKey(serviceKey) (serviceKey, error)
 }
 
 // Resolve a service of the given [reflect.Type].
@@ -239,7 +243,11 @@ type ResolveOption interface {
 func (c *Container) Resolve(ctx context.Context, t reflect.Type, opts ...ResolveOption) (any, error) {
 	key := serviceKey{Type: t}
 	for _, opt := range opts {
-		key = opt.applyServiceKey(key)
+		var err error
+		key, err = opt.applyServiceKey(key)
+		if err != nil {
+			return nil, errors.Wrapf(err, "di.Container.Resolve %s", t)
+		}
 	}
 
 	if !c.closeGate.beginUse() {

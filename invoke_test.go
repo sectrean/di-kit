@@ -212,7 +212,25 @@ func Test_Invoke(t *testing.T) {
 		)
 		testutils.LogError(t, err)
 
-		assert.EqualError(t, err, "di.Invoke: di.WithTagged testtypes.InterfaceB: parameter not found")
+		assert.EqualError(t, err, "di.Invoke: di.WithTagged[testtypes.InterfaceB]: parameter not found")
+	})
+
+	t.Run("di.WithTagged invalid tag", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		require.NotPanics(t, func() {
+			err = di.Invoke(ctx, c,
+				func(testtypes.InterfaceA) {},
+				di.WithTagged[testtypes.InterfaceA]([]string{"tag"}),
+			)
+		})
+
+		assert.EqualError(t, err, "di.Invoke: "+
+			"di.WithTagged[testtypes.InterfaceA]: invalid tag type []string: type must be comparable")
 	})
 
 	t.Run("variadic dependency", func(t *testing.T) {

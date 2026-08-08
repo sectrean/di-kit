@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   panicking.
 - `di.Invoke` now treats variadic dependencies as optional only when no matching
   service is registered, preserving resolution errors for registered services.
+- `di.WithTag` and `di.WithTagged` options now reject non-comparable tags with an
+  error instead of panicking when the tag is used as part of a service key.
 
 ### Changed
 
