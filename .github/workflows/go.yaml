@@ -9,7 +9,7 @@ on:
 jobs:
 
   # Verify the library builds, vets, and tests on the minimum supported Go
-  # version declared in go.mod (1.22). Test/benchmark files that use newer
+  # version declared in go.mod (1.23). Test/benchmark files that use newer
   # stdlib APIs are guarded by //go:build go1.24 / go1.25 constraints and are
   # skipped here. The dev tools (task, golangci-lint, mockery) require a newer
   # Go, so this job runs the go commands directly instead of via Taskfile.
@@ -21,7 +21,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.22'
+          go-version: '1.23'
           cache: true
 
       - name: Build

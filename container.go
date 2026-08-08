@@ -2,6 +2,7 @@ package di
 
 import (
 	"context"
+	"iter"
 	"reflect"
 	"slices"
 	"sync"
@@ -9,7 +10,7 @@ import (
 	"github.com/sectrean/di-kit/internal/errors"
 )
 
-// Container is a dependency injection container.
+// Container is a reflection-based dependency injection container.
 // It is used to resolve services by first resolving their dependencies.
 type Container struct {
 	parent   *Container
@@ -119,6 +120,13 @@ func (c *Container) root() *Container {
 	return root
 }
 
+// lookupService returns a service for the given key.
+// When multiple services are registered for the same key (type and tag), this is
+// an intentional "last registration wins" for single-value resolution.
+// This is documented on Container.Resolve; callers wanting a specific service
+// should use a distinct tag.
+//
+// Use [registeredServices] to get all services registered for a key.
 func (c *Container) lookupService(key serviceKey) *service {
 	for scope := c; scope != nil; scope = scope.parent {
 		svcs, ok := scope.services[key]
@@ -126,14 +134,25 @@ func (c *Container) lookupService(key serviceKey) *service {
 			continue
 		}
 
-		// When multiple services are registered for the same key (type and tag), this is
-		// an intentional "last registration wins" for single-value resolution: the others
-		// remain reachable via slice resolution (see resolveSliceKey). This is documented
-		// on Container.Resolve; callers wanting a specific one should use a distinct tag.
 		return svcs[len(svcs)-1]
 	}
 
 	return nil
+}
+
+// registeredServices returns every service registered for a key in runtime slice
+// resolution order: child to ancestors, preserving registration order within each
+// container scope.
+func (c *Container) registeredServices(key serviceKey) iter.Seq[*service] {
+	return func(yield func(*service) bool) {
+		for scope := c; scope != nil; scope = scope.parent {
+			for _, svc := range scope.services[key] {
+				if !yield(svc) {
+					return
+				}
+			}
+		}
+	}
 }
 
 // NewScope creates a new [Container] with a child scope.
@@ -188,13 +207,7 @@ func (c *Container) Contains(t reflect.Type, opts ...ResolveOption) bool {
 		key = opt.applyServiceKey(key)
 	}
 
-	for scope := c; scope != nil; scope = scope.parent {
-		if _, found := scope.services[key]; found {
-			return true
-		}
-	}
-
-	return false
+	return c.lookupService(key) != nil
 }
 
 // ResolveOption can be used when calling [Resolve], [MustResolve],
@@ -259,7 +272,6 @@ func resolveKey(
 	svc := scope.lookupService(key)
 	if svc == nil {
 		// If the service is not found, return an error
-		// TODO: Support optional dependencies?
 		return nil, errServiceNotRegistered
 	}
 
@@ -279,18 +291,16 @@ func resolveSliceKey(
 		Type: elemType,
 		Tag:  key.Tag,
 	}
-	found := false
 
-	for s := scope; s != nil; s = s.parent {
-		for _, svc := range s.services[elemKey] {
-			val, err := resolveService(ctx, scope, elemKey, svc, visitor)
-			if err != nil {
-				return nil, err
-			}
-
-			sliceVal = reflect.Append(sliceVal, safeReflectValue(elemType, val))
-			found = true
+	var found bool
+	for svc := range scope.registeredServices(elemKey) {
+		val, err := resolveService(ctx, scope, elemKey, svc, visitor)
+		if err != nil {
+			return nil, err
 		}
+
+		sliceVal = reflect.Append(sliceVal, safeReflectValue(elemType, val))
+		found = true
 	}
 
 	if !found && !optional {
@@ -309,7 +319,7 @@ func resolveService(
 	visitor *resolveVisitor,
 ) (any, error) {
 	if svc.IsValue() {
-		// Value services are always resolved, so we can return the value directly.
+		// Value services don't need to be resolved--just return the value directly.
 		return svc.Value(), nil
 	}
 
@@ -376,7 +386,7 @@ resolveAndCache:
 	}
 	defer visitor.Leave()
 
-	res = &resolveResult{done: make(chan struct{}), owner: visitor}
+	res = newResolveResult(visitor)
 	if scope.resolved == nil {
 		scope.resolved = make(map[*service]*resolveResult)
 	}
@@ -531,6 +541,13 @@ var (
 	errDependencyCycle      = errors.New("dependency cycle detected")
 	errContainerClosed      = errors.New("container closed")
 )
+
+func newResolveResult(owner *resolveVisitor) *resolveResult {
+	return &resolveResult{
+		done:  make(chan struct{}),
+		owner: owner,
+	}
+}
 
 type resolveResult struct {
 	done chan struct{}

@@ -7,10 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The minimum supported Go version is now 1.23. Now using iterators.
+
 ### Fixed
 
 - The `dihttp` scope middleware now correctly defers the closing of the request-scoped container.
   This will ensure that the scope still gets closed if a downstream handler panics.
+- `di.ValidateContainer` now validates every registration that can satisfy a slice dependency,
+  including registrations inherited by child scopes, instead of checking only a single service.
+- `di.ValidateContainer` now reports all dependency validation failures in a stable order,
+  de-duplicates services registered under multiple aliases, and validates scoped services inherited
+  from all ancestor scopes.
+- Variadic dependencies are now treated as optional only for the final variadic parameter, and any
+  registered services for that variadic type are still validated.
 
 ## [0.26.0] - 2026-07-28
 
