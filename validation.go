@@ -182,7 +182,7 @@ func (e *validationError) Error() string {
 	return sb.String()
 }
 
-func (e *validationError) Unwrap() []error { return e.depErrs }
+// func (e *validationError) Unwrap() []error { return e.depErrs }
 
 func newDependencyError(key serviceKey, cause error) error {
 	return &dependencyError{
@@ -202,4 +202,4 @@ func (e *dependencyError) Error() string {
 	return fmt.Sprintf("dependency %s: %s", e.key, e.cause.Error())
 }
 
-func (e *dependencyError) Unwrap() error { return e.cause }
+// func (e *dependencyError) Unwrap() error { return e.cause }
