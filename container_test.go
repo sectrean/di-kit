@@ -205,7 +205,32 @@ func Test_NewContainer(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "di.NewContainer: di.WithService func() testtypes.InterfaceA: di.WithTagged testtypes.InterfaceB: parameter not found")
+		assert.EqualError(t, err, "di.NewContainer: di.WithService func() testtypes.InterfaceA: di.WithTagged[testtypes.InterfaceB]: parameter not found")
+	})
+
+	t.Run("di.WithService di.WithTag invalid tag", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA, di.WithTag([]string{"tag"})),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: di.WithService func() testtypes.InterfaceA: "+
+			"di.WithTag: invalid tag type []string: type must be comparable")
+	})
+
+	t.Run("di.WithService di.WithTagged invalid tag", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(
+				func(testtypes.InterfaceA) testtypes.InterfaceB { return &testtypes.StructB{} },
+				di.WithTagged[testtypes.InterfaceA]([]string{"tag"}),
+			),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: di.WithService func(testtypes.InterfaceA) testtypes.InterfaceB: "+
+			"di.WithTagged[testtypes.InterfaceA]: invalid tag type []string: type must be comparable")
 	})
 
 	t.Run("di.WithService di.UseCloseFunc not assignable", func(t *testing.T) {
@@ -290,7 +315,7 @@ func Test_NewContainer(t *testing.T) {
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: di.WithService []testtypes.InterfaceA: invalid service type\n"+
 			"di.WithService func() testtypes.InterfaceA: di.As testtypes.InterfaceB: type testtypes.InterfaceA not assignable to testtypes.InterfaceB\n"+
-			"di.WithTagged *testtypes.StructB: parameter not found",
+			"di.WithTagged[*testtypes.StructB]: parameter not found",
 		)
 	})
 
@@ -483,6 +508,19 @@ func Test_Container_Contains(t *testing.T) {
 		assert.False(t, has)
 
 		has = c.Contains(reflect.TypeFor[testtypes.InterfaceA](), di.WithTag("other"))
+		assert.False(t, has)
+	})
+
+	t.Run("di.WithTag invalid tag", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		var has bool
+		require.NotPanics(t, func() {
+			has = di.Contains[testtypes.InterfaceA](c, di.WithTag([]string{"tag"}))
+		})
 		assert.False(t, has)
 	})
 
@@ -1484,6 +1522,24 @@ func Test_Container_Resolve(t *testing.T) {
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: WithTag other: service not registered")
+	})
+
+	t.Run("WithTag invalid tag", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		var got testtypes.InterfaceA
+		var resolveErr error
+		require.NotPanics(t, func() {
+			got, resolveErr = di.Resolve[testtypes.InterfaceA](ctx, c, di.WithTag([]string{"tag"}))
+		})
+
+		assert.Nil(t, got)
+		assert.EqualError(t, resolveErr, "di.Container.Resolve testtypes.InterfaceA: "+
+			"di.WithTag: invalid tag type []string: type must be comparable")
 	})
 
 	t.Run("WithTagged", func(t *testing.T) {
