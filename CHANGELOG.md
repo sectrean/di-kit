@@ -33,7 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Simplified `di.Invoke` error wrapping to use a simpler `di.Invoke:` prefix.
+- Fixed some typos and formatting in docs.
+- Update error message formatting to be more consistent. Errors from generic options like `di.As` and 
+  `di.WithTagged` will include the type parameter in brackets.
 
 ## [0.26.0] - 2026-07-28
 
