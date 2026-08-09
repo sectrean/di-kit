@@ -98,19 +98,19 @@ func (o serviceOption) applyService(s *service) error {
 // Value services will be registered as the actual type of the value.
 //
 // Use [As] to register the service as an implemented interface.
-// This will override the default registration behavior.
-// The original type can also be registered using [As].
+// This will override the default registration behavior. As can be used multiple times to register as
+// other implemented interfaces and the original type.
 //
-// This option will return an error if the service type is not assignable to type Service.
+// This option will return an error if the service type is not assignable to the given type Service.
 func As[Service any]() ServiceOption {
 	return serviceOption(func(s *service) error {
 		t := reflect.TypeFor[Service]()
 
 		if ok := validateServiceType(t); !ok {
-			return errors.Errorf("di.As %s: invalid service type", t)
+			return errors.Errorf("di.As[%s]: invalid service type", t)
 		}
 		if !s.Type().AssignableTo(t) {
-			return errors.Errorf("di.As %s: type %s not assignable to %s", t, s.Type(), t)
+			return errors.Errorf("di.As[%s]: type %s not assignable to %s", t, s.Type(), t)
 		}
 
 		s.assignables = append(s.assignables, t)
@@ -167,15 +167,13 @@ func validateDependencyType(t reflect.Type) bool {
 	return validateServiceType(t)
 }
 
-type closerFactory = func(any) Closer
-
 type service struct {
 	scope         *Container
 	v             reflect.Value
 	t             reflect.Type
 	deps          []serviceKey
 	tags          []any
-	closerFactory closerFactory
+	closerFactory func(any) Closer
 	assignables   []reflect.Type
 	lifetime      Lifetime
 }
@@ -184,11 +182,11 @@ func newService(c *Container, v reflect.Value, opts ...ServiceOption) (*service,
 	s := &service{
 		scope:    c,
 		v:        v,
-		lifetime: Singleton,
+		lifetime: Singleton, // Default lifetime
 	}
-	var err error
 
-	if !s.IsValue() {
+	var err error
+	if s.isFunc() {
 		// Func service
 		err = s.initFuncService(v.Type())
 	} else {
@@ -263,13 +261,18 @@ func (s *service) initValueService(valType reflect.Type) error {
 	return nil
 }
 
+// Scope is the Container this service is registered with.
 func (s *service) Scope() *Container { return s.scope }
 
 // Type of the service. This is the return type of the constructor function or the actual type of the value.
 func (s *service) Type() reflect.Type { return s.t }
 
-// Named function types are treated as values, not constructor functions.
-func (s *service) isFunc() bool                { return s.v.Kind() == reflect.Func && s.v.Type().Name() == "" }
+// isFunc returns true if this is a function service.
+func (s *service) isFunc() bool {
+	return s.v.Kind() == reflect.Func && s.v.Type().Name() == ""
+}
+
+// IsValue returns true if this is a value service, otherwise it's a function service.
 func (s *service) IsValue() bool               { return !s.isFunc() }
 func (s *service) Lifetime() Lifetime          { return s.lifetime }
 func (s *service) Dependencies() []serviceKey  { return s.deps }

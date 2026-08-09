@@ -145,7 +145,7 @@ func Test_NewContainer(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "di.NewContainer: di.WithService func() testtypes.InterfaceA: di.As *testtypes.StructA: type testtypes.InterfaceA not assignable to *testtypes.StructA")
+		assert.EqualError(t, err, "di.NewContainer: di.WithService func() testtypes.InterfaceA: di.As[*testtypes.StructA]: type testtypes.InterfaceA not assignable to *testtypes.StructA")
 	})
 
 	t.Run("di.WithService di.As invalid service type map", func(t *testing.T) {
@@ -155,7 +155,7 @@ func Test_NewContainer(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "di.NewContainer: di.WithService testtypes.CustomMap: di.As map[string]interface {}: invalid service type")
+		assert.EqualError(t, err, "di.NewContainer: di.WithService testtypes.CustomMap: di.As[map[string]interface {}]: invalid service type")
 	})
 
 	t.Run("di.WithService di.Singleton value service", func(t *testing.T) {
@@ -193,7 +193,7 @@ func Test_NewContainer(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, c)
-		assert.EqualError(t, err, "di.NewContainer: di.WithService *testtypes.StructA: di.As testtypes.InterfaceB: type *testtypes.StructA not assignable to testtypes.InterfaceB")
+		assert.EqualError(t, err, "di.NewContainer: di.WithService *testtypes.StructA: di.As[testtypes.InterfaceB]: type *testtypes.StructA not assignable to testtypes.InterfaceB")
 	})
 
 	t.Run("di.WithService di.WithTagged parameter not found", func(t *testing.T) {
@@ -298,7 +298,7 @@ func Test_NewContainer(t *testing.T) {
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: di.WithService []testtypes.InterfaceA: invalid service type\n"+
-			"di.WithService func() testtypes.InterfaceA: di.As testtypes.InterfaceB: type testtypes.InterfaceA not assignable to testtypes.InterfaceB",
+			"di.WithService func() testtypes.InterfaceA: di.As[testtypes.InterfaceB]: type testtypes.InterfaceA not assignable to testtypes.InterfaceB",
 		)
 	})
 
@@ -314,7 +314,7 @@ func Test_NewContainer(t *testing.T) {
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: di.WithService []testtypes.InterfaceA: invalid service type\n"+
-			"di.WithService func() testtypes.InterfaceA: di.As testtypes.InterfaceB: type testtypes.InterfaceA not assignable to testtypes.InterfaceB\n"+
+			"di.WithService func() testtypes.InterfaceA: di.As[testtypes.InterfaceB]: type testtypes.InterfaceA not assignable to testtypes.InterfaceB\n"+
 			"di.WithTagged[*testtypes.StructB]: parameter not found",
 		)
 	})

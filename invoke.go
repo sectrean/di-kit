@@ -88,14 +88,13 @@ type InvokeOption interface {
 }
 
 func newInvokeConfig(fn any, opts ...InvokeOption) (*invokeConfig, error) {
-	if fn == nil {
+	fnVal := reflect.ValueOf(fn)
+	if isNil(fnVal) {
 		return nil, errors.New("fn is nil")
 	}
 
-	fnVal := reflect.ValueOf(fn)
-	fnType := fnVal.Type()
-
 	// Make sure fn is a function
+	fnType := fnVal.Type()
 	if fnType.Kind() != reflect.Func {
 		return nil, errors.New("fn must be a function")
 	}

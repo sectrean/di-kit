@@ -112,7 +112,7 @@ err = di.Invoke(ctx, c, func (ctx context.Context, svc *service.Service) error {
 
 Services often need to do some clean up when they're done being used. The `Container` can handle this for the services it manages.
 
-On application shutdown, use `Container.Close()` to clean up services. By default, the `Container` will call a `Close` method on any services that is has created. Any errors returned from closing services will be [joined](https://pkg.go.dev/errors#Join) together.
+On application shutdown, use `Container.Close()` to clean up services. By default, the `Container` will call a `Close` method on any services that it has created. Any errors returned from closing services will be [joined](https://pkg.go.dev/errors#Join) together.
 See [Closing](#closing) for more.
 
 ## Features
@@ -254,15 +254,17 @@ c, err := di.NewContainer(
 	di.WithService(service.NewService),
 	di.WithService(service.NewScopedService, di.Scoped),
 )
-
-scope, err := c.NewScope()
 // ...
+```
 
-// Don't forget to Close the scope when you're done
+```go
+scope, err := c.NewScope()
 defer func() {
+	// Close the scope when we're done
 	err := scope.Close(ctx)
 	// ...
 }
+// ...
 ```
 
 New services can also be registered when creating a child scope. These new services are isolated from the parent or sibling Containers.
@@ -277,7 +279,7 @@ scope, err := c.NewScope(
 
 A couple services are provided directly by the container and cannot be registered.
 
-`context.Context` - When a service is resolved, the context passed into `Resolve` will be injected into constructor functions as a dependency. (You should avoid resolving resolving singleton services from a request-scoped context that may be canceled.)
+`context.Context` - When a service is resolved, the context passed into `Resolve` will be injected into constructor functions as a dependency. (You should avoid resolving singleton services from a request-scoped context that may be canceled.)
 
 `di.Scope` - The current container scope can be injected into a service as `di.Scope`. This allows you to create a "factory" service that can resolve dependencies from the container scope. The scope must be stored and only used *after* the constructor function returns.
 
