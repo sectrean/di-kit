@@ -107,10 +107,10 @@ func As[Service any]() ServiceOption {
 		t := reflect.TypeFor[Service]()
 
 		if ok := validateServiceType(t); !ok {
-			return errors.Errorf("di.As %s: invalid service type", t)
+			return errors.Errorf("di.As[%s]: invalid service type", t)
 		}
 		if !s.Type().AssignableTo(t) {
-			return errors.Errorf("di.As %s: type %s not assignable to %s", t, s.Type(), t)
+			return errors.Errorf("di.As[%s]: type %s not assignable to %s", t, s.Type(), t)
 		}
 
 		s.assignables = append(s.assignables, t)
