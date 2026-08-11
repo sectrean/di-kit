@@ -2,6 +2,7 @@ package di
 
 import (
 	"reflect"
+	"slices"
 
 	"github.com/sectrean/di-kit/internal/errors"
 )
@@ -10,7 +11,8 @@ import (
 // Services are registered with a `nil` tag by default.
 //
 // When registering a service, this option can be used multiple times to
-// associate multiple tags with a service.
+// associate multiple tags with a service. If any tag is specified, the default
+// `nil` tag is removed, but can be re-specified.
 //
 // WithTag can be used with:
 //   - [WithService]
@@ -82,6 +84,10 @@ func (o withTagOption) applyService(s *service) error {
 		return err
 	}
 
+	if slices.Contains(s.tags, o.Tag) {
+		return errors.Errorf("di.WithTag %v: duplicate tag", o.Tag)
+	}
+
 	s.tags = append(s.tags, o.Tag)
 	return nil
 }
@@ -141,7 +147,7 @@ func (o withTaggedOption) applyService(s *service) error {
 }
 
 func (o withTaggedOption) applyInvokeConfig(c *invokeConfig) error {
-	return o.apply(c.deps)
+	return o.apply(c.Dependencies())
 }
 
 var _ DependencyTagOption = withTaggedOption{}

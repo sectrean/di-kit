@@ -227,6 +227,34 @@ Use `di.WithTag()` to specify a tag when resolving a service directly from a con
 primary, err := di.Resolve[*sql.DB](ctx, c, di.WithTag(db.Primary))
 ```
 
+#### Decorators
+
+Tags can also be used to "decorate" or wrap services. Each layer is given a distinct tag,
+and wrapper functions specify the tag to use for the service parameter.
+
+```go
+c, err := di.NewContainer(
+	// ...
+	di.WithService(storage.NewDBStore, // NewDBStore(*sql.DB) *DBStore
+		di.As[storage.Store](),
+		di.WithTag("base"),
+	),
+	di.WithService(storage.LoggedStore, // NewLoggedStore(*slog.Logger, Store) *LoggedStore
+		di.As[storage.Store](),
+		di.WithTagged[storage.Store]("base"), // Inject storage.Store with the "base" tag
+		di.WithTag("logged"),
+	),
+	di.WithService(storage.CachedStore, // NewCachedStore(cache.Cache, Store) *CachedStore
+		di.As[storage.Store](),
+		di.WithTagged[storage.Store]("logged"), // Inject storage.Store with the "logged" tag
+	),
+)
+// ...
+
+// This will return *CachedStore(*LoggedStore(*DBStore))
+store := di.Resolve[storage.Store](ctx, c)
+```
+
 ### Lifetimes
 
 Lifetimes control how function services are created:

@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The minimum supported Go version is now 1.23. Now using iterators.
+- **BREAKING** Registering a service with duplicate tags will now return an error on container creation.
+Example: `di.WithService(val, di.WithTag("other"), di.WithTag("other"))`.
 
 ### Fixed
 
@@ -33,9 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Fixed some typos and formatting in docs.
-- Update error message formatting to be more consistent. Errors from generic options like `di.As` and 
+- Fixed some typos and formatting in README and godocs.
+- Update error message formatting to be more consistent.
+- Errors from generic options like `di.As` and 
   `di.WithTagged` will include the type parameter in brackets.
+- Service tags are included in error messages that identify the service.
+- Added a Decorators section to the README.
+- The default `dihttp` error logging no longer logs the entire `*http.Request` as a structured value.
 
 ## [0.26.0] - 2026-07-28
 

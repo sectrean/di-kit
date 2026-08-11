@@ -119,7 +119,7 @@ func (s *injectedScope) Resolve(
 	// Otherwise a deadlock is possible.
 	if !s.ready.Load() {
 		return nil, errors.Errorf(
-			"di.Scope.Resolve %s: not supported within service constructor function", t,
+			"di.Scope.Resolve %s: resolve not allowed within service constructor function", t,
 		)
 	}
 

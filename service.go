@@ -3,6 +3,7 @@ package di
 import (
 	"context"
 	"fmt"
+	"iter"
 	"reflect"
 
 	"github.com/sectrean/di-kit/internal/errors"
@@ -127,7 +128,7 @@ func (k serviceKey) String() string {
 	if k.Tag == nil {
 		return k.Type.String()
 	}
-	return fmt.Sprintf("%s: WithTag %v", k.Type, k.Tag)
+	return fmt.Sprintf("%s {Tag %v}", k.Type, k.Tag)
 }
 
 func validateServiceType(t reflect.Type) bool {
@@ -273,11 +274,32 @@ func (s *service) isFunc() bool {
 }
 
 // IsValue returns true if this is a value service, otherwise it's a function service.
-func (s *service) IsValue() bool               { return !s.isFunc() }
-func (s *service) Lifetime() Lifetime          { return s.lifetime }
-func (s *service) Dependencies() []serviceKey  { return s.deps }
-func (s *service) Tags() []any                 { return s.tags }
-func (s *service) Assignables() []reflect.Type { return s.assignables }
+func (s *service) IsValue() bool              { return !s.isFunc() }
+func (s *service) Lifetime() Lifetime         { return s.lifetime }
+func (s *service) Dependencies() []serviceKey { return s.deps }
+
+// Keys returns all of the serviceKeys that the service should be registered with.
+func (s *service) Keys() iter.Seq[serviceKey] {
+	return func(yield func(serviceKey) bool) {
+		assignables := s.assignables
+		if len(assignables) == 0 {
+			assignables = append(assignables, s.Type()) // Default type
+		}
+
+		tags := s.tags
+		if len(tags) == 0 {
+			tags = append(tags, nil) // Default tag
+		}
+
+		for _, t := range assignables {
+			for _, tag := range tags {
+				if !yield(serviceKey{Type: t, Tag: tag}) {
+					return
+				}
+			}
+		}
+	}
+}
 
 func (s *service) Value() any {
 	return s.v.Interface()
@@ -330,5 +352,9 @@ func (s *service) IsErrorCacheable(ctx context.Context, err error) bool {
 }
 
 func (s *service) String() string {
-	return s.v.Type().String()
+	if len(s.tags) == 0 {
+		return s.v.Type().String()
+	}
+
+	return fmt.Sprintf("%s {Tags %v}", s.v.Type(), s.tags)
 }

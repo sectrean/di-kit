@@ -12,7 +12,9 @@ import (
 )
 
 // Container is a reflection-based dependency injection container.
-// It is used to resolve services by first resolving their dependencies.
+//
+// Services are resolved by recursively resolving their dependencies.
+// Close the container when the services are done being used.
 type Container struct {
 	parent   *Container
 	services map[serviceKey][]*service
@@ -77,37 +79,14 @@ func (c *Container) register(s *service) {
 		c.services = make(map[serviceKey][]*service)
 	}
 
-	if len(s.Assignables()) == 0 {
-		c.registerType(s.Type(), s)
-	} else {
-		for _, assignable := range s.Assignables() {
-			c.registerType(assignable, s)
-		}
+	for key := range s.Keys() {
+		c.services[key] = append(c.services[key], s)
 	}
 
 	// Add closers for value services
-	// We don't need to take locks here because this is only called when creating a new Container
 	if s.IsValue() {
 		if closer := s.CloserFor(s.Value()); closer != nil {
 			c.closers = append(c.closers, closer)
-		}
-	}
-}
-
-func (c *Container) registerType(t reflect.Type, s *service) {
-	if len(s.Tags()) == 0 {
-		key := serviceKey{
-			Type: t,
-		}
-		c.services[key] = append(c.services[key], s)
-	} else {
-		// This doesn't de-duplicate tags, so if someone registers duplicate tags, that's on them
-		for _, tag := range s.Tags() {
-			key := serviceKey{
-				Type: t,
-				Tag:  tag,
-			}
-			c.services[key] = append(c.services[key], s)
 		}
 	}
 }
@@ -304,7 +283,7 @@ func resolveSliceKey(
 	for svc := range scope.registeredServices(elemKey) {
 		val, err := resolveService(ctx, scope, elemKey, svc, visitor)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "service %s", svc)
 		}
 
 		sliceVal = reflect.Append(sliceVal, safeReflectValue(elemType, val))
