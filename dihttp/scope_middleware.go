@@ -54,8 +54,10 @@ type NewScopeErrorHandler = func(http.ResponseWriter, *http.Request, error)
 func defaultNewScopeErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
 	slog.ErrorContext(r.Context(),
 		"error creating new di.Container scope for HTTP request",
+		"method", r.Method,
+		"path", r.URL.Path,
+		"remote_addr", r.RemoteAddr,
 		"error", err,
-		"request", r,
 	)
 
 	w.WriteHeader(http.StatusInternalServerError)
@@ -70,8 +72,10 @@ type ScopeCloseErrorHandler = func(*http.Request, error)
 func defaultScopeCloseErrorHandler(r *http.Request, err error) {
 	slog.ErrorContext(r.Context(),
 		"error closing di.Container scope for HTTP request",
+		"method", r.Method,
+		"path", r.URL.Path,
+		"remote_addr", r.RemoteAddr,
 		"error", err,
-		"request", r,
 	)
 }
 

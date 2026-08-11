@@ -41,6 +41,7 @@ Example: `di.WithService(val, di.WithTag("other"), di.WithTag("other"))`.
   `di.WithTagged` will include the type parameter in brackets.
 - Service tags are included in error messages that identify the service.
 - Added a Decorators section to the README.
+- The default `dihttp` error logging no longer logs the entire `*http.Request` as a structured value.
 
 ## [0.26.0] - 2026-07-28
 

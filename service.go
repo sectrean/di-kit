@@ -298,7 +298,6 @@ func (s *service) Keys() iter.Seq[serviceKey] {
 				}
 			}
 		}
-
 	}
 }
 
