@@ -1686,7 +1686,7 @@ func Test_Container_Resolve(t *testing.T) {
 	t.Run("dependency di.Scope", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
-			di.WithService(func(ctx context.Context, scope di.Scope) *ScopeFactory[testtypes.InterfaceA] {
+			di.WithService(func(ctx context.Context, scope di.Scope) *testtypes.ScopeFactory[testtypes.InterfaceA] {
 				// We cannot call Resolve on the scope here.
 				a, err := di.Resolve[testtypes.InterfaceA](ctx, scope)
 				LogError(t, err)
@@ -1700,7 +1700,7 @@ func Test_Container_Resolve(t *testing.T) {
 				assert.True(t, di.Contains[testtypes.InterfaceA](scope))
 
 				// We have to store it and we can call Resolve later.
-				return NewScopeFactory(scope, func(ctx context.Context, s di.Scope) (testtypes.InterfaceA, error) {
+				return testtypes.NewScopeFactory(scope, func(ctx context.Context, s di.Scope) (testtypes.InterfaceA, error) {
 					return di.Resolve[testtypes.InterfaceA](ctx, s)
 				})
 			}),
@@ -1708,7 +1708,7 @@ func Test_Container_Resolve(t *testing.T) {
 		require.NoError(t, err)
 
 		ctx := context.Background()
-		factory, err := di.Resolve[*ScopeFactory[testtypes.InterfaceA]](ctx, c)
+		factory, err := di.Resolve[*testtypes.ScopeFactory[testtypes.InterfaceA]](ctx, c)
 		require.NoError(t, err)
 
 		a, err := factory.Build(ctx)
