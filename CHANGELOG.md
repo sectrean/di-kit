@@ -40,6 +40,7 @@ Example: `di.WithService(val, di.WithTag("other"), di.WithTag("other"))`.
 - Errors from generic options like `di.As` and 
   `di.WithTagged` will include the type parameter in brackets.
 - Service tags are included in error messages that identify the service.
+- Added a Decorators section to the README.
 
 ## [0.26.0] - 2026-07-28
 
