@@ -23,7 +23,7 @@ func Test_ValidateDependencies(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("invalid service", func(t *testing.T) {
+	t.Run("dependency not registered", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceB),
 		)
@@ -101,6 +101,29 @@ func Test_ValidateDependencies(t *testing.T) {
 		assert.EqualError(t, err, "di.ValidateContainer: "+
 			"service func(context.Context, testtypes.InterfaceA) testtypes.InterfaceA: "+
 			"dependency testtypes.InterfaceA: service func(context.Context, testtypes.InterfaceA) testtypes.InterfaceA: "+
+			"dependency cycle detected",
+		)
+	})
+
+	t.Run("tagged service dependency cycle", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(testtypes.NewInterfaceB),
+			di.WithService(
+				func(context.Context, testtypes.InterfaceB) testtypes.InterfaceB { return nil },
+				di.WithTag("other"),
+				di.WithTagged[testtypes.InterfaceB]("other"),
+			),
+		)
+		require.NoError(t, err)
+
+		err = di.ValidateContainer(c)
+		LogError(t, err)
+
+		assert.EqualError(t, err, "di.ValidateContainer: "+
+			"service func(context.Context, testtypes.InterfaceB) testtypes.InterfaceB {Tags [other]}: "+
+			"dependency testtypes.InterfaceB {Tag other}: "+
+			"service func(context.Context, testtypes.InterfaceB) testtypes.InterfaceB {Tags [other]}: "+
 			"dependency cycle detected",
 		)
 	})

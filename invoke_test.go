@@ -96,8 +96,6 @@ func Test_Invoke(t *testing.T) {
 		err = di.Invoke(ctx, c, func(testtypes.InterfaceA) error {
 			return errors.New("test invoke error")
 		})
-		testutils.LogError(t, err)
-
 		assert.EqualError(t, err, "test invoke error")
 	})
 

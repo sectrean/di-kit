@@ -219,6 +219,22 @@ func Test_NewContainer(t *testing.T) {
 			"di.WithTag: invalid tag type []string: type must be comparable")
 	})
 
+	t.Run("di.WithService di.WithTag duplicate tag", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(testtypes.NewInterfaceA,
+				di.WithTag(nil),
+				di.WithTag("other"),
+				di.WithTag("other"),
+			),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: di.WithService func() testtypes.InterfaceA: "+
+			"di.WithTag other: duplicate tag")
+	})
+
 	t.Run("di.WithService di.WithTagged invalid tag", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(
@@ -1289,7 +1305,7 @@ func Test_Container_Resolve(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, got)
-		assert.EqualError(t, err, "di.Container.Resolve []testtypes.InterfaceA: test error")
+		assert.EqualError(t, err, "di.Container.Resolve []testtypes.InterfaceA: service func() (testtypes.InterfaceA, error): test error")
 	})
 
 	t.Run("WithTag slice service", func(t *testing.T) {
@@ -1355,7 +1371,7 @@ func Test_Container_Resolve(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, got)
-		assert.EqualError(t, err, "di.Container.Resolve []testtypes.InterfaceA: WithTag 1: service not registered")
+		assert.EqualError(t, err, "di.Container.Resolve []testtypes.InterfaceA {Tag 1}: service not registered")
 	})
 
 	t.Run("WithTag multiple tags", func(t *testing.T) {
@@ -1521,7 +1537,7 @@ func Test_Container_Resolve(t *testing.T) {
 		LogError(t, err)
 
 		assert.Nil(t, got)
-		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: WithTag other: service not registered")
+		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA {Tag other}: service not registered")
 	})
 
 	t.Run("WithTag invalid tag", func(t *testing.T) {
@@ -1678,7 +1694,7 @@ func Test_Container_Resolve(t *testing.T) {
 				assert.Nil(t, a)
 				assert.EqualError(t, err,
 					"di.Scope.Resolve testtypes.InterfaceA: "+
-						"not supported within service constructor function")
+						"resolve not allowed within service constructor function")
 
 				// Contains can be called though
 				assert.True(t, di.Contains[testtypes.InterfaceA](scope))
