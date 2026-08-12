@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/sectrean/di-kit"
 	"github.com/sectrean/di-kit/dicontext"
@@ -86,6 +87,7 @@ type scopeMiddleware struct {
 	closeErrHandler    ScopeCloseErrorHandler
 	opts               []di.ContainerOption
 	registerRequest    bool
+	closeTimeout       time.Duration
 }
 
 func (m scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -109,6 +111,12 @@ func (m scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Close the scope when the request is done
 	defer func() {
 		closeCtx := context.WithoutCancel(r.Context())
+		if m.closeTimeout > 0 {
+			var cancel context.CancelFunc
+			closeCtx, cancel = context.WithTimeout(closeCtx, m.closeTimeout)
+			defer cancel()
+		}
+
 		closeErr := child.Close(closeCtx)
 		if closeErr != nil {
 			m.closeErrHandler(r, closeErr)

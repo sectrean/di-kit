@@ -45,7 +45,7 @@ func Test_NewRequestScopeMiddleware(t *testing.T) {
 	})
 }
 
-func Test_Middleware(t *testing.T) {
+func Test_ScopeMiddleware(t *testing.T) {
 	t.Run("Resolve scoped service", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
