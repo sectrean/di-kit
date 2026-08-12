@@ -1,4 +1,4 @@
-package di_test
+package testtypes
 
 import (
 	"context"
