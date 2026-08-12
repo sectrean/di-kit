@@ -71,6 +71,11 @@ func UseCloser() ServiceOption {
 // This option will return an error if the service type is not assignable to type Service.
 func UseCloseFunc[Service any](f func(context.Context, Service) error) ServiceOption {
 	return serviceOption(func(s *service) error {
+		fnVal := reflect.ValueOf(f)
+		if isNil(fnVal) {
+			return errors.New("di.UseCloseFunc: f is nil")
+		}
+
 		if !s.Type().AssignableTo(reflect.TypeFor[Service]()) {
 			return errors.Errorf("di.UseCloseFunc: service type %s is not assignable to %s",
 				s.Type(), reflect.TypeFor[Service]())
