@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"iter"
 	"reflect"
+	"slices"
 
 	"github.com/sectrean/di-kit/internal/errors"
 )
@@ -112,6 +113,9 @@ func As[Service any]() ServiceOption {
 		}
 		if !s.Type().AssignableTo(t) {
 			return errors.Errorf("di.As[%s]: type %s not assignable to %s", t, s.Type(), t)
+		}
+		if slices.Contains(s.assignables, t) {
+			return errors.Errorf("di.As[%s]: duplicate service type", t)
 		}
 
 		s.assignables = append(s.assignables, t)

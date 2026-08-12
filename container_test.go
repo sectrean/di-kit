@@ -158,6 +158,19 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "di.NewContainer: di.WithService testtypes.CustomMap: di.As[map[string]interface {}]: invalid service type")
 	})
 
+	t.Run("di.WithService di.As duplicate type", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(&testtypes.StructA{},
+				di.As[testtypes.InterfaceA](),
+				di.As[testtypes.InterfaceA](),
+			),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: di.WithService *testtypes.StructA: di.As[testtypes.InterfaceA]: duplicate service type")
+	})
+
 	t.Run("di.WithService di.Singleton value service", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(&testtypes.StructA{}, di.Singleton),
@@ -1320,7 +1333,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.EqualError(t, err, "di.Container.Resolve []testtypes.InterfaceA: service func() (testtypes.InterfaceA, error): test error")
 	})
 
-	t.Run("WithTag slice service", func(t *testing.T) {
+	t.Run("di.WithTag slice service", func(t *testing.T) {
 		f := &testtypes.Factory{}
 
 		c, err := di.NewContainer(
@@ -1372,7 +1385,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.EqualError(t, err, "di.Container.Resolve []testtypes.InterfaceA: service not registered")
 	})
 
-	t.Run("WithTag slice service not registered", func(t *testing.T) {
+	t.Run("di.WithTag slice service not registered", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -1386,7 +1399,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.EqualError(t, err, "di.Container.Resolve []testtypes.InterfaceA {Tag 1}: service not registered")
 	})
 
-	t.Run("WithTag multiple tags", func(t *testing.T) {
+	t.Run("di.WithTag multiple tags", func(t *testing.T) {
 		a1 := &testtypes.StructA{Tag: 1}
 		a2 := &testtypes.StructA{Tag: 2}
 
@@ -1464,7 +1477,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Same(t, a1, a2)
 	})
 
-	t.Run("WithTag func service", func(t *testing.T) {
+	t.Run("di.WithTag func service", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(
 				func() testtypes.InterfaceA {
@@ -1485,7 +1498,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: service not registered")
 	})
 
-	t.Run("WithTag value service", func(t *testing.T) {
+	t.Run("di.WithTag value service", func(t *testing.T) {
 		a := &testtypes.StructA{Tag: 1}
 
 		c, err := di.NewContainer(
@@ -1499,7 +1512,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("WithTag interface", func(t *testing.T) {
+	t.Run("di.WithTag interface", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewStructAPtr,
 				di.As[testtypes.InterfaceA](),
@@ -1518,7 +1531,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA: service not registered")
 	})
 
-	t.Run("WithTag mixed", func(t *testing.T) {
+	t.Run("di.WithTag mixed", func(t *testing.T) {
 		a1 := &testtypes.StructA{Tag: 1}
 		a2 := &testtypes.StructA{Tag: 2}
 
@@ -1538,7 +1551,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("WithTag not registered", func(t *testing.T) {
+	t.Run("di.WithTag not registered", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA, di.WithTag("tag")),
 		)
@@ -1552,7 +1565,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceA {Tag other}: service not registered")
 	})
 
-	t.Run("WithTag invalid tag", func(t *testing.T) {
+	t.Run("di.WithTag invalid tag", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
 		)
@@ -1570,7 +1583,7 @@ func Test_Container_Resolve(t *testing.T) {
 			"di.WithTag: invalid tag type []string: type must be comparable")
 	})
 
-	t.Run("WithTagged", func(t *testing.T) {
+	t.Run("di.WithTagged", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA,
 				di.WithTag("A1"),
@@ -1592,7 +1605,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("WithTagged decorator", func(t *testing.T) {
+	t.Run("di.WithTagged decorator", func(t *testing.T) {
 		a1 := &testtypes.StructA{Tag: 1}
 		a2 := &testtypes.StructA{Tag: 2}
 
@@ -1612,7 +1625,7 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("WithTagged multiple", func(t *testing.T) {
+	t.Run("di.WithTagged multiple", func(t *testing.T) {
 		a1 := &testtypes.StructA{Tag: 1}
 		a2 := &testtypes.StructA{Tag: 2}
 
