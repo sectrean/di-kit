@@ -16,9 +16,17 @@ import (
 // there are no dependency cycles.
 // It will return an error with details if any issues are found.
 //
-// Scoped services are not validated on parent containers because dependencies
-// may be registered with a child scope.
-// Child scopes can be validated separately.
+// The lifetimes validated depend on which container is passed:
+//   - On the given container, singleton and transient services are validated.
+//     Scoped services are skipped because they must be resolved from a child scope.
+//   - On ancestor containers, scoped and transient services are validated because
+//     they resolve against the given child scope.
+//     Singleton services are skipped because they resolve against the container
+//     where they were registered.
+//
+// In tests, validate the parent container to check root singleton and transient
+// services, and validate representative child scopes to check scoped services
+// and inherited transients with child-specific registrations.
 //
 // This function is intended to be used in tests, not in production code.
 func ValidateContainer(c *Container) error {
@@ -122,16 +130,22 @@ func (v *validator) validateService(svc *service, visitor *resolveVisitor) error
 // A service is returned only once even if it was registered with multiple
 // types or tags. Iteration order is not stable.
 //
-// Scoped services registered with ancestor containers are validated.
+// Transient services registered with ancestor containers are validated because
+// they resolve against the current scope. Scoped services registered with
+// ancestor containers are validated for the same reason.
 func (v *validator) services() iter.Seq[*service] {
 	return func(yield func(*service) bool) {
 		seen := make(map[*service]struct{})
-		checkScoped := false // Don't check scoped services on this container--only ancestors
 
 		for scope := v.scope; scope != nil; scope = scope.parent {
+			currentScope := scope == v.scope
+
 			for _, svcs := range scope.services {
 				for _, svc := range svcs {
-					if (svc.Lifetime() == Scoped) != checkScoped {
+					switch {
+					case currentScope && svc.Lifetime() == Scoped:
+						continue
+					case !currentScope && svc.Lifetime() == Singleton:
 						continue
 					}
 
@@ -145,8 +159,6 @@ func (v *validator) services() iter.Seq[*service] {
 					}
 				}
 			}
-
-			checkScoped = true
 		}
 	}
 }

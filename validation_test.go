@@ -318,6 +318,47 @@ func Test_ValidateDependencies(t *testing.T) {
 		)
 	})
 
+	t.Run("child validates inherited transient dependency not registered", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func(testtypes.InterfaceA) *testtypes.StructB {
+				return &testtypes.StructB{}
+			}, di.Transient),
+		)
+		require.NoError(t, err)
+
+		scope, err := c.NewScope()
+		require.NoError(t, err)
+
+		err = di.ValidateContainer(scope)
+		LogError(t, err)
+
+		assert.EqualError(t, err, "di.ValidateContainer: "+
+			"service func(testtypes.InterfaceA) *testtypes.StructB: "+
+			"dependency testtypes.InterfaceA: service not registered",
+		)
+	})
+
+	t.Run("child validates inherited transient with child dependency", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(func(testtypes.InterfaceA) *testtypes.StructB {
+				return &testtypes.StructB{}
+			}, di.Transient),
+		)
+		require.NoError(t, err)
+
+		scope, err := c.NewScope(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		err = di.ValidateContainer(scope)
+		assert.NoError(t, err)
+
+		got, err := di.Resolve[*testtypes.StructB](context.Background(), scope)
+		assert.NotNil(t, got)
+		assert.NoError(t, err)
+	})
+
 	t.Run("nested child validates scoped services from all ancestors", func(t *testing.T) {
 		root, err := di.NewContainer(
 			di.WithService(func(testtypes.InterfaceD) testtypes.InterfaceA {
@@ -338,6 +379,51 @@ func Test_ValidateDependencies(t *testing.T) {
 			"service func(testtypes.InterfaceD) testtypes.InterfaceA: "+
 			"dependency testtypes.InterfaceD: service not registered",
 		)
+	})
+
+	t.Run("nested child validates inherited transient dependency not registered", func(t *testing.T) {
+		root, err := di.NewContainer(
+			di.WithService(func(testtypes.InterfaceA) *testtypes.StructB {
+				return &testtypes.StructB{}
+			}, di.Transient),
+		)
+		require.NoError(t, err)
+
+		child, err := root.NewScope()
+		require.NoError(t, err)
+		grandchild, err := child.NewScope()
+		require.NoError(t, err)
+
+		err = di.ValidateContainer(grandchild)
+		LogError(t, err)
+
+		assert.EqualError(t, err, "di.ValidateContainer: "+
+			"service func(testtypes.InterfaceA) *testtypes.StructB: "+
+			"dependency testtypes.InterfaceA: service not registered",
+		)
+	})
+
+	t.Run("nested child validates inherited transient with child dependency", func(t *testing.T) {
+		root, err := di.NewContainer(
+			di.WithService(func(testtypes.InterfaceA) *testtypes.StructB {
+				return &testtypes.StructB{}
+			}, di.Transient),
+		)
+		require.NoError(t, err)
+
+		child, err := root.NewScope()
+		require.NoError(t, err)
+		grandchild, err := child.NewScope(
+			di.WithService(testtypes.NewInterfaceA),
+		)
+		require.NoError(t, err)
+
+		err = di.ValidateContainer(grandchild)
+		assert.NoError(t, err)
+
+		got, err := di.Resolve[*testtypes.StructB](context.Background(), grandchild)
+		assert.NotNil(t, got)
+		assert.NoError(t, err)
 	})
 
 	t.Run("child scope dependency cycle", func(t *testing.T) {
