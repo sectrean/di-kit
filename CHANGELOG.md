@@ -31,8 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `di.ValidateContainer` now validates every registration that can satisfy a slice dependency,
   including registrations inherited by child scopes, instead of checking only a single service.
 - `di.ValidateContainer` now reports all dependency validation failures in a stable order,
-  de-duplicates services registered under multiple aliases, and validates scoped services inherited
-  from all ancestor scopes.
+  de-duplicates services registered under multiple aliases, and validates scoped and transient services
+  inherited from all ancestor scopes.
 - Variadic dependencies are now treated as optional only for the final variadic parameter, and any
   registered services for that variadic type are still validated.
 - `Container.Close` now returns an error while the container is still in use by
