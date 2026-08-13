@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/sectrean/di-kit"
 	"github.com/sectrean/di-kit/dicontext"
@@ -30,7 +31,7 @@ func NewRequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOpti
 	}
 
 	return func(next http.Handler) http.Handler {
-		mw := scopeMiddleware{
+		mw := &scopeMiddleware{
 			next:               next,
 			parent:             parent,
 			newScopeErrHandler: defaultNewScopeErrorHandler,
@@ -38,7 +39,7 @@ func NewRequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOpti
 		}
 
 		for _, opt := range opts {
-			opt.applyScopeMiddleware(&mw)
+			opt.applyScopeMiddleware(mw)
 		}
 
 		return mw
@@ -86,9 +87,10 @@ type scopeMiddleware struct {
 	closeErrHandler    ScopeCloseErrorHandler
 	opts               []di.ContainerOption
 	registerRequest    bool
+	closeTimeout       time.Duration
 }
 
-func (m scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (m *scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	opts := m.opts
 
 	// Register the current HTTP request with the scope if requested, so it can be
@@ -109,6 +111,12 @@ func (m scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Close the scope when the request is done
 	defer func() {
 		closeCtx := context.WithoutCancel(r.Context())
+		if m.closeTimeout > 0 {
+			var cancel context.CancelFunc
+			closeCtx, cancel = context.WithTimeout(closeCtx, m.closeTimeout)
+			defer cancel()
+		}
+
 		closeErr := child.Close(closeCtx)
 		if closeErr != nil {
 			m.closeErrHandler(r, closeErr)

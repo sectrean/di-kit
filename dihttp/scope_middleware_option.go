@@ -1,6 +1,8 @@
 package dihttp
 
 import (
+	"time"
+
 	"github.com/sectrean/di-kit"
 )
 
@@ -53,5 +55,14 @@ func WithScopeCloseErrorHandler(h ScopeCloseErrorHandler) ScopeMiddlewareOption 
 		if h != nil {
 			m.closeErrHandler = h
 		}
+	})
+}
+
+// WithScopeCloseTimeout sets a timeout for closing the request scope at the end of each request.
+//
+// The default is no timeout.
+func WithScopeCloseTimeout(timeout time.Duration) scopeMiddlewareOption {
+	return scopeMiddlewareOption(func(m *scopeMiddleware) {
+		m.closeTimeout = timeout
 	})
 }

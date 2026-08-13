@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added a `dihttp.WithScopeCloseTimeout()` option to set a timeout on the context used to close
+  the scope after each request completes.
+
 ### Changed
 
 - The minimum supported Go version is now 1.23. Iterators are now being used.
