@@ -31,7 +31,7 @@ func NewRequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOpti
 	}
 
 	return func(next http.Handler) http.Handler {
-		mw := scopeMiddleware{
+		mw := &scopeMiddleware{
 			next:               next,
 			parent:             parent,
 			newScopeErrHandler: defaultNewScopeErrorHandler,
@@ -39,7 +39,7 @@ func NewRequestScopeMiddleware(parent *di.Container, opts ...ScopeMiddlewareOpti
 		}
 
 		for _, opt := range opts {
-			opt.applyScopeMiddleware(&mw)
+			opt.applyScopeMiddleware(mw)
 		}
 
 		return mw
@@ -90,7 +90,7 @@ type scopeMiddleware struct {
 	closeTimeout       time.Duration
 }
 
-func (m scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (m *scopeMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	opts := m.opts
 
 	// Register the current HTTP request with the scope if requested, so it can be
