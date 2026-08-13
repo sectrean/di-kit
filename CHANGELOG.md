@@ -9,9 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The minimum supported Go version is now 1.23. Now using iterators.
-- **BREAKING** Registering a service with duplicate tags will now return an error on container creation.
-Example: `di.WithService(val, di.WithTag("other"), di.WithTag("other"))`.
+- The minimum supported Go version is now 1.23. Iterators are now being used.
+- Using `di.WithTag()` with a duplicate value on the same service will now return an error.
+- Using `di.As[Service]()` with a duplicate type on the same service will now return an error.
+- Updated error message formatting to be more consistent.
+- Errors from generic options like `di.As` and 
+  `di.WithTagged` now include the type parameter in brackets.
+- Service tags are now included in error messages that identify the service.
+- The default `dihttp` error logging no longer logs the entire `*http.Request` as a structured value.
+- The function passed to `UseCloseFunc` is now checked for `nil` to avoid a runtime panic.
 
 ### Fixed
 
@@ -33,16 +39,10 @@ Example: `di.WithService(val, di.WithTag("other"), di.WithTag("other"))`.
 - `di.WithTag` and `di.WithTagged` options now reject non-comparable tags with an
   error instead of panicking when the tag is used as part of a service key.
 
-### Changed
+### Documentation
 
 - Fixed some typos and formatting in README and godocs.
-- Update error message formatting to be more consistent.
-- Errors from generic options like `di.As` and 
-  `di.WithTagged` will include the type parameter in brackets.
-- Service tags are included in error messages that identify the service.
 - Added a Decorators section to the README.
-- The default `dihttp` error logging no longer logs the entire `*http.Request` as a structured value.
-- The function passed to `UseCloseFunc` is now checked for `nil` to avoid a runtime panic.
 
 ## [0.26.0] - 2026-07-28
 
