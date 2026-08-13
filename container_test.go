@@ -261,6 +261,18 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "di.NewContainer: di.WithService func() testtypes.InterfaceA: di.UseCloseFunc: service type testtypes.InterfaceA is not assignable to *testtypes.StructA")
 	})
 
+	t.Run("di.WithService di.UseCloseFunc nil", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA,
+				di.UseCloseFunc((func(context.Context, *testtypes.StructA) error)(nil)),
+			),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: di.WithService func() testtypes.InterfaceA: di.UseCloseFunc: f is nil")
+	})
+
 	t.Run("di.WithService unsupported func signature", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func() (testtypes.InterfaceA, testtypes.InterfaceB) { return nil, nil }),
