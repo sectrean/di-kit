@@ -13,7 +13,7 @@ import (
 // WithService registers the provided function or value with a new [Container]
 // when calling [NewContainer] or [Container.NewScope].
 //
-// If a function is provided, it will be called to create the service when resolved.
+// If a constructor function is provided, it will be called to create the service when resolved.
 //
 // This function can take any number of parameters which will also be resolved from the Container.
 // The function may also accept a [context.Context] or [di.Scope].
@@ -23,7 +23,10 @@ import (
 // a struct, or a pointer to an interface or struct.
 //
 // If the function returns an error, this error will be returned when the service is resolved,
-// either directly or as a dependency.
+// either directly or as a dependency. For singleton and scoped services, the result and error will
+// not be cached if an error is returned. The function will be called again if the service is
+// resolved again.
+//
 // If the function returns nil for the service, it will not be treated as an error.
 //
 // If the resolved service implements [Closer], or a compatible Close method signature,

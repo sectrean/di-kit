@@ -18,6 +18,8 @@ type Middleware = func(http.Handler) http.Handler
 // The child container is stored on the request context and can be accessed using [dicontext.Scope], [dicontext.Resolve], or [dicontext.MustResolve].
 // The child container is closed after the request is processed.
 //
+// All requests must be drained and child scopes closed before the parent container can be closed.
+//
 // Available options:
 //   - [WithRequestService]: Register the current [*http.Request] with the request scope so it can be used as a dependency for scoped services.
 //   - [WithContainerOptions]: Set [di.ContainerOption]s to use when creating each request scope.
