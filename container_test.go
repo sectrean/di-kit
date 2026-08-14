@@ -729,6 +729,31 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("transitive singleton dependency cached on constructor error", func(t *testing.T) {
+		calls := 0
+
+		c, err := di.NewContainer(
+			di.WithService(func() testtypes.InterfaceA {
+				calls++
+				return &testtypes.StructA{}
+			}),
+			di.WithService(func(testtypes.InterfaceA) (testtypes.InterfaceB, error) {
+				return nil, errors.New("test error")
+			}),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		_, err = di.Resolve[testtypes.InterfaceB](ctx, c)
+		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceB: test error")
+
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, c)
+		assert.Equal(t, &testtypes.StructA{}, got)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 1, calls)
+	})
+
 	t.Run("value struct", func(t *testing.T) {
 		a1 := testtypes.StructA{Tag: 1}
 
@@ -1041,6 +1066,38 @@ func Test_Container_Resolve(t *testing.T) {
 		assert.Same(t, a1, a2)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("di.Singleton error not cached", func(t *testing.T) {
+		calls := 0
+
+		c, err := di.NewContainer(
+			di.WithService(
+				func() (*testtypes.StructA, error) {
+					var err error
+					if calls == 0 {
+						err = errors.New("test error")
+					}
+					calls++
+
+					return &testtypes.StructA{}, err
+				},
+				di.Singleton,
+			),
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		_, err = di.Resolve[*testtypes.StructA](ctx, c)
+		LogError(t, err)
+
+		assert.EqualError(t, err, "di.Container.Resolve *testtypes.StructA: test error")
+		assert.Equal(t, 1, calls)
+
+		a, err := di.Resolve[*testtypes.StructA](ctx, c)
+		assert.Equal(t, &testtypes.StructA{}, a)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, calls)
 	})
 
 	t.Run("di.Transient", func(t *testing.T) {
