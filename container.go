@@ -385,7 +385,7 @@ resolveAndCache:
 	cached := false
 	defer func() {
 		if !cached {
-			// The error is not cacheable, or the constructor function panicked.
+			// The result is not cacheable, or the constructor function panicked.
 			// Remove the slot BEFORE releasing waiters so no one serves this result,
 			// and signal them to re-resolve rather than handing them val/err.
 			scope.resolvedMu.Lock()
@@ -400,7 +400,9 @@ resolveAndCache:
 
 	val, err := constructService(ctx, scope, key, svc, visitor)
 
-	if err == nil || svc.IsErrorCacheable(ctx, err) {
+	// Do not cache the result if an error was returned.
+	// Should we make this configurable?
+	if err == nil {
 		res.val, res.err = val, err
 		cached = true
 	}

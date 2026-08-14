@@ -1,7 +1,6 @@
 package di
 
 import (
-	"context"
 	"fmt"
 	"iter"
 	"reflect"
@@ -346,16 +345,6 @@ func (s *service) CloserFor(val any) Closer {
 	}
 
 	return nil
-}
-
-func (s *service) IsErrorCacheable(ctx context.Context, err error) bool {
-	if errors.Is(err, errDependencyCycle) {
-		return false // property of the resolution chain
-	}
-	if ctxErr := ctx.Err(); ctxErr != nil && errors.Is(err, ctxErr) {
-		return false // property of the caller's context
-	}
-	return true
 }
 
 func (s *service) String() string {

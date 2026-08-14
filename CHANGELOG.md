@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Service tags are now included in error messages that identify the service.
 - The default `dihttp` error logging no longer logs the entire `*http.Request` as a structured value.
 - The function passed to `UseCloseFunc` is now checked for `nil` to avoid a runtime panic.
+- Constructor function errors for singleton and scoped services are never cached.
+  Subsequent attempts to resolve the service will result in the constructor function being called again.
+  Previously, results would be cached unless there was a dependency cycle or context error.
 
 ### Fixed
 
