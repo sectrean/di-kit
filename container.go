@@ -140,8 +140,10 @@ func (c *Container) registeredServices(key serviceKey) iter.Seq[*service] {
 // For services registered with [Scoped], each child container will create an isolated instance
 // when the service is resolved.
 //
-// Additional services can be registered when creating the new scope if needed and they will be isolated from
-// the parent and sibling containers.
+// Additional services can be registered when creating the new scope if needed and they will be
+// isolated from the parent and sibling containers.
+//
+// All child scopes must be closed before the parent container can be closed.
 //
 // Available options:
 //   - [WithService] registers a service with a value or a function.
@@ -474,13 +476,11 @@ func constructService(
 // Close all services resolved by this container.
 // See [Closer] for more information.
 //
-// Services are closed in the reverse order they were resolved/created.
-// Errors returned from closing services are joined together.
+// Services are closed in the reverse order that they were resolved/created.
+// Any errors returned from closing services are joined together.
 //
-// Resolve and NewScope will return an error if called after the container has been closed.
-// Close will return an error while the container is in use by a child scope or resolution.
-//
-// Close will return an error if called more than once.
+// Close will return an error if resolution is in progress or if there are any open child scopes.
+// This will also return an error if the container has already been closed.
 func (c *Container) Close(ctx context.Context) error {
 	if err := c.closeGate.tryClose(); err != nil {
 		return errors.Wrap(err, "di.Container.Close")

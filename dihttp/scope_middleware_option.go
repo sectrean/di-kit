@@ -18,10 +18,10 @@ func (o scopeMiddlewareOption) applyScopeMiddleware(m *scopeMiddleware) {
 }
 
 // WithRequestService registers the current [*http.Request] with each request scope so it can be
-// resolved directly or injected as a dependency into scoped services.
+// injected as a dependency into scoped services.
 //
-// Registration is opt-in because it is not needed unless a scoped service depends on the request,
-// and it adds a small amount of work to every request.
+// Note that the context returned from [http.Request.Context] will not carry the request scope
+// container because the request is passed in when creating the child container.
 func WithRequestService() ScopeMiddlewareOption {
 	return scopeMiddlewareOption(func(m *scopeMiddleware) {
 		m.registerRequest = true

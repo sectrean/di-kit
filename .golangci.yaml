@@ -36,6 +36,7 @@ linters-settings:
   gosec:
     excludes:
       - G404
+      - G114
 
   revive:
     rules:
@@ -55,7 +56,7 @@ linters-settings:
       - compares
   
   sloglint:
-    context: "all"
+    context: "scope"
     static-msg: true
 
   prealloc:

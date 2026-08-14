@@ -1,6 +1,7 @@
-package main
+package dihttp_test
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 	"github.com/sectrean/di-kit/examples/handler"
 )
 
-func HTTP_Example() {
+func Example() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	c, err := di.NewContainer(
@@ -23,6 +24,13 @@ func HTTP_Example() {
 		logger.Error("error creating container", "error", err)
 		return
 	}
+	defer func() {
+		// Close the container after all connections have been drained and child scopes closed.
+		closeErr := c.Close(context.Background())
+		if closeErr != nil {
+			logger.Error("error closing container", "error", closeErr)
+		}
+	}()
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		svc := dicontext.MustResolve[*handler.RequestHandler](r.Context())
