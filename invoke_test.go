@@ -228,7 +228,7 @@ func Test_Invoke(t *testing.T) {
 		})
 
 		assert.EqualError(t, err, "di.Invoke: "+
-			"di.WithTagged[testtypes.InterfaceA]: invalid tag type []string: type must be comparable")
+			"di.WithTagged[testtypes.InterfaceA]: invalid tag [tag]: value must be comparable")
 	})
 
 	t.Run("variadic dependency", func(t *testing.T) {

@@ -52,16 +52,17 @@ type DependencyTagOption interface {
 	InvokeOption
 }
 
-func validateTagType(t reflect.Type) error {
-	if t == nil {
+func validateTag(tag any) error {
+	if tag == nil {
 		return nil
 	}
 
-	if !t.Comparable() {
-		return errors.Errorf("invalid tag type %s: type must be comparable", t)
+	v := reflect.ValueOf(tag)
+	if v.IsValid() && v.Comparable() {
+		return nil
 	}
 
-	return nil
+	return errors.Errorf("invalid tag %v: value must be comparable", tag)
 }
 
 type withTagOption struct {
@@ -69,9 +70,7 @@ type withTagOption struct {
 }
 
 func (o withTagOption) validate() error {
-	t := reflect.TypeOf(o.Tag)
-
-	err := validateTagType(t)
+	err := validateTag(o.Tag)
 	if err != nil {
 		return errors.Wrap(err, "di.WithTag")
 	}
@@ -85,7 +84,7 @@ func (o withTagOption) applyService(s *service) error {
 	}
 
 	if slices.Contains(s.tags, o.Tag) {
-		return errors.Errorf("di.WithTag %v: duplicate tag", o.Tag)
+		return errors.Errorf("di.WithTag: duplicate tag %v", o.Tag)
 	}
 
 	s.tags = append(s.tags, o.Tag)
@@ -111,9 +110,7 @@ type withTaggedOption struct {
 }
 
 func (o withTaggedOption) validate() error {
-	tagType := reflect.TypeOf(o.Tag)
-
-	err := validateTagType(tagType)
+	err := validateTag(o.Tag)
 	if err != nil {
 		return errors.Wrapf(err, "di.WithTagged[%s]", o.Type)
 	}

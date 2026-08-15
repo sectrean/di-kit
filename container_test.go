@@ -221,7 +221,7 @@ func Test_NewContainer(t *testing.T) {
 		assert.EqualError(t, err, "di.NewContainer: di.WithService func() testtypes.InterfaceA: di.WithTagged[testtypes.InterfaceB]: parameter not found")
 	})
 
-	t.Run("di.WithService di.WithTag invalid tag", func(t *testing.T) {
+	t.Run("di.WithService di.WithTag invalid tag type", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA, di.WithTag([]string{"tag"})),
 		)
@@ -229,7 +229,22 @@ func Test_NewContainer(t *testing.T) {
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: di.WithService func() testtypes.InterfaceA: "+
-			"di.WithTag: invalid tag type []string: type must be comparable")
+			"di.WithTag: invalid tag [tag]: value must be comparable")
+	})
+
+	type anyTag struct {
+		tag any
+	}
+
+	t.Run("di.WithService di.WithTag invalid tag value", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceA, di.WithTag(anyTag{tag: []string{"tag"}})),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: di.WithService func() testtypes.InterfaceA: "+
+			"di.WithTag: invalid tag {[tag]}: value must be comparable")
 	})
 
 	t.Run("di.WithService di.WithTag duplicate tag", func(t *testing.T) {
@@ -245,7 +260,7 @@ func Test_NewContainer(t *testing.T) {
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: di.WithService func() testtypes.InterfaceA: "+
-			"di.WithTag other: duplicate tag")
+			"di.WithTag: duplicate tag other")
 	})
 
 	t.Run("di.WithService di.WithTagged invalid tag", func(t *testing.T) {
@@ -259,7 +274,7 @@ func Test_NewContainer(t *testing.T) {
 
 		assert.Nil(t, c)
 		assert.EqualError(t, err, "di.NewContainer: di.WithService func(testtypes.InterfaceA) testtypes.InterfaceB: "+
-			"di.WithTagged[testtypes.InterfaceA]: invalid tag type []string: type must be comparable")
+			"di.WithTagged[testtypes.InterfaceA]: invalid tag [tag]: value must be comparable")
 	})
 
 	t.Run("di.WithService di.UseCloseFunc not assignable", func(t *testing.T) {
@@ -1637,7 +1652,7 @@ func Test_Container_Resolve(t *testing.T) {
 
 		assert.Nil(t, got)
 		assert.EqualError(t, resolveErr, "di.Container.Resolve testtypes.InterfaceA: "+
-			"di.WithTag: invalid tag type []string: type must be comparable")
+			"di.WithTag: invalid tag [tag]: value must be comparable")
 	})
 
 	t.Run("di.WithTagged", func(t *testing.T) {
