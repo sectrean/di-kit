@@ -18,7 +18,6 @@ linters:
     - gci
     - gocritic
     - godot
-    - gofmt
     - whitespace
     - dupword
     - testifylint

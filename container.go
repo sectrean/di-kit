@@ -317,16 +317,12 @@ func resolveService(
 		return nil, ctx.Err()
 	}
 
-	// For singleton services, use the scope the service is registered with.
-	// Otherwise, use the current scope.
-	lifetime := svc.Lifetime()
-	if lifetime == Singleton {
-		scope = svc.Scope()
-	} else if lifetime == Scoped && scope == svc.Scope() {
-		return nil, errors.New("scoped service must be resolved from a child scope")
+	scope = serviceResolutionScope(scope, svc)
+	if scope == nil {
+		return nil, errScopedFromRegistrationScope
 	}
 
-	if lifetime == Transient {
+	if svc.Lifetime() == Transient {
 		// Transient services are not cached; they always construct a new value.
 		// Enter guards against a transient service depending on itself.
 		visitor = visitor.orNew()
@@ -408,6 +404,22 @@ resolveAndCache:
 	}
 
 	return val, err
+}
+
+// serviceResolutionScope returns the container a service uses to resolve its
+// dependencies and, when applicable, cache its result. It is shared with
+// validation so lifetime behavior remains consistent with runtime resolution.
+func serviceResolutionScope(scope *Container, svc *service) *Container {
+	switch svc.Lifetime() {
+	case Singleton:
+		return svc.Scope()
+	case Scoped:
+		if scope == svc.Scope() {
+			return nil
+		}
+	}
+
+	return scope
 }
 
 func constructService(
@@ -516,11 +528,12 @@ func (c *Container) Close(ctx context.Context) error {
 }
 
 var (
-	errServiceNotRegistered   = errors.New("service not registered")
-	errDependencyCycle        = errors.New("dependency cycle detected")
-	errContainerClosed        = errors.New("container closed")
-	errContainerAlreadyClosed = errors.New("container already closed")
-	errContainerInUse         = errors.New("container in use")
+	errServiceNotRegistered        = errors.New("service not registered")
+	errDependencyCycle             = errors.New("dependency cycle detected")
+	errScopedFromRegistrationScope = errors.New("scoped service must be resolved from a child scope")
+	errContainerClosed             = errors.New("container closed")
+	errContainerAlreadyClosed      = errors.New("container already closed")
+	errContainerInUse              = errors.New("container in use")
 )
 
 func newResolveResult(owner *resolveVisitor) *resolveResult {

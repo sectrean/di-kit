@@ -3,7 +3,6 @@ package di
 import (
 	"cmp"
 	"fmt"
-	"iter"
 	"slices"
 	"strings"
 
@@ -30,29 +29,30 @@ import (
 //
 // This function is intended to be used in tests, not in production code.
 func ValidateContainer(c *Container) error {
-	v := newValidator(c)
-
-	if err := v.Validate(); err != nil {
-		return errors.Wrap(err, "di.ValidateContainer")
-	}
-	return nil
-}
-
-func newValidator(c *Container) *validator {
-	return &validator{scope: c}
-}
-
-type validator struct {
-	scope *Container
-}
-
-func (v *validator) Validate() error {
 	var errs []error
 
-	for svc := range v.services() {
-		err := v.validateService(svc, newResolveVisitor())
-		if err != nil {
-			errs = append(errs, err)
+	checked := make(map[*service]struct{})
+	for scope := c; scope != nil; scope = scope.parent {
+		for _, svcs := range scope.services {
+			for _, svc := range svcs {
+				if _, ok := checked[svc]; ok {
+					continue
+				}
+				checked[svc] = struct{}{}
+
+				// Validate only services whose dependencies runtime resolution would
+				// look up through this container. This skips scoped services registered
+				// directly on c and singleton services registered with an ancestor.
+				resolutionScope := serviceResolutionScope(c, svc)
+				if resolutionScope != c {
+					continue
+				}
+
+				err := validateService(c, svc, newResolveVisitor())
+				if err != nil {
+					errs = append(errs, err)
+				}
+			}
 		}
 	}
 
@@ -63,13 +63,13 @@ func (v *validator) Validate() error {
 	})
 
 	if err := errors.Join(errs...); err != nil {
-		return err
+		return errors.Wrap(err, "di.ValidateContainer")
 	}
 
 	return nil
 }
 
-func (v *validator) validateService(svc *service, visitor *resolveVisitor) error {
+func validateService(scope *Container, svc *service, visitor *resolveVisitor) error {
 	deps := svc.Dependencies()
 	if len(deps) == 0 {
 		return nil
@@ -94,27 +94,29 @@ func (v *validator) validateService(svc *service, visitor *resolveVisitor) error
 				Tag:  depKey.Tag,
 			}
 
-			sliceSvcs := slices.Collect(v.scope.registeredServices(elemKey))
+			sliceSvcs := slices.Collect(scope.registeredServices(elemKey))
 			if len(sliceSvcs) == 0 && !optional {
 				depErrs = append(depErrs, newDependencyError(depKey, errServiceNotRegistered))
 				continue
 			}
 
 			for _, depSvc := range sliceSvcs {
-				if err := v.validateService(depSvc, visitor); err != nil {
+				depScope := serviceResolutionScope(scope, depSvc)
+				if err := validateService(depScope, depSvc, visitor); err != nil {
 					depErrs = append(depErrs, newDependencyError(depKey, err))
 				}
 			}
 			continue
 		}
 
-		depSvc := v.scope.lookupService(depKey)
+		depSvc := scope.lookupService(depKey)
 		if depSvc == nil {
 			depErrs = append(depErrs, newDependencyError(depKey, errServiceNotRegistered))
 			continue
 		}
 
-		if err := v.validateService(depSvc, visitor); err != nil {
+		depScope := serviceResolutionScope(scope, depSvc)
+		if err := validateService(depScope, depSvc, visitor); err != nil {
 			depErrs = append(depErrs, newDependencyError(depKey, err))
 		}
 	}
@@ -124,43 +126,6 @@ func (v *validator) validateService(svc *service, visitor *resolveVisitor) error
 	}
 
 	return nil
-}
-
-// services returns services to validate.
-// A service is returned only once even if it was registered with multiple
-// types or tags. Iteration order is not stable.
-//
-// Transient services registered with ancestor containers are validated because
-// they resolve against the current scope. Scoped services registered with
-// ancestor containers are validated for the same reason.
-func (v *validator) services() iter.Seq[*service] {
-	return func(yield func(*service) bool) {
-		seen := make(map[*service]struct{})
-
-		for scope := v.scope; scope != nil; scope = scope.parent {
-			currentScope := scope == v.scope
-
-			for _, svcs := range scope.services {
-				for _, svc := range svcs {
-					switch {
-					case currentScope && svc.Lifetime() == Scoped:
-						continue
-					case !currentScope && svc.Lifetime() == Singleton:
-						continue
-					}
-
-					if _, ok := seen[svc]; ok {
-						continue
-					}
-					seen[svc] = struct{}{}
-
-					if !yield(svc) {
-						return
-					}
-				}
-			}
-		}
-	}
 }
 
 func newServiceValidationError(svc *service, depErrs ...error) error {

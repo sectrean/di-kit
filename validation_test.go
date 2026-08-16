@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_ValidateDependencies(t *testing.T) {
+func Test_ValidateContainer(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(testtypes.NewInterfaceA),
@@ -357,6 +357,67 @@ func Test_ValidateDependencies(t *testing.T) {
 		got, err := di.Resolve[*testtypes.StructB](context.Background(), scope)
 		assert.NotNil(t, got)
 		assert.NoError(t, err)
+	})
+
+	t.Run("singleton dependency uses its registration scope", func(t *testing.T) {
+		root, err := di.NewContainer(
+			di.WithService(testtypes.NewInterfaceB),
+		)
+		require.NoError(t, err)
+
+		child, err := root.NewScope(
+			di.WithService(testtypes.NewInterfaceA),
+			di.WithService(func(testtypes.InterfaceB) testtypes.InterfaceC {
+				return &testtypes.StructC{}
+			}, di.Transient),
+		)
+		require.NoError(t, err)
+
+		err = di.ValidateContainer(child)
+		LogError(t, err)
+		assert.EqualError(t, err, "di.ValidateContainer: "+
+			"service func(testtypes.InterfaceB) testtypes.InterfaceC: "+
+			"dependency testtypes.InterfaceB: service func(testtypes.InterfaceA) testtypes.InterfaceB: "+
+			"dependency testtypes.InterfaceA: service not registered",
+		)
+
+		got, err := di.Resolve[testtypes.InterfaceC](context.Background(), child)
+		assert.Nil(t, got)
+		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceC: "+
+			"dependency testtypes.InterfaceB: dependency testtypes.InterfaceA: service not registered",
+		)
+	})
+
+	t.Run("singleton slice element uses its registration scope", func(t *testing.T) {
+		root, err := di.NewContainer(
+			di.WithService(func(testtypes.InterfaceD) testtypes.InterfaceA {
+				return &testtypes.StructA{}
+			}),
+		)
+		require.NoError(t, err)
+
+		child, err := root.NewScope(
+			di.WithService(func() testtypes.InterfaceD { return &testtypes.StructD{} }),
+			di.WithService(func([]testtypes.InterfaceA) testtypes.InterfaceB {
+				return &testtypes.StructB{}
+			}, di.Transient),
+		)
+		require.NoError(t, err)
+
+		err = di.ValidateContainer(child)
+		LogError(t, err)
+		assert.EqualError(t, err, "di.ValidateContainer: "+
+			"service func([]testtypes.InterfaceA) testtypes.InterfaceB: "+
+			"dependency []testtypes.InterfaceA: service func(testtypes.InterfaceD) testtypes.InterfaceA: "+
+			"dependency testtypes.InterfaceD: service not registered",
+		)
+
+		got, err := di.Resolve[testtypes.InterfaceB](context.Background(), child)
+		assert.Nil(t, got)
+		assert.EqualError(t, err, "di.Container.Resolve testtypes.InterfaceB: "+
+			"dependency []testtypes.InterfaceA: service func(testtypes.InterfaceD) testtypes.InterfaceA: "+
+			"dependency testtypes.InterfaceD: service not registered",
+		)
 	})
 
 	t.Run("nested child validates scoped services from all ancestors", func(t *testing.T) {
