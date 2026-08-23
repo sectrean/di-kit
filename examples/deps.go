@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/sectrean/di-kit"
 	"github.com/sectrean/di-kit/examples/service"
-
 	"github.com/sectrean/di-kit/examples/storage"
 )
 

@@ -10,11 +10,12 @@ import (
 //
 // This is to help make sure our error messages are helpful and informative.
 func LogError(t *testing.T, err error) {
+	t.Helper()
+
 	if err == nil {
 		return
 	}
 
-	t.Helper()
 	t.Logf("error message:\n%v", err)
 }
 

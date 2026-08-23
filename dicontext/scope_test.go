@@ -6,6 +6,7 @@ import (
 
 	"github.com/sectrean/di-kit"
 	"github.com/sectrean/di-kit/dicontext"
+	"github.com/sectrean/di-kit/internal/mocks"
 	"github.com/sectrean/di-kit/internal/testtypes"
 	"github.com/sectrean/di-kit/internal/testutils"
 	"github.com/stretchr/testify/assert"
@@ -42,6 +43,20 @@ func Test_Resolve(t *testing.T) {
 
 		assert.Equal(t, &testtypes.StructA{}, got)
 		assert.NoError(t, err)
+	})
+
+	t.Run("unexpected service type", func(t *testing.T) {
+		scope := mocks.NewScopeMock(t)
+		ctx := dicontext.WithScope(context.Background(), scope)
+		scope.EXPECT().
+			Resolve(ctx, testtypes.TypeInterfaceA).
+			Return(&testtypes.StructB{}, nil)
+
+		got, err := dicontext.Resolve[testtypes.InterfaceA](ctx)
+
+		assert.Nil(t, got)
+		assert.EqualError(t, err,
+			"dicontext.Resolve[testtypes.InterfaceA]: resolved service *testtypes.StructB failed type assertion")
 	})
 
 	t.Run("WithTag", func(t *testing.T) {
@@ -81,7 +96,7 @@ func Test_Resolve(t *testing.T) {
 
 		assert.Nil(t, got)
 		assert.EqualError(t, err,
-			"dicontext.Resolve testtypes.InterfaceA: scope not found on context")
+			"dicontext.Resolve[testtypes.InterfaceA]: scope not found on context")
 	})
 }
 
@@ -117,7 +132,7 @@ func Test_MustResolve(t *testing.T) {
 	t.Run("scope not found", func(t *testing.T) {
 		ctx := context.Background()
 
-		assert.PanicsWithError(t, "dicontext.Resolve testtypes.InterfaceA: scope not found on context", func() {
+		assert.PanicsWithError(t, "dicontext.Resolve[testtypes.InterfaceA]: scope not found on context", func() {
 			_ = dicontext.MustResolve[testtypes.InterfaceA](ctx)
 		})
 	})

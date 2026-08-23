@@ -61,7 +61,7 @@ func WithScopeCloseErrorHandler(h ScopeCloseErrorHandler) ScopeMiddlewareOption 
 // WithScopeCloseTimeout sets a timeout for closing the request scope at the end of each request.
 //
 // The default is no timeout.
-func WithScopeCloseTimeout(timeout time.Duration) scopeMiddlewareOption {
+func WithScopeCloseTimeout(timeout time.Duration) ScopeMiddlewareOption {
 	return scopeMiddlewareOption(func(m *scopeMiddleware) {
 		m.closeTimeout = timeout
 	})

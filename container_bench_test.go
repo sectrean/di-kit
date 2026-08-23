@@ -527,6 +527,8 @@ func Benchmark_Container_Close(b *testing.B) {
 }
 
 func newParent(b *testing.B) *di.Container {
+	b.Helper()
+
 	parent, err := di.NewContainer(
 		di.WithService(testtypes.NewInterfaceAStruct, di.Singleton),
 		di.WithService(testtypes.NewInterfaceBStruct, di.Scoped),
@@ -536,6 +538,8 @@ func newParent(b *testing.B) *di.Container {
 }
 
 func newChildScopes(b *testing.B, parent *di.Container) []*di.Container {
+	b.Helper()
+
 	scopes := make([]*di.Container, b.N)
 	for i := range b.N {
 		scopes[i], _ = parent.NewScope()
@@ -546,6 +550,8 @@ func newChildScopes(b *testing.B, parent *di.Container) []*di.Container {
 // newClosableContainer builds a container with the full A→B→C→D singleton chain,
 // so resolving InterfaceD registers four closers with distinct Close signatures.
 func newClosableContainer(b *testing.B) *di.Container {
+	b.Helper()
+
 	c, err := di.NewContainer(
 		di.WithService(testtypes.NewInterfaceA),
 		di.WithService(testtypes.NewInterfaceB),

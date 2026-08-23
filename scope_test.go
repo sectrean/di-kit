@@ -5,10 +5,27 @@ import (
 	"testing"
 
 	"github.com/sectrean/di-kit"
+	"github.com/sectrean/di-kit/internal/mocks"
 	"github.com/sectrean/di-kit/internal/testtypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_Resolve(t *testing.T) {
+	t.Run("unexpected service type", func(t *testing.T) {
+		ctx := context.Background()
+		scope := mocks.NewScopeMock(t)
+		scope.EXPECT().
+			Resolve(ctx, testtypes.TypeInterfaceA).
+			Return(&testtypes.StructB{}, nil)
+
+		got, err := di.Resolve[testtypes.InterfaceA](ctx, scope)
+
+		assert.Nil(t, got)
+		assert.EqualError(t, err,
+			"di.Resolve[testtypes.InterfaceA]: resolved service *testtypes.StructB failed type assertion")
+	})
+}
 
 func Test_MustResolve(t *testing.T) {
 	t.Run("success", func(t *testing.T) {

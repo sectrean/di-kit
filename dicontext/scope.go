@@ -34,13 +34,18 @@ func Resolve[Service any](ctx context.Context, opts ...di.ResolveOption) (Servic
 
 	s := Scope(ctx)
 	if s == nil {
-		return val, errors.Errorf("dicontext.Resolve %s: scope not found on context",
+		return val, errors.Errorf("dicontext.Resolve[%s]: scope not found on context",
 			reflect.TypeFor[Service]())
 	}
 
 	anyVal, err := s.Resolve(ctx, reflect.TypeFor[Service](), opts...)
 	if anyVal != nil {
-		val = anyVal.(Service)
+		var ok bool
+		val, ok = anyVal.(Service)
+		if !ok {
+			return val, errors.Errorf("dicontext.Resolve[%s]: resolved service %T failed type assertion",
+				reflect.TypeFor[Service](), anyVal)
+		}
 	}
 	if err != nil {
 		return val, errors.Wrap(err, "dicontext.Resolve")

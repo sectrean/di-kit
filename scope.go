@@ -44,6 +44,7 @@ type Scope interface {
 	Contains(t reflect.Type, opts ...ResolveOption) bool
 
 	// Resolve returns a service of the given type from the Scope.
+	// Implementations must return either nil or a value assignable to t.
 	//
 	// See [Container.Resolve] for more information.
 	Resolve(ctx context.Context, t reflect.Type, opts ...ResolveOption) (any, error)
@@ -56,7 +57,12 @@ func Resolve[Service any](ctx context.Context, s Scope, opts ...ResolveOption) (
 	var val Service
 	anyVal, err := s.Resolve(ctx, reflect.TypeFor[Service](), opts...)
 	if anyVal != nil {
-		val = anyVal.(Service)
+		var ok bool
+		val, ok = anyVal.(Service)
+		if !ok {
+			return val, errors.Errorf("di.Resolve[%s]: resolved service %T failed type assertion",
+				reflect.TypeFor[Service](), anyVal)
+		}
 	}
 
 	return val, err

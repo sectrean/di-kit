@@ -19,7 +19,7 @@ func NewRequestHandler(logger *slog.Logger, r *http.Request) (*RequestHandler, e
 }
 
 func (h *RequestHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
-	h.logger.Info("handling request", "method", r.Method, "url", r.URL.String())
+	h.logger.InfoContext(r.Context(), "handling request", "method", r.Method, "url", r.URL.String())
 }
 
 func (h *RequestHandler) Close(ctx context.Context) error {

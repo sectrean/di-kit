@@ -179,6 +179,16 @@ func Test_NewContainer(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("di.WithService di.Scoped value service", func(t *testing.T) {
+		c, err := di.NewContainer(
+			di.WithService(&testtypes.StructA{}, di.Scoped),
+		)
+		LogError(t, err)
+
+		assert.Nil(t, c)
+		assert.EqualError(t, err, "di.NewContainer: di.WithService *testtypes.StructA: di.Scoped: invalid lifetime for value service")
+	})
+
 	t.Run("di.WithService di.Transient value service", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(&testtypes.StructA{}, di.Transient),

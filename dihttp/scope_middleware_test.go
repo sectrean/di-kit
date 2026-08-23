@@ -145,7 +145,7 @@ func Test_ScopeMiddleware(t *testing.T) {
 
 		handlerA := mw(http.NotFoundHandler())
 		handlerB := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(500)
+			w.WriteHeader(http.StatusInternalServerError)
 		}))
 
 		gotA := RunRequest(t, handlerA, "/")
@@ -345,8 +345,10 @@ func Test_ScopeMiddleware(t *testing.T) {
 }
 
 func RunRequest(t *testing.T, h http.Handler, path string) int {
+	t.Helper()
+
 	res := httptest.NewRecorder()
-	req, err := http.NewRequest(http.MethodGet, path, http.NoBody)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, path, http.NoBody)
 	require.NoError(t, err)
 
 	h.ServeHTTP(res, req)

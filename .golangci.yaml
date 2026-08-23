@@ -1,82 +1,121 @@
----
+version: "2"
+
 linters:
+  # Keep the enabled set stable across golangci-lint releases.
+  default: none
   enable:
-    # Enabled by default
+    # Core correctness linters.
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
     - unused
 
-    # Additional linters
-    - gofmt
-    - gosec
-    - revive
+    # Additional linters.
     - asasalint
+    - bidichk
     - copyloopvar
-    - gci
+    - dupword
+    - durationcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - gocheckcompilerdirectives
     - gocritic
     - godot
-    - gofmt
-    - whitespace
-    - dupword
+    - gosec
+    - intrange
+    - nilerr
+    - nilnesserr
+    - nilnil
+    - noctx
+    - nolintlint
+    - prealloc
+    - recvcheck
+    - revive
+    - sloglint
     - testifylint
     - testpackage
-    - intrange
-    - sloglint
-    - prealloc
-    - nilnil
-    - errname
-
-linters-settings:
-  govet:
-    enable-all: true
-
-  gosec:
-    excludes:
-      - G404
-      - G114
-
-  revive:
+    - thelper
+    - usestdlibvars
+    - wastedassign
+    - whitespace
+  settings:
+    exhaustive:
+      # Partial switches over standard-library enums intentionally use defaults.
+      ignore-enum-types: reflect\.Kind
+    gocritic:
+      enable-all: true
+      disabled-checks:
+        - deferInLoop
+    gosec:
+      excludes:
+        - G404
+        - G114
+    govet:
+      enable-all: true
+    prealloc:
+      for-loops: true
+    revive:
+      rules:
+        - name: confusing-results
+        - name: context-as-argument
+        - name: datarace
+        - name: deep-exit
+        - name: error-return
+        - name: exported
+          arguments:
+            - sayRepetitiveInsteadOfStutters
+            - checkPublicInterface
+        - name: modifies-value-receiver
+        - name: time-equal
+        - name: unchecked-type-assertion
+          arguments:
+            - accept-ignored-assertion-result: true
+        - name: unexported-return
+        - name: unhandled-error
+    sloglint:
+      context: scope
+      static-msg: true
+    testifylint:
+      enable-all: true
+      disable:
+        - require-error
+        - compares
+  exclusions:
+    generated: lax
+    presets:
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      - name: exported
-        arguments:
-          - sayRepetitiveInsteadOfStutters
-          - checkPublicInterface
-  gocritic:
-    enable-all: true
-    disabled-checks:
-      - deferInLoop # for now
+      - linters:
+          - revive
+        path: internal/...
+        text: ^exported
+      - linters:
+          - revive
+        path: examples/...
+        text: ^exported
+      # Constructor signatures are validated before this assertion.
+      - linters:
+          - revive
+        path: service.go
+        text: '^unchecked-type-assertion: type cast result is unchecked in out\[1\]\.Interface\(\)\.\(error\)'
+      # strings.Builder.WriteString always returns a nil error.
+      - linters:
+          - revive
+        text: '^unhandled-error: Unhandled error in call to function strings\.Builder\.WriteString$'
+      - linters:
+          - prealloc
+        path: internal/testtypes/...
+      - linters:
+          - testpackage
+        path: lifetime_test.go
 
-  testifylint:
-    enable-all: true
-    disable:
-      - require-error
-      - compares
-  
-  sloglint:
-    context: "scope"
-    static-msg: true
-
-  prealloc:
-    for-loops: true
-
-issues:
-  include:
-    - EXC0012  # EXC0012 revive: Annoying issue about not having a comment.
-    - EXC0013  # EXC0012 revive: Annoying issue about not having a comment.
-    - EXC0014  # EXC0014 revive: Annoying issue about not having a comment.
-
-  exclude-rules:
-    - path: internal/...
-      linters:
-        - revive
-      text: "^exported"
-    - path: internal/...
-      linters:
-        - prealloc
-    # This file tests an unexported function
-    - path: lifetime_test.go
-      linters:
-        - testpackage
+formatters:
+  enable:
+    - gci
+    - gofmt
+  exclusions:
+    generated: lax

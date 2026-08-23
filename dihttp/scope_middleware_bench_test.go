@@ -36,7 +36,7 @@ func Benchmark_Middleware(b *testing.B) {
 		handler := mw(noopHandler)
 
 		w := noopResponseWriter{}
-		req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+		req := httptest.NewRequestWithContext(b.Context(), http.MethodGet, "/", http.NoBody)
 
 		// Correctness check: the handler serves without hitting an error path.
 		handler.ServeHTTP(w, req)
@@ -57,7 +57,7 @@ func Benchmark_Middleware(b *testing.B) {
 		handler := mw(noopHandler)
 
 		w := noopResponseWriter{}
-		req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+		req := httptest.NewRequestWithContext(b.Context(), http.MethodGet, "/", http.NoBody)
 
 		// Correctness check: the handler serves without hitting an error path.
 		handler.ServeHTTP(w, req)
@@ -82,7 +82,7 @@ func Benchmark_Middleware(b *testing.B) {
 		}))
 
 		w := noopResponseWriter{}
-		req := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
+		req := httptest.NewRequestWithContext(b.Context(), http.MethodGet, "/", http.NoBody)
 
 		handler.ServeHTTP(w, req)
 		require.NoError(b, resolveErr)

@@ -129,6 +129,6 @@ func (c *invokeConfig) apply(opts ...InvokeOption) error {
 	return applyOptions(opts, func(o InvokeOption) error { return o.applyInvokeConfig(c) })
 }
 
-func (c invokeConfig) Type() reflect.Type         { return c.fn.Type() }
-func (c invokeConfig) Func() reflect.Value        { return c.fn }
-func (c invokeConfig) Dependencies() []serviceKey { return c.deps }
+func (c *invokeConfig) Type() reflect.Type         { return c.fn.Type() }
+func (c *invokeConfig) Func() reflect.Value        { return c.fn }
+func (c *invokeConfig) Dependencies() []serviceKey { return c.deps }
