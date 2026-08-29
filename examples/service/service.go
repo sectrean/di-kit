@@ -22,6 +22,11 @@ func (s *Service) Run(ctx context.Context) error {
 	return nil
 }
 
+func (s *Service) Handle(ctx context.Context) error {
+	s.logger.InfoContext(ctx, "Service.Handle called")
+	return nil
+}
+
 func (s *Service) Close(ctx context.Context) error {
 	s.logger.InfoContext(ctx, "Service.Close called")
 	return nil

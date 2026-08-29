@@ -15,6 +15,8 @@ import (
 //
 // A variadic parameter is treated as an optional slice dependency: if no services are
 // registered for the element type, the function is called with an empty variadic argument.
+//
+// The container should not be closed before this function returns.
 func Invoke(ctx context.Context, s Scope, fn any, opts ...InvokeOption) error {
 	config, err := newInvokeConfig(fn, opts...)
 	if err != nil {
