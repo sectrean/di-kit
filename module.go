@@ -24,11 +24,8 @@ func (m Module) applyContainer(c *Container) error {
 	err := applyOptions(m, func(o ContainerOption) error {
 		return o.applyContainer(c)
 	})
-	if err != nil {
-		return errors.Wrap(err, "di.Module")
-	}
 
-	return nil
+	return errors.Wrap(err, "di.Module")
 }
 
 var _ ContainerOption = Module{}

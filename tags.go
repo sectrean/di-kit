@@ -71,11 +71,8 @@ type withTagOption struct {
 
 func (o withTagOption) validate() error {
 	err := validateTag(o.Tag)
-	if err != nil {
-		return errors.Wrap(err, "di.WithTag")
-	}
 
-	return nil
+	return errors.Wrap(err, "di.WithTag")
 }
 
 func (o withTagOption) applyService(s *service) error {

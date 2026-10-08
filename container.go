@@ -520,11 +520,7 @@ func (c *Container) Close(ctx context.Context) error {
 		}
 	}
 
-	if err := errors.Join(errs...); err != nil {
-		return errors.Wrap(err, "di.Container.Close")
-	}
-
-	return nil
+	return errors.Wrap(errors.Join(errs...), "di.Container.Close")
 }
 
 var (

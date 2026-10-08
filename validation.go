@@ -62,11 +62,7 @@ func ValidateContainer(c *Container) error {
 		return cmp.Compare(a.Error(), b.Error())
 	})
 
-	if err := errors.Join(errs...); err != nil {
-		return errors.Wrap(err, "di.ValidateContainer")
-	}
-
-	return nil
+	return errors.Wrap(errors.Join(errs...), "di.ValidateContainer")
 }
 
 func validateService(scope *Container, svc *service, visitor *resolveVisitor) error {

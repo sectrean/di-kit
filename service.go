@@ -216,6 +216,10 @@ func (s *service) apply(opts ...ServiceOption) error {
 }
 
 func (s *service) initFuncService(funcType reflect.Type) error {
+	// The default closer factory
+	// This uses a compatible Close() method on the service
+	s.closerFactory = getCloser
+
 	// Figure out the service type
 	switch {
 	case funcType.NumOut() == 1:
@@ -250,13 +254,7 @@ func (s *service) initFuncService(funcType reflect.Type) error {
 		}
 	}
 
-	if err := errors.Join(errs...); err != nil {
-		return err
-	}
-
-	s.closerFactory = getCloser
-
-	return nil
+	return errors.Join(errs...)
 }
 
 func (s *service) initValueService(valType reflect.Type) error {
