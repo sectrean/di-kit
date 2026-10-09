@@ -26,9 +26,8 @@ func main() {
 
 	// Close the container when done
 	defer func() {
-		err := c.Close(ctx)
-		if err != nil {
-			logger.ErrorContext(ctx, "error closing container", "error", err)
+		if closeErr := c.Close(ctx); closeErr != nil {
+			logger.ErrorContext(ctx, "error closing container", "error", closeErr)
 		}
 	}()
 

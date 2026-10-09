@@ -1,82 +1,63 @@
----
+version: "2"
 linters:
   enable:
-    # Enabled by default
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
-
-    # Additional linters
-    - gofmt
-    - gosec
-    - revive
     - asasalint
     - copyloopvar
-    - gci
+    - dupword
+    - errname
     - gocritic
     - godot
-    - gofmt
-    - whitespace
-    - dupword
+    - gosec
+    - intrange
+    - nilnil
+    - prealloc
+    - revive
+    - sloglint
     - testifylint
     - testpackage
-    - intrange
-    - sloglint
-    - prealloc
-    - nilnil
-    - errname
-
-linters-settings:
-  govet:
-    enable-all: true
-
-  gosec:
-    excludes:
-      - G404
-      - G114
-
-  revive:
+    - whitespace
+  settings:
+    gocritic:
+      enable-all: true
+      disabled-checks:
+        - deferInLoop
+    gosec:
+      excludes:
+        - G404
+        - G114
+    govet:
+      enable-all: true
+    prealloc:
+      for-loops: true
+    revive:
+      rules:
+        - name: exported
+          arguments:
+            - sayRepetitiveInsteadOfStutters
+            - checkPublicInterface
+    sloglint:
+      context: scope
+      static-msg: true
+    testifylint:
+      enable-all: true
+      disable:
+        - require-error
+        - compares
+  exclusions:
     rules:
-      - name: exported
-        arguments:
-          - sayRepetitiveInsteadOfStutters
-          - checkPublicInterface
-  gocritic:
-    enable-all: true
-    disabled-checks:
-      - deferInLoop # for now
-
-  testifylint:
-    enable-all: true
-    disable:
-      - require-error
-      - compares
-  
-  sloglint:
-    context: "scope"
-    static-msg: true
-
-  prealloc:
-    for-loops: true
-
-issues:
-  include:
-    - EXC0012  # EXC0012 revive: Annoying issue about not having a comment.
-    - EXC0013  # EXC0012 revive: Annoying issue about not having a comment.
-    - EXC0014  # EXC0014 revive: Annoying issue about not having a comment.
-
-  exclude-rules:
-    - path: internal/...
-      linters:
-        - revive
-      text: "^exported"
-    - path: internal/...
-      linters:
-        - prealloc
-    # This file tests an unexported function
-    - path: lifetime_test.go
-      linters:
-        - testpackage
+      - linters:
+          - revive
+        text: ^exported
+        paths:
+          - internal/...
+          - examples/...
+      - linters:
+          - prealloc
+        path: internal/testtypes/...
+      - linters:
+          - testpackage
+        path: lifetime_test.go
+formatters:
+  enable:
+    - gci
+    - gofmt

@@ -32,7 +32,7 @@ func Example() {
 		}
 	}()
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	requestHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		svc := dicontext.MustResolve[*handler.RequestHandler](r.Context())
 		svc.HandleRequest(w, r)
 	})
@@ -43,7 +43,7 @@ func Example() {
 	)
 
 	mux := http.NewServeMux()
-	mux.Handle("/", scopeMiddleware(handler))
+	mux.Handle("/", scopeMiddleware(requestHandler))
 
 	err = http.ListenAndServe(":8080", nil)
 	if !errors.Is(err, http.ErrServerClosed) {
