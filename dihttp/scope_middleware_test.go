@@ -255,7 +255,7 @@ func Test_ScopeMiddleware(t *testing.T) {
 	t.Run("Close error", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func() testtypes.InterfaceA {
-				a := mocks.NewInterfaceAMock(t)
+				a := mocks.NewMockInterfaceA(t)
 				a.EXPECT().
 					Close(mock.Anything).
 					Return(errors.New("close error"))
@@ -289,7 +289,7 @@ func Test_ScopeMiddleware(t *testing.T) {
 	t.Run("Close error default handler", func(t *testing.T) {
 		c, err := di.NewContainer(
 			di.WithService(func() testtypes.InterfaceA {
-				a := mocks.NewInterfaceAMock(t)
+				a := mocks.NewMockInterfaceA(t)
 				a.EXPECT().
 					Close(mock.Anything).
 					Return(errors.New("close error"))

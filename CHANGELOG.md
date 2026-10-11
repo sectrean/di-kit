@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constructor function errors for singleton and scoped services are never cached.
   Subsequent attempts to resolve the service will result in the constructor function being called again.
   Previously, results would be cached unless there was a dependency cycle or context error.
+- **Tools** - Upgraded golangci-lint and mockery tool versions. 
+  Now Go v1.26+ is required to develop on this project.
 
 ### Fixed
 

@@ -1,8 +1,9 @@
 dir: internal/mocks
-outpkg: mocks
-filename: "{{.InterfaceName | snakecase}}_mock.go"
-mockname: "{{.InterfaceName}}Mock"
-with-expecter: true
+pkgname: mocks
+filename: '{{.InterfaceName | snakecase}}_mock.go'
+template: testify
+template-data:
+  unroll-variadic: true
 packages:
   github.com/sectrean/di-kit:
     interfaces:

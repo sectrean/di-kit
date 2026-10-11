@@ -2435,7 +2435,7 @@ func Test_Container_Resolve(t *testing.T) {
 				return &testtypes.StructB{}
 			}),
 			di.WithService(func(scope di.Scope) testtypes.InterfaceC {
-				c := mocks.NewInterfaceCMock(t)
+				c := mocks.NewMockInterfaceC(t)
 
 				// The circular dependency can be resolved by using a scope
 				c.EXPECT().C().Run(func() {
@@ -2567,21 +2567,21 @@ func Test_Container_Close(t *testing.T) {
 	t.Run("all close funcs", func(t *testing.T) {
 		ctx := ContextWithTestValue(context.Background(), "value")
 
-		aMock := mocks.NewInterfaceAMock(t)
+		aMock := mocks.NewMockInterfaceA(t)
 		aMock.EXPECT().
 			Close(ctx).
 			Return(nil).
 			Once()
-		bMock := mocks.NewInterfaceBMock(t)
+		bMock := mocks.NewMockInterfaceB(t)
 		bMock.EXPECT().
 			Close(ctx).
 			Once()
-		cMock := mocks.NewInterfaceCMock(t)
+		cMock := mocks.NewMockInterfaceC(t)
 		cMock.EXPECT().
 			Close().
 			Return(nil).
 			Once()
-		dMock := mocks.NewInterfaceDMock(t)
+		dMock := mocks.NewMockInterfaceD(t)
 		dMock.EXPECT().
 			Close().
 			Once()
@@ -2605,7 +2605,7 @@ func Test_Container_Close(t *testing.T) {
 		calls := 0
 		ctx := context.Background()
 
-		aMock := mocks.NewInterfaceAMock(t)
+		aMock := mocks.NewMockInterfaceA(t)
 		aMock.EXPECT().
 			Close(ctx).
 			RunAndReturn(func(context.Context) error {
@@ -2614,7 +2614,7 @@ func Test_Container_Close(t *testing.T) {
 				return nil
 			}).
 			Once()
-		bMock := mocks.NewInterfaceBMock(t)
+		bMock := mocks.NewMockInterfaceB(t)
 		bMock.EXPECT().
 			Close(ctx).
 			Run(func(context.Context) {
@@ -2641,7 +2641,7 @@ func Test_Container_Close(t *testing.T) {
 	})
 
 	t.Run("func not resolved", func(t *testing.T) {
-		aMock := mocks.NewInterfaceAMock(t)
+		aMock := mocks.NewMockInterfaceA(t)
 
 		c, err := di.NewContainer(
 			di.WithService(func() testtypes.InterfaceA { return aMock }),
@@ -2654,7 +2654,7 @@ func Test_Container_Close(t *testing.T) {
 	})
 
 	t.Run("value resolved", func(t *testing.T) {
-		aMock := mocks.NewInterfaceAMock(t)
+		aMock := mocks.NewMockInterfaceA(t)
 
 		c, err := di.NewContainer(
 			di.WithService(aMock, di.As[testtypes.InterfaceA]()),
@@ -2671,7 +2671,7 @@ func Test_Container_Close(t *testing.T) {
 	})
 
 	t.Run("value not resolved", func(t *testing.T) {
-		aMock := mocks.NewInterfaceAMock(t)
+		aMock := mocks.NewMockInterfaceA(t)
 
 		c, err := di.NewContainer(
 			di.WithService(aMock),
@@ -2686,12 +2686,12 @@ func Test_Container_Close(t *testing.T) {
 	t.Run("closer error", func(t *testing.T) {
 		ctx := context.Background()
 
-		aMock := mocks.NewInterfaceAMock(t)
+		aMock := mocks.NewMockInterfaceA(t)
 		aMock.EXPECT().
 			Close(ctx).
 			Return(errors.New("err a")).
 			Once()
-		cMock := mocks.NewInterfaceCMock(t)
+		cMock := mocks.NewMockInterfaceC(t)
 		cMock.EXPECT().
 			Close().
 			Return(nil).
@@ -2714,12 +2714,12 @@ func Test_Container_Close(t *testing.T) {
 	t.Run("closer errors", func(t *testing.T) {
 		ctx := context.Background()
 
-		aMock := mocks.NewInterfaceAMock(t)
+		aMock := mocks.NewMockInterfaceA(t)
 		aMock.EXPECT().
 			Close(ctx).
 			Return(errors.New("err a")).
 			Once()
-		cMock := mocks.NewInterfaceCMock(t)
+		cMock := mocks.NewMockInterfaceC(t)
 		cMock.EXPECT().
 			Close().
 			Return(errors.New("err c")).
@@ -2740,7 +2740,7 @@ func Test_Container_Close(t *testing.T) {
 	})
 
 	t.Run("di.IgnoreCloser func service", func(t *testing.T) {
-		aMock := mocks.NewInterfaceAMock(t)
+		aMock := mocks.NewMockInterfaceA(t)
 
 		scope, err := di.NewContainer(
 			di.WithService(func() testtypes.InterfaceA { return aMock },
@@ -2760,7 +2760,7 @@ func Test_Container_Close(t *testing.T) {
 	t.Run("di.UseCloser value service", func(t *testing.T) {
 		ctx := context.Background()
 
-		aMock := mocks.NewInterfaceAMock(t)
+		aMock := mocks.NewMockInterfaceA(t)
 		aMock.EXPECT().
 			Close(ctx).
 			Return(nil).
@@ -2782,7 +2782,7 @@ func Test_Container_Close(t *testing.T) {
 	t.Run("di.UseCloseFunc func service", func(t *testing.T) {
 		ctx := context.Background()
 
-		aMock := mocks.NewInterfaceAMock(t)
+		aMock := mocks.NewMockInterfaceA(t)
 		aClosed := false
 
 		c, err := di.NewContainer(
@@ -2807,7 +2807,7 @@ func Test_Container_Close(t *testing.T) {
 	t.Run("di.UseCloseFunc value service", func(t *testing.T) {
 		ctx := context.Background()
 
-		aMock := mocks.NewInterfaceAMock(t)
+		aMock := mocks.NewMockInterfaceA(t)
 		aClosed := false
 
 		c, err := di.NewContainer(
@@ -2887,7 +2887,7 @@ func Test_Container_Close(t *testing.T) {
 		started := make(chan struct{})
 		release := make(chan struct{})
 
-		aMock := mocks.NewInterfaceAMock(t)
+		aMock := mocks.NewMockInterfaceA(t)
 		aMock.EXPECT().
 			Close(ctx).
 			Return(nil).
